@@ -7,9 +7,9 @@ import AppHeader from '../components/layout/AppHeader.vue'
 import type { BasemapKind } from '../components/map/basemap'
 import ClimateMap, { type RegionHover } from '../components/map/ClimateMap.vue'
 import HotspotToggle from '../components/map/HotspotToggle.vue'
-import LayerSwitch from '../components/map/LayerSwitch.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
+import LayerList from '../components/panel/LayerList.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
 import { LAYER_IDS, layerConfig } from '../config/layers'
 import { useBasins, useLayer, useOblasts, useRivers } from '../composables/useLayer'
@@ -106,7 +106,14 @@ const signed = computed(() => config.value.display === 'anomaly')
 const format = (value: number, withSign = signed.value) =>
   valueFormatter.value(value, { signed: withSign })
 
-const layerChoices = computed(() => LAYER_IDS.map((id) => ({ id, name: t.value.layers[id].name })))
+const layerChoices = computed(() =>
+  LAYER_IDS.map((id) => ({
+    id,
+    name: t.value.layers[id].name,
+    description: t.value.layers[id].legendTitle,
+    gradient: cssGradient(layerConfig(id).scale),
+  })),
+)
 const gradient = computed(() => cssGradient(config.value.scale))
 
 const stepLabel = computed(() => {
@@ -217,7 +224,7 @@ const tooltip = computed(() => {
   <!-- Every block is a rounded card on the canvas, separated by one gutter (gap and padding). -->
   <div class="flex min-h-dvh flex-col gap-2 bg-canvas p-2 sm:gap-3 sm:p-3 md:h-dvh">
     <AppHeader />
-    <main class="flex flex-1 flex-col gap-2 sm:gap-3 md:min-h-0">
+    <main class="flex flex-1 flex-col gap-2 sm:gap-3 md:min-h-0 lg:flex-row">
       <section
         class="relative isolate h-[62dvh] min-w-0 shrink-0 overflow-hidden rounded-2xl shadow-card md:h-auto md:flex-1"
         :aria-label="t.home.map"
@@ -255,25 +262,14 @@ const tooltip = computed(() => {
             :gradient="gradient"
             :position="tooltip.position"
           />
-          <!-- Layers above the map, hotspots beside the zoom buttons (SPEC §8.1). -->
-          <div
-            class="pointer-events-none absolute top-3 right-14 z-10 flex flex-wrap items-start justify-center gap-2"
-            :style="{ left: `${(isWide ? PANEL_INSET : 0) + 12}px` }"
-          >
-            <LayerSwitch
-              v-model="ui.layer"
-              class="pointer-events-auto"
-              :layers="layerChoices"
-              :label="t.home.layers"
-            />
-            <HotspotToggle
-              v-if="config.hotspotAbove !== undefined"
-              v-model="ui.hotspots"
-              class="pointer-events-auto"
-              :label="t.home.hotspots"
-              :hint="hotspotsHint"
-            />
-          </div>
+          <!-- Hotspots beside the zoom buttons (SPEC §8.1). -->
+          <HotspotToggle
+            v-if="config.hotspotAbove !== undefined"
+            v-model="ui.hotspots"
+            class="absolute top-3 right-14 z-10"
+            :label="t.home.hotspots"
+            :hint="hotspotsHint"
+          />
           <!-- The panel on the left above the timeline, which spans the map (SPEC §8.1). -->
           <div class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3">
             <div v-if="isWide && layer && step !== null" class="flex min-h-0 flex-1 items-start">
@@ -298,6 +294,14 @@ const tooltip = computed(() => {
           </div>
         </ClimateMap>
       </section>
+      <!-- The layers in a card of their own: a column right of the map on wide screens, like the
+           station list of rivers-ua; under the map on narrower ones. -->
+      <aside
+        class="shrink-0 rounded-2xl bg-surface p-3 shadow-card lg:w-64 lg:overflow-y-auto xl:w-72"
+        :aria-label="t.home.layers"
+      >
+        <LayerList v-model="ui.layer" :layers="layerChoices" :label="t.home.layers" />
+      </aside>
       <SidePanel
         v-if="!isWide && layer && step !== null"
         class="rounded-2xl bg-surface shadow-card"

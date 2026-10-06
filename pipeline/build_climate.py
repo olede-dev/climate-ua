@@ -8,32 +8,19 @@ models. Run `fetch_atlas.py` and `build_oblasts.py` first.
 import geopandas as gpd
 import numpy as np
 import xarray as xr
-from shapely.geometry import box
 
 import config
-from common import land_regions, write_json
+from common import cell_weights, land_regions, write_json
 from fetch_atlas import atlas_file
 
 #: Key of the whole-country series, next to the regions.
 COUNTRY_ID = "ukraine"
 
 
-def cell_weights(ds: xr.Dataset, regions: gpd.GeoDataFrame) -> xr.DataArray:
-    """Area (km²) each grid cell shares with each region: dims (region, lat, lon)."""
-    lat_b, lon_b = ds["lat_bnds"].values, ds["lon_bnds"].values
-    cells = gpd.GeoDataFrame(
-        {"i": np.repeat(np.arange(len(lat_b)), len(lon_b)), "j": np.tile(np.arange(len(lon_b)), len(lat_b))},
-        geometry=[box(lo[0], la[0], lo[1], la[1]) for la in lat_b for lo in lon_b],
-        crs="EPSG:4326",
-    ).to_crs(config.EQUAL_AREA_CRS)
-    shapes = regions[["id", "geometry"]].to_crs(config.EQUAL_AREA_CRS)
-    parts = gpd.overlay(cells, shapes, how="intersection", keep_geom_type=True)
-
-    ids = list(regions["id"])
-    weights = np.zeros((len(ids), len(lat_b), len(lon_b)))
-    for part in parts.itertuples():
-        weights[ids.index(part.id), part.i, part.j] += part.geometry.area / 1e6
-    return xr.DataArray(weights, dims=("region", "lat", "lon"), coords={"region": ids, "lat": ds["lat"], "lon": ds["lon"]})
+def grid_weights(ds: xr.Dataset, regions: gpd.GeoDataFrame) -> xr.DataArray:
+    """`cell_weights` on an Atlas grid, with its coordinates attached."""
+    weights = cell_weights(ds["lat_bnds"].values, ds["lon_bnds"].values, regions)
+    return weights.assign_coords(lat=ds["lat"], lon=ds["lon"])
 
 
 def regional_mean(values: xr.DataArray, weights: xr.DataArray) -> xr.DataArray:
@@ -87,12 +74,12 @@ def build(layer: config.ClimateLayer, regions: gpd.GeoDataFrame) -> dict:
     )
 
     era5 = xr.open_dataset(atlas_file("era5", "observed", layer))
-    observed = annual(regional_mean(era5[layer.nc_name], cell_weights(era5, areas)), layer.annual)
+    observed = annual(regional_mean(era5[layer.nc_name], grid_weights(era5, areas)), layer.annual)
     history = observed.sel(year=slice(config.HISTORY_FROM, None))
     norm = period_mean(observed, config.NORM)
 
     cmip6 = open_cmip6(layer)
-    weights = cell_weights(xr.open_dataset(atlas_file("cmip6", "historical", layer)), areas)
+    weights = grid_weights(xr.open_dataset(atlas_file("cmip6", "historical", layer)), areas)
     modelled = annual(regional_mean(cmip6, weights), layer.annual)
     model_norm = period_mean(modelled, config.NORM)
 

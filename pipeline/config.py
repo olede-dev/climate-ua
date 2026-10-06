@@ -118,3 +118,91 @@ CLIMATE_LAYERS = {
 }
 
 ATLAS_SOURCE = "Copernicus Interactive Climate Atlas (C3S): ERA5, CMIP6"
+
+# --- Water layer (SPEC §4.1, §4.2, §5.3) ---------------------------------------------------
+
+#: World Water Map Data Package (Utrecht University, CC BY 4.0), downloaded by hand through a
+#: browser (the repository sits behind a bot check) into this folder, keeping its layout.
+WWM_DIR = RAW_DIR / "wwm"
+#: Annual totals, 1980–2019, global 5 arcmin grid. Each value is a depth of water over the
+#: cell (the files say `m.month-1`, a leftover of the monthly source: the annual files hold the
+#: sum of twelve months). The package has no water availability, only demand and the water gap.
+WWM_DEMAND = {
+    sector: (WWM_DIR / "demand" / "gridded_annual" / f"{sector}GrossDemand_annuaTot_output.nc", f"{sector}_gross_demand")
+    for sector in ("total", "domestic", "industry", "irrigation")
+}
+
+#: WRI Aqueduct 4.0, free to use with attribution.
+AQUEDUCT_URL = "https://files.wri.org/aqueduct/aqueduct-4-0-water-risk-data.zip"
+AQUEDUCT_DIR = RAW_DIR / "aqueduct" / "Aqueduct40_waterrisk_download_Y2023M07D05"
+#: Basin polygons (HydroBASINS level 6) with the future indicators.
+AQUEDUCT_GDB = AQUEDUCT_DIR / "GDB" / "Aq40_Y2023D07M05.gdb"
+AQUEDUCT_GDB_LAYER = "future_annual"
+#: Baseline 1979–2019: one row per basin and admin-1 unit. `bws_raw` is the water stress ratio
+#: (withdrawal / available water, upstream inflow included); `bws_cat` −1 marks basins that are
+#: «arid and low water use», where the ratio is unstable (SPEC §13.8).
+AQUEDUCT_BASELINE_CSV = AQUEDUCT_DIR / "CVS" / "Aqueduct40_baseline_annual_y2023m07d05.csv"
+#: Future: median of five CMIP6 models; `bau` is SSP3-7.0, `_ws_x_r` the raw stress ratio
+#: (not the 0–5 score `_s`). Periods are 30 years around the year named.
+AQUEDUCT_FUTURE_FIELDS = {"2030": "bau30_ws_x_r", "2050": "bau50_ws_x_r", "2080": "bau80_ws_x_r"}
+AQUEDUCT_ARID_CAT = -1
+
+WATER_SCENARIO = "SSP3-7.0"
+WATER_HISTORY = (1980, 2019)
+#: SPEC §5.1: the last 30 years of the Utrecht record.
+WATER_NORM = (1990, 2019)
+#: SPEC §4.6: a basin with less of Ukraine than this joins its neighbour.
+BASIN_MIN_KM2 = 200
+#: ≈800 m; keeps basins.geojson under 500 KB (SPEC §4.6).
+BASINS_SIMPLIFY_DEG = 0.008
+BASINS_PATH = PUBLIC_DATA / "basins.geojson"
+#: An oblast is listed for a basin when it holds at least this share of the basin's area in Ukraine.
+BASIN_OBLAST_MIN_SHARE = 0.05
+
+#: Natural Earth rivers for basin names (SPEC §13.6), the same sources rivers-ua draws.
+NATURAL_EARTH_RIVERS_URLS = [
+    "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_rivers_lake_centerlines.geojson",
+    "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_rivers_europe.geojson",
+]
+
+#: Natural Earth lakes, for the Kakhovka Reservoir (destroyed in June 2023, SPEC §13.7): basins
+#: it touched get a note that the data predate its loss.
+NATURAL_EARTH_LAKES_URL = (
+    "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_lakes.geojson"
+)
+KAKHOVKA_NAME = "Kakhovka Reservoir"
+
+#: A basin is named after the river with the longest course through it, if at least this long.
+BASIN_RIVER_MIN_KM = 10
+#: Natural Earth name → (Ukrainian, English) for every river that names a basin. Natural Earth
+#: has no Ukrainian name for some of them and Russian or Romanian spellings for others.
+RIVER_NAMES = {
+    "Bratul Chillia": ("Дунай", "Danube"),
+    "Bug": ("Західний Буг", "Western Bug"),
+    "Danube": ("Дунай", "Danube"),
+    "Desna": ("Десна", "Desna"),
+    "Dnipro": ("Дніпро", "Dnipro"),
+    "Dniester": ("Дністер", "Dniester"),
+    "Donets": ("Сіверський Донець", "Siverskyi Donets"),
+    "Haryn": ("Горинь", "Horyn"),
+    "Latorytsya": ("Латориця", "Latorytsia"),
+    "Oskol": ("Оскіл", "Oskil"),
+    "Pripyat": ("Прип’ять", "Prypiat"),
+    "Prut": ("Прут", "Prut"),
+    "Prypyat": ("Прип’ять", "Prypiat"),
+    "Ros": ("Рось", "Ros"),
+    "San": ("Сян", "San"),
+    "Seym": ("Сейм", "Seim"),
+    "Siret": ("Серет", "Siret"),
+    "Sluch": ("Случ", "Sluch"),
+    "Snov": ("Снов", "Snov"),
+    "Southern Bug": ("Південний Буг", "Southern Buh"),
+    "Sozh": ("Сож", "Sozh"),
+    "Styr": ("Стир", "Styr"),
+    "Synyukha": ("Синюха", "Syniukha"),
+    "Teteriv": ("Тетерів", "Teteriv"),
+    "Ubort": ("Уборть", "Ubort"),
+    "Uzh": ("Уж", "Uzh"),
+}
+
+WATER_SOURCE = "Utrecht University, World Water Map (PCR-GLOBWB 2); WRI Aqueduct 4.0"

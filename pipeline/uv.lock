@@ -201,6 +201,7 @@ dependencies = [
     { name = "geopandas" },
     { name = "netcdf4" },
     { name = "numpy" },
+    { name = "pyogrio" },
     { name = "shapely" },
     { name = "xarray" },
 ]
@@ -211,6 +212,7 @@ requires-dist = [
     { name = "geopandas" },
     { name = "netcdf4" },
     { name = "numpy" },
+    { name = "pyogrio" },
     { name = "shapely" },
     { name = "xarray" },
 ]

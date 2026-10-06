@@ -16,7 +16,6 @@ import { useBasins, useLayer, useOblasts } from '../composables/useLayer'
 import { useLocale } from '../composables/useLocale'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useUrlSync } from '../composables/useUrlSync'
-import type { Messages } from '../i18n'
 import { formatPeriod, valueFormat } from '../lib/format'
 import { basinLabel, oblastLabel, oblastName, type RegionLabel } from '../lib/regions'
 import { cssGradient, scalePosition } from '../lib/scale'
@@ -86,18 +85,16 @@ const mapValues = computed<Record<string, number | null>>(() =>
   ),
 )
 
+const copy = computed(() => t.value.layers[config.value.id])
+// The unit comes with the copy: a count of days is a word that agrees with the number.
 const valueFormatter = computed(() =>
-  valueFormat(locale.value, layer.value?.unit ?? '', config.value.decimals),
+  valueFormat(locale.value, copy.value.unit, config.value.decimals),
 )
 const signed = computed(() => config.value.display === 'anomaly')
 const format = (value: number, withSign = signed.value) =>
   valueFormatter.value(value, { signed: withSign })
 
-type LayersCopy = Messages['layers']
-const copy = computed(() => t.value.layers[config.value.id as keyof LayersCopy])
-const layerChoices = computed(() =>
-  LAYER_IDS.map((id) => ({ id, name: t.value.layers[id as keyof LayersCopy].name })),
-)
+const layerChoices = computed(() => LAYER_IDS.map((id) => ({ id, name: t.value.layers[id].name })))
 const gradient = computed(() => cssGradient(config.value.scale))
 
 const stepLabel = computed(() => {

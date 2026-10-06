@@ -31,10 +31,17 @@ def regional_mean(values: xr.DataArray, weights: xr.DataArray) -> xr.DataArray:
 
 
 def annual(monthly: xr.DataArray, how: str) -> xr.DataArray:
-    """Calendar years with all twelve months; a mean weighs each month by its days."""
+    """Calendar years with all twelve months; a mean weighs each month by its days.
+
+    `dry_months` counts the months the region's mean SPEI is below `config.DRY_SPEI`; a year
+    with a month the index leaves undefined is dropped (NaN), since its count would be short.
+    """
     years = monthly["time"].dt.year
     complete = monthly["time"].groupby(years).count() == 12
-    if how == "sum":
+    if how == "dry_months":
+        result = (monthly < config.DRY_SPEI).groupby(years).sum("time")
+        result = result.where(monthly.notnull().groupby(years).sum("time") == 12)
+    elif how == "sum":
         result = monthly.groupby(years).sum("time")
     else:
         days = monthly["time"].dt.days_in_month

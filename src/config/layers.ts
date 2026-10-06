@@ -60,6 +60,53 @@ const TEMP_SCALE: ColorScale = {
   noData: '#26262a',
 }
 
+/**
+ * One orange hue (SPEC §6), dim to bright, at hue 50° in OKLCH with even lightness steps from
+ * L 0.465 to 0.87, checked with the `dataviz` validator (`--ordinal --mode dark`). Stops crowd
+ * the low end: most oblasts had under 5 such days a year, the south may reach 25–40.
+ */
+const HEAT_SCALE: ColorScale = {
+  stops: [
+    [0, '#8d4002'],
+    [3, '#b85605'],
+    [8, '#e46e15'],
+    [15, '#ff9555'],
+    [30, '#fec6a8'],
+  ],
+  noData: '#26262a',
+}
+
+/**
+ * One ice-blue hue (SPEC §6), at hue 235° and the same lightness steps as `HEAT_SCALE`, checked
+ * with the `dataviz` validator; brighter means more frost. Oblast norms run from 64 days in
+ * Crimea to 129 in the north-east.
+ */
+const FROST_SCALE: ColorScale = {
+  stops: [
+    [40, '#026188'],
+    [70, '#0180b2'],
+    [100, '#28a0d8'],
+    [130, '#51c0fa'],
+    [160, '#a5ddfe'],
+  ],
+  noData: '#26262a',
+}
+
+/**
+ * One ochre hue (SPEC §6), at hue 80° and the same lightness steps as `HEAT_SCALE`, checked
+ * with the `dataviz` validator. A year has 0 to 12 dry months; oblast norms are 3 to 5.5.
+ */
+const DROUGHT_SCALE: ColorScale = {
+  stops: [
+    [0, '#755201'],
+    [2, '#9a6d05'],
+    [4, '#c08901'],
+    [6, '#e2a939'],
+    [9, '#ffcb70'],
+  ],
+  noData: '#26262a',
+}
+
 export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
   water: {
     id: 'water',
@@ -82,6 +129,38 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     decimals: 1,
     headlinePeriod: '2041-2060',
     scale: TEMP_SCALE,
+  },
+  heat: {
+    id: 'heat',
+    geometry: 'oblasts',
+    path: 'data/layers/heat.json',
+    futurePeriods: CLIMATE_PERIODS,
+    display: 'value',
+    // One decimal: the north averages a fraction of a day, which a whole number would show as 0.
+    decimals: 1,
+    headlinePeriod: '2041-2060',
+    scale: HEAT_SCALE,
+  },
+  frost: {
+    id: 'frost',
+    geometry: 'oblasts',
+    path: 'data/layers/frost.json',
+    futurePeriods: CLIMATE_PERIODS,
+    display: 'value',
+    decimals: 0,
+    headlinePeriod: '2041-2060',
+    scale: FROST_SCALE,
+  },
+  drought: {
+    id: 'drought',
+    geometry: 'oblasts',
+    path: 'data/layers/drought.json',
+    futurePeriods: CLIMATE_PERIODS,
+    display: 'value',
+    // A year counts whole months; one decimal keeps the averages apart.
+    decimals: 1,
+    headlinePeriod: '2041-2060',
+    scale: DROUGHT_SCALE,
   },
 }
 

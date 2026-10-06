@@ -9,7 +9,7 @@ import { regionStory, summaryStory, type StoryInput } from '../../lib/narrative'
 import type { RegionLabel } from '../../lib/regions'
 import { cssGradient } from '../../lib/scale'
 import { isFuture, type TimeStep } from '../../lib/time'
-import type { LayerFile } from '../../types'
+import type { LayerFile, LayerId } from '../../types'
 import { RichText } from '../ui/RichText'
 import LayerLegend from './LayerLegend.vue'
 import RegionCard from './RegionCard.vue'
@@ -17,7 +17,7 @@ import RegionCard from './RegionCard.vue'
 const props = defineProps<{
   file: LayerFile
   config: LayerConfig
-  copy: Messages['layers']['temp']
+  copy: Messages['layers'][LayerId]
   step: TimeStep
   format: ValueFormat
   /** The open region; null shows the summary for all of Ukraine (SPEC §8.2). */
@@ -67,10 +67,13 @@ const futureNote = computed(() => {
 const legend = computed(() => {
   const stops = props.config.scale.stops
   const signed = props.config.display === 'anomaly'
+  // Whole-number ends read as round marks: «30 днів», not «30,0 дня».
+  const end = (value: number) =>
+    props.format(value, { signed, decimals: Number.isInteger(value) ? 0 : undefined })
   return {
     gradient: cssGradient(props.config.scale),
-    min: props.format(stops[0]![0], { signed }),
-    max: props.format(stops[stops.length - 1]![0], { signed }),
+    min: end(stops[0]![0]),
+    max: end(stops[stops.length - 1]![0]),
   }
 })
 

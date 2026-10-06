@@ -98,8 +98,9 @@ class ClimateLayer:
     #: Variable name inside the NetCDF files.
     nc_name: str
     unit: str
-    #: How twelve monthly values make a year: day-weighted mean or sum.
-    annual: Literal["mean", "sum"]
+    #: How twelve monthly values make a year: day-weighted mean, sum or count of months with
+    #: SPEI below DRY_SPEI.
+    annual: Literal["mean", "sum", "dry_months"]
     #: Lower and upper bound of a valid annual value; deltas are clipped to it (SPEC §5.2).
     bounds: tuple[float | None, float | None]
     decimals: int
@@ -115,7 +116,37 @@ CLIMATE_LAYERS = {
         bounds=(None, None),
         decimals=2,
     ),
+    "heat": ClimateLayer(
+        id="heat",
+        variable="monthly_extreme_hot_days",
+        nc_name="tx35",
+        unit="днів",
+        annual="sum",
+        bounds=(0, 365),
+        decimals=1,
+    ),
+    "frost": ClimateLayer(
+        id="frost",
+        variable="monthly_frost_days",
+        nc_name="fd",
+        unit="днів",
+        annual="sum",
+        bounds=(0, 365),
+        decimals=1,
+    ),
+    "drought": ClimateLayer(
+        id="drought",
+        variable="monthly_standardised_precipitation_evapotranspiration_index_for_6_months_cumulation_period",
+        nc_name="spei6",
+        unit="місяців",
+        annual="dry_months",
+        bounds=(0, 12),
+        decimals=1,
+    ),
 }
+
+#: SPEI-6 below this marks a dry month (moderate drought and worse, SPEC §4.3).
+DRY_SPEI = -1.0
 
 ATLAS_SOURCE = "Copernicus Interactive Climate Atlas (C3S): ERA5, CMIP6"
 

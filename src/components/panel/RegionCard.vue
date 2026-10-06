@@ -6,14 +6,19 @@ import type { LayerConfig } from '../../config/layers'
 import type { ValueFormat } from '../../lib/format'
 import type { Rich } from '../../lib/narrative'
 import type { TimeStep } from '../../lib/time'
-import type { LayerFile, RegionSeries } from '../../types'
+import type { LayerFile, RegionSeries, Sectors } from '../../types'
 import { RichText } from '../ui/RichText'
+import SectorBar from './SectorBar.vue'
 
 defineProps<{
   name: string
+  /** Under the name: the oblasts a basin spans. */
+  subtitle?: string | null
+  /** Note that the data predate the loss of the Kakhovka Reservoir (SPEC §13.7). */
+  kakhovka?: boolean
   story: Rich
   file: LayerFile
-  series: RegionSeries
+  series: RegionSeries & { sectors?: Sectors }
   config: LayerConfig
   step: TimeStep
   format: ValueFormat
@@ -44,13 +49,16 @@ onMounted(() => heading.value?.focus())
 <template>
   <article class="space-y-4">
     <header class="flex items-start justify-between gap-3">
-      <h2
-        ref="heading"
-        tabindex="-1"
-        class="text-xl leading-tight font-semibold tracking-tight text-ink focus-visible:outline-none"
-      >
-        {{ name }}
-      </h2>
+      <div>
+        <h2
+          ref="heading"
+          tabindex="-1"
+          class="text-xl leading-tight font-semibold tracking-tight text-ink focus-visible:outline-none"
+        >
+          {{ name }}
+        </h2>
+        <p v-if="subtitle" class="mt-1 text-xs leading-snug text-ink-muted">{{ subtitle }}</p>
+      </div>
       <button
         type="button"
         :aria-label="t.panel.close"
@@ -83,5 +91,11 @@ onMounted(() => heading.value?.focus())
         :title="chartTitle"
       />
     </figure>
+
+    <SectorBar v-if="series.sectors" :sectors="series.sectors" :year="file.history.to" />
+
+    <p v-if="kakhovka" class="text-[13px] leading-relaxed text-ink-muted">
+      {{ t.basin.kakhovka }}
+    </p>
   </article>
 </template>

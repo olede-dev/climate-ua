@@ -15,9 +15,29 @@ export interface LayerConfig {
   headlinePeriod: FuturePeriod
   /** Fixed for the whole timeline, so 1960 and 2080 compare (SPEC §6). */
   scale: ColorScale
+  /** Values above this are hotspots (SPEC §8.4); layers without a hotspot view leave it out. */
+  hotspotAbove?: number
 }
 
 const CLIMATE_PERIODS: readonly FuturePeriod[] = ['2021-2040', '2041-2060', '2081-2100']
+const WATER_PERIODS: readonly FuturePeriod[] = ['2030', '2050', '2080']
+
+/**
+ * One crimson hue (SPEC §6), dim to bright: stops at WRI's class bounds, < 10 % low to > 80 %
+ * extremely high (SPEC §5.3). Built in OKLCH at hue 355° with even lightness steps and checked
+ * with the `dataviz` validator (`--ordinal --mode dark`): the low end stays 2:1 off the dark
+ * basemap, so the many low-stress basins do not vanish into it.
+ */
+const WATER_SCALE: ColorScale = {
+  stops: [
+    [0, '#783c55'],
+    [10, '#a34770'],
+    [20, '#d1528b'],
+    [40, '#f866a7'],
+    [80, '#ff99c9'],
+  ],
+  noData: '#26262a',
+}
 
 /**
  * Diverging blue–red around a dark neutral (SPEC §6): the dark basemap is the surface, so the
@@ -41,6 +61,18 @@ const TEMP_SCALE: ColorScale = {
 }
 
 export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
+  water: {
+    id: 'water',
+    geometry: 'basins',
+    path: 'data/layers/water.json',
+    futurePeriods: WATER_PERIODS,
+    display: 'value',
+    // One decimal: many basins withdraw under 1 %, which a whole number would show as 0.
+    decimals: 1,
+    headlinePeriod: '2050',
+    scale: WATER_SCALE,
+    hotspotAbove: 40,
+  },
   temp: {
     id: 'temp',
     geometry: 'oblasts',
@@ -56,8 +88,8 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
 /** Layers with data, in switcher order. */
 export const LAYER_IDS = Object.keys(LAYERS) as LayerId[]
 
-/** `water` once its data lands (stage 4). */
-export const DEFAULT_LAYER: LayerId = 'temp'
+/** The main layer (SPEC §1). */
+export const DEFAULT_LAYER: LayerId = 'water'
 
 export function layerConfig(id: LayerId): LayerConfig {
   return LAYERS[id] ?? LAYERS[DEFAULT_LAYER]!

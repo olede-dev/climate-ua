@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/vue-query'
 import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 
 import { layerConfig } from '../config/layers'
-import type { LayerFile, LayerId, OblastsFile } from '../types'
+import type { BasinsFile, LayerFile, LayerId, OblastsFile } from '../types'
 
 /** A static JSON file under `public/`, versioned with the site. */
 async function fetchStatic<T>(path: string): Promise<T> {
@@ -24,5 +24,12 @@ export function useOblasts() {
   return useQuery({
     queryKey: ['geometry', 'oblasts'],
     queryFn: () => fetchStatic<OblastsFile>('data/oblasts.geojson'),
+  })
+}
+
+export function useBasins() {
+  return useQuery({
+    queryKey: ['geometry', 'basins'],
+    queryFn: () => fetchStatic<BasinsFile>('data/basins.geojson'),
   })
 }

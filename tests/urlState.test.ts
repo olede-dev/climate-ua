@@ -19,6 +19,12 @@ describe('parseUrlState', () => {
     )
   })
 
+  it('opens the water layer by default and reads its periods', () => {
+    expect(DEFAULT_URL_STATE.layer).toBe('water')
+    expect(parseUrlState({ t: '2050' }).time).toBe('2050')
+    expect(parseUrlState({ t: '2041-2060' }).time).toBeNull()
+  })
+
   it('rejects a period of another layer’s axis', () => {
     expect(parseUrlState({ layer: 'temp', t: '2050' }).time).toBe(2050)
     expect(parseUrlState({ layer: 'temp', t: '2041-2070' }).time).toBeNull()

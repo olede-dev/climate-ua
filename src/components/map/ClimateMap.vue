@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { FeatureCollection, Point } from 'geojson'
 import * as maplibregl from 'maplibre-gl'
 import type {
   LngLatBoundsLike,
@@ -12,14 +13,16 @@ import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 import { useLocale } from '../../composables/useLocale'
 import { geometryBounds } from '../../lib/geometry'
 import type { ColorScale } from '../../lib/scale'
-import type { OblastsFile } from '../../types'
+import type { RegionsFile } from '../../types'
 import { basemapStyle, type BasemapKind } from './basemap'
 import {
   addRegionLayers,
   REGION_FILL,
   REGION_SOURCE,
+  setFillOpacity,
   setFutureHatch,
-  setHoverDim,
+  setHotspotPoints,
+  setHotspotPulse,
   setRegionData,
   setRegionScale,
 } from './regionLayers'
@@ -32,13 +35,17 @@ export interface RegionHover {
 }
 
 const props = defineProps<{
-  regions: OblastsFile | undefined
+  regions: RegionsFile | undefined
   /** The value each region shows now; a missing or null value draws the no-data fill. */
   values: Record<string, number | null>
   scale: ColorScale
   /** Hatch the fill: the current step is a projection. */
   future: boolean
   selectedId: string | null
+  /** Ids of the hotspot regions, or null with hotspots off (SPEC §8.4). */
+  hot: string[] | null
+  /** Where the hotspot markers sit. */
+  hotPoints: FeatureCollection<Point>
   /** Pixels on the left covered by a panel; framing keeps Ukraine clear of it. */
   insetLeft?: number
 }>()
@@ -58,6 +65,8 @@ const PADDING = { top: 48, bottom: 96, left: 16, right: 56 }
 const EMPTY_STYLE: StyleSpecification = { version: 8, sources: {}, layers: [] }
 /** Colours slide between timeline steps (SPEC §7). */
 const TWEEN_MS = 300
+/** One beat of the hotspot markers. */
+const PULSE_MS = 1600
 
 const { locale, t } = useLocale()
 const container = useTemplateRef<HTMLDivElement>('container')
@@ -73,6 +82,9 @@ let hoveredId: string | null = null
 /** Values as drawn right now, mid-tween included. */
 let shown: Record<string, number | null> = {}
 let tweenFrame = 0
+let pulseFrame = 0
+/** Regions marked `hot` in feature state right now. */
+let hotIds = new Set<string>()
 /** The current style has loaded; data layers can be added. */
 let styleReady = false
 
@@ -128,8 +140,40 @@ function setHovered(id: string | null) {
   if (!map || id === hoveredId) return
   if (hoveredId) map.setFeatureState({ source: REGION_SOURCE, id: hoveredId }, { hover: false })
   if (id) map.setFeatureState({ source: REGION_SOURCE, id }, { hover: true })
-  if ((id === null) !== (hoveredId === null)) setHoverDim(map, id !== null)
+  if ((id === null) !== (hoveredId === null)) setFillOpacity(map, id !== null, props.hot !== null)
   hoveredId = id
+}
+
+function pulse() {
+  cancelAnimationFrame(pulseFrame)
+  if (!map) return
+  if (props.hot === null || props.hotPoints.features.length === 0 || reducedMotion.matches) {
+    setHotspotPulse(map, 0)
+    return
+  }
+  const frame = (now: number) => {
+    if (!map) return
+    setHotspotPulse(map, (now % PULSE_MS) / PULSE_MS)
+    pulseFrame = requestAnimationFrame(frame)
+  }
+  pulseFrame = requestAnimationFrame(frame)
+}
+
+/** Marks the hotspots in feature state, dims the rest and places the markers. */
+function applyHotspots() {
+  if (!map?.getSource(REGION_SOURCE)) return
+  const next = new Set(props.hot ?? [])
+  for (const id of hotIds) {
+    if (!next.has(id)) map.setFeatureState({ source: REGION_SOURCE, id }, { hot: false })
+  }
+  for (const id of next) map.setFeatureState({ source: REGION_SOURCE, id }, { hot: true })
+  hotIds = next
+  setFillOpacity(map, hoveredId !== null, props.hot !== null)
+  setHotspotPoints(
+    map,
+    props.hot === null ? { type: 'FeatureCollection', features: [] } : props.hotPoints,
+  )
+  pulse()
 }
 
 function padding(): PaddingOptions {
@@ -158,6 +202,8 @@ function installRegions() {
   for (const [id, value] of Object.entries(props.values)) setValue(id, value)
   setSelected(props.selectedId, null)
   hoveredId = null
+  hotIds = new Set()
+  applyHotspots()
 }
 
 function regionAt(event: MapMouseEvent): string | null {
@@ -231,6 +277,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(tweenFrame)
+  cancelAnimationFrame(pulseFrame)
   resizeObserver?.disconnect()
   map?.remove()
   map = undefined
@@ -241,12 +288,20 @@ watch(
   () => props.regions,
   (regions) => {
     if (!map || !regions) return
-    if (map.getSource(REGION_SOURCE)) setRegionData(map, regions)
-    else installRegions()
+    if (map.getSource(REGION_SOURCE)) {
+      setRegionData(map, regions)
+      // Another geometry: nothing drawn so far belongs to it.
+      shown = {}
+      for (const [id, value] of Object.entries(props.values)) setValue(id, value)
+      setSelected(props.selectedId, null)
+      hotIds = new Set()
+      applyHotspots()
+    } else installRegions()
     if (!viewTouched) frameSelection(false)
   },
 )
 watch(() => props.values, tweenTo)
+watch(() => [props.hot, props.hotPoints], applyHotspots)
 watch(
   () => props.scale,
   (scale) => map && setRegionScale(map, scale),

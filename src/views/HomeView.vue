@@ -1,23 +1,29 @@
 <script setup lang="ts">
+import type { FeatureCollection, Point } from 'geojson'
 import { computed, ref, watch } from 'vue'
 
 import AppFooter from '../components/layout/AppFooter.vue'
 import AppHeader from '../components/layout/AppHeader.vue'
 import type { BasemapKind } from '../components/map/basemap'
 import ClimateMap, { type RegionHover } from '../components/map/ClimateMap.vue'
+import HotspotToggle from '../components/map/HotspotToggle.vue'
+import LayerSwitch from '../components/map/LayerSwitch.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
-import { layerConfig } from '../config/layers'
-import { useLayer, useOblasts } from '../composables/useLayer'
+import { LAYER_IDS, layerConfig } from '../config/layers'
+import { useBasins, useLayer, useOblasts } from '../composables/useLayer'
 import { useLocale } from '../composables/useLocale'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useUrlSync } from '../composables/useUrlSync'
+import type { Messages } from '../i18n'
 import { formatPeriod, valueFormat } from '../lib/format'
+import { basinLabel, oblastLabel, oblastName, type RegionLabel } from '../lib/regions'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, valueAt, type StepValue } from '../lib/series'
 import { isFuture, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
 import { useUiStore } from '../stores/ui'
+import type { RegionsFile } from '../types'
 
 useUrlSync()
 const { locale, t } = useLocale()
@@ -27,8 +33,16 @@ const basemap = ref<BasemapKind>('openfreemap')
 const config = computed(() => layerConfig(ui.layer))
 const layerQuery = useLayer(() => ui.layer)
 const oblastsQuery = useOblasts()
+// Basin names list their oblasts, so the oblasts load for every layer.
+const basinsQuery = useBasins()
 const layer = computed(() => layerQuery.data.value)
-const loadError = computed(() => layerQuery.isError.value || oblastsQuery.isError.value)
+const geometryQuery = computed(() =>
+  config.value.geometry === 'basins' ? basinsQuery : oblastsQuery,
+)
+const regionsFile = computed<RegionsFile | undefined>(() => geometryQuery.value.data.value)
+const loadError = computed(
+  () => layerQuery.isError.value || oblastsQuery.isError.value || geometryQuery.value.isError.value,
+)
 
 const axis = computed<TimeAxis | null>(() =>
   layer.value
@@ -79,7 +93,11 @@ const signed = computed(() => config.value.display === 'anomaly')
 const format = (value: number, withSign = signed.value) =>
   valueFormatter.value(value, { signed: withSign })
 
-const copy = computed(() => t.value.layers.temp)
+type LayersCopy = Messages['layers']
+const copy = computed(() => t.value.layers[config.value.id as keyof LayersCopy])
+const layerChoices = computed(() =>
+  LAYER_IDS.map((id) => ({ id, name: t.value.layers[id as keyof LayersCopy].name })),
+)
 const gradient = computed(() => cssGradient(config.value.scale))
 
 const stepLabel = computed(() => {
@@ -88,14 +106,56 @@ const stepLabel = computed(() => {
   return `${formatPeriod(step.value)} · ${t.value.timeline.forecast} (${layer.value?.scenario})`
 })
 
-function regionName(id: string): string {
-  const feature = oblastsQuery.data.value?.features.find((f) => f.properties.id === id)
-  if (!feature) return id
-  return locale.value === 'uk' ? feature.properties.nameUk : feature.properties.nameEn
+/** Names of the regions of the current geometry. */
+const labels = computed<Record<string, RegionLabel>>(() => {
+  const oblasts = oblastsQuery.data.value?.features ?? []
+  if (config.value.geometry === 'oblasts') {
+    return Object.fromEntries(
+      oblasts.map((f) => [f.properties.id, oblastLabel(f.properties, locale.value)]),
+    )
+  }
+  const names = Object.fromEntries(
+    oblasts.map((f) => [f.properties.id, oblastName(f.properties, locale.value)]),
+  )
+  return Object.fromEntries(
+    (basinsQuery.data.value?.features ?? []).map((f) => [
+      f.properties.id,
+      basinLabel(f.properties, names, locale.value, t.value.basin),
+    ]),
+  )
+})
+
+function regionLabel(id: string): RegionLabel {
+  return labels.value[id] ?? { name: id, where: id, subtitle: null, kakhovka: false }
 }
 
 const selected = computed(() =>
-  ui.regionId === null ? null : { id: ui.regionId, name: regionName(ui.regionId) },
+  ui.regionId === null ? null : { id: ui.regionId, ...regionLabel(ui.regionId) },
+)
+
+/** Regions above the layer's hotspot threshold now, or null when hotspots are off. */
+const hot = computed<string[] | null>(() => {
+  const above = config.value.hotspotAbove
+  if (above === undefined || !ui.hotspots) return null
+  return Object.entries(mapValues.value)
+    .filter(([, value]) => value !== null && value > above)
+    .map(([id]) => id)
+})
+const hotPoints = computed<FeatureCollection<Point>>(() => {
+  const ids = new Set(hot.value ?? [])
+  return {
+    type: 'FeatureCollection',
+    features: (basinsQuery.data.value?.features ?? [])
+      .filter((f) => ids.has(f.properties.id))
+      .map((f) => ({
+        type: 'Feature',
+        properties: { id: f.properties.id },
+        geometry: { type: 'Point', coordinates: f.properties.point },
+      })),
+  }
+})
+const hotspotsHint = computed(() =>
+  t.value.home.hotspotsHint.replace('{value}', format(config.value.hotspotAbove ?? 0, false)),
 )
 
 /** Tailwind's `md`: the panel floats over the map; below it, a card under the map. */
@@ -128,7 +188,7 @@ const tooltip = computed(() => {
   }
   return {
     ...at,
-    name: regionName(at.id),
+    name: regionLabel(at.id).name,
     value: shown ? format(shown.median) : null,
     details,
     position: shown ? scalePosition(config.value.scale, shown.median) : null,
@@ -146,11 +206,13 @@ const tooltip = computed(() => {
         :aria-label="t.home.map"
       >
         <ClimateMap
-          :regions="oblastsQuery.data.value"
+          :regions="regionsFile"
           :values="mapValues"
           :scale="config.scale"
           :future="step !== null && isFuture(step)"
           :selected-id="ui.regionId"
+          :hot="hot"
+          :hot-points="hotPoints"
           :inset-left="isWide ? PANEL_INSET : 0"
           @basemap="basemap = $event"
           @hover="hover = $event"
@@ -175,6 +237,25 @@ const tooltip = computed(() => {
             :gradient="gradient"
             :position="tooltip.position"
           />
+          <!-- Layers above the map, hotspots beside the zoom buttons (SPEC §8.1). -->
+          <div
+            class="pointer-events-none absolute top-3 right-14 z-10 flex flex-wrap items-start justify-center gap-2"
+            :style="{ left: `${(isWide ? PANEL_INSET : 0) + 12}px` }"
+          >
+            <LayerSwitch
+              v-model="ui.layer"
+              class="pointer-events-auto"
+              :layers="layerChoices"
+              :label="t.home.layers"
+            />
+            <HotspotToggle
+              v-if="config.hotspotAbove !== undefined"
+              v-model="ui.hotspots"
+              class="pointer-events-auto"
+              :label="t.home.hotspots"
+              :hint="hotspotsHint"
+            />
+          </div>
           <!-- The panel on the left above the timeline, which spans the map (SPEC §8.1). -->
           <div class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3">
             <div v-if="isWide && layer && step !== null" class="flex min-h-0 flex-1 items-start">

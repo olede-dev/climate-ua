@@ -1,23 +1,32 @@
+import type { FeatureCollection, Point } from 'geojson'
 import type { ExpressionSpecification, Map as MaplibreMap } from 'maplibre-gl'
 
 import { mapColorExpression, type ColorScale } from '../../lib/scale'
-import type { OblastsFile } from '../../types'
+import type { RegionsFile } from '../../types'
 
 export const REGION_SOURCE = 'regions'
 export const REGION_FILL = 'region-fill'
 const REGION_HATCH = 'region-hatch'
 const REGION_LINE = 'region-line'
 const REGION_HIGHLIGHT = 'region-highlight'
+const REGION_HOT = 'region-hot'
+const HOTSPOT_SOURCE = 'hotspots'
+const HOTSPOT_DOT = 'hotspot-dot'
+export const HOTSPOT_PULSE = 'hotspot-pulse'
 const HATCH_IMAGE = 'future-hatch'
 
 const VALUE: ExpressionSpecification = ['feature-state', 'value']
 const HOVER: ExpressionSpecification = ['boolean', ['feature-state', 'hover'], false]
 const SELECTED: ExpressionSpecification = ['boolean', ['feature-state', 'selected'], false]
+const HOT: ExpressionSpecification = ['boolean', ['feature-state', 'hot'], false]
 
 /** Opaque enough that the basemap's own borders inside Ukraine do not show through. */
 const FILL_OPACITY = 0.9
 /** While a region is hovered, the rest dim (SPEC §7). */
 const DIMMED_OPACITY = 0.45
+/** With hotspots on, everything but the hotspots recedes (SPEC §8.4). */
+const NOT_HOT_OPACITY = 0.3
+const HOT_COLOR = '#ffe3ef'
 
 /** Thin diagonal strokes over the fill: the future is an estimate (SPEC §7). */
 function hatchImage(): ImageData {
@@ -38,7 +47,7 @@ function hatchImage(): ImageData {
 }
 
 /** Fill, future hatching, borders and the hover/selection outline, under the place labels. */
-export function addRegionLayers(map: MaplibreMap, data: OblastsFile, scale: ColorScale) {
+export function addRegionLayers(map: MaplibreMap, data: RegionsFile, scale: ColorScale) {
   if (map.getSource(REGION_SOURCE)) return
   map.addSource(REGION_SOURCE, { type: 'geojson', data, promoteId: 'id' })
   if (!map.hasImage(HATCH_IMAGE)) map.addImage(HATCH_IMAGE, hatchImage(), { pixelRatio: 2 })
@@ -82,6 +91,52 @@ export function addRegionLayers(map: MaplibreMap, data: OblastsFile, scale: Colo
   )
   map.addLayer(
     {
+      id: REGION_HOT,
+      type: 'line',
+      source: REGION_SOURCE,
+      paint: {
+        'line-color': HOT_COLOR,
+        'line-width': ['case', HOT, 1.6, 0],
+        'line-opacity': ['case', HOT, 0.9, 0],
+      },
+    },
+    beforeId,
+  )
+  map.addSource(HOTSPOT_SOURCE, {
+    type: 'geojson',
+    data: { type: 'FeatureCollection', features: [] },
+  })
+  map.addLayer(
+    {
+      id: HOTSPOT_PULSE,
+      type: 'circle',
+      source: HOTSPOT_SOURCE,
+      paint: {
+        'circle-radius': 4,
+        'circle-color': 'transparent',
+        'circle-stroke-color': HOT_COLOR,
+        'circle-stroke-width': 1.5,
+        'circle-stroke-opacity': 0.8,
+      },
+    },
+    beforeId,
+  )
+  map.addLayer(
+    {
+      id: HOTSPOT_DOT,
+      type: 'circle',
+      source: HOTSPOT_SOURCE,
+      paint: {
+        'circle-radius': 3,
+        'circle-color': HOT_COLOR,
+        'circle-stroke-color': '#1a1a19',
+        'circle-stroke-width': 1,
+      },
+    },
+    beforeId,
+  )
+  map.addLayer(
+    {
       id: REGION_HIGHLIGHT,
       type: 'line',
       source: REGION_SOURCE,
@@ -95,7 +150,7 @@ export function addRegionLayers(map: MaplibreMap, data: OblastsFile, scale: Colo
   )
 }
 
-export function setRegionData(map: MaplibreMap, data: OblastsFile) {
+export function setRegionData(map: MaplibreMap, data: RegionsFile) {
   const source = map.getSource(REGION_SOURCE)
   if (source && 'setData' in source && typeof source.setData === 'function') source.setData(data)
 }
@@ -110,12 +165,31 @@ export function setFutureHatch(map: MaplibreMap, visible: boolean) {
     map.setLayoutProperty(REGION_HATCH, 'visibility', visible ? 'visible' : 'none')
 }
 
-/** Dims every region but the hovered one, or restores them all. */
-export function setHoverDim(map: MaplibreMap, hovering: boolean) {
+/**
+ * Fill opacity: a hovered region dims the rest; otherwise, with hotspots on, everything but
+ * the hotspots recedes.
+ */
+export function setFillOpacity(map: MaplibreMap, hovering: boolean, hotspots: boolean) {
   if (!map.getLayer(REGION_FILL)) return
+  const base: ExpressionSpecification | number = hotspots
+    ? ['case', HOT, FILL_OPACITY, NOT_HOT_OPACITY]
+    : FILL_OPACITY
   map.setPaintProperty(
     REGION_FILL,
     'fill-opacity',
-    hovering ? ['case', HOVER, FILL_OPACITY, DIMMED_OPACITY] : FILL_OPACITY,
+    hovering ? ['case', HOVER, FILL_OPACITY, DIMMED_OPACITY] : base,
   )
+}
+
+/** The hotspot markers; an empty collection hides them. */
+export function setHotspotPoints(map: MaplibreMap, points: FeatureCollection<Point>) {
+  const source = map.getSource(HOTSPOT_SOURCE)
+  if (source && 'setData' in source && typeof source.setData === 'function') source.setData(points)
+}
+
+/** One frame of the marker pulse: a ring that grows and fades, `phase` 0 to 1. */
+export function setHotspotPulse(map: MaplibreMap, phase: number) {
+  if (!map.getLayer(HOTSPOT_PULSE)) return
+  map.setPaintProperty(HOTSPOT_PULSE, 'circle-radius', 4 + phase * 10)
+  map.setPaintProperty(HOTSPOT_PULSE, 'circle-stroke-opacity', 0.8 * (1 - phase))
 }

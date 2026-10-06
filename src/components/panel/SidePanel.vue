@@ -5,7 +5,8 @@ import { useLocale } from '../../composables/useLocale'
 import type { LayerConfig } from '../../config/layers'
 import type { Messages } from '../../i18n'
 import { plural, type ValueFormat } from '../../lib/format'
-import { inRegion, regionStory, summaryStory, type StoryInput } from '../../lib/narrative'
+import { regionStory, summaryStory, type StoryInput } from '../../lib/narrative'
+import type { RegionLabel } from '../../lib/regions'
 import { cssGradient } from '../../lib/scale'
 import { isFuture, type TimeStep } from '../../lib/time'
 import type { LayerFile } from '../../types'
@@ -20,7 +21,7 @@ const props = defineProps<{
   step: TimeStep
   format: ValueFormat
   /** The open region; null shows the summary for all of Ukraine (SPEC §8.2). */
-  region: { id: string; name: string } | null
+  region: (RegionLabel & { id: string }) | null
 }>()
 const emit = defineEmits<{ close: [] }>()
 
@@ -46,7 +47,7 @@ const regionSeries = computed(() =>
 )
 const card = computed(() =>
   props.region && regionSeries.value
-    ? regionStory(story(inRegion(props.region.name, locale.value), regionSeries.value))
+    ? regionStory(story(props.region.where, regionSeries.value))
     : null,
 )
 
@@ -58,7 +59,7 @@ const when = computed(() => {
 
 const futureNote = computed(() => {
   const models = props.file.models
-  if (models === undefined) return null
+  if (models === undefined) return props.copy.futureNote
   const counted = plural(models, locale.value, props.copy.models).replace('{n}', String(models))
   return props.copy.futureNote.replace('{models}', counted)
 })
@@ -85,6 +86,8 @@ function onKeydown(event: KeyboardEvent) {
         v-if="region && regionSeries && card"
         :key="region.id"
         :name="region.name"
+        :subtitle="region.subtitle"
+        :kakhovka="region.kakhovka"
         :story="card"
         :file="file"
         :series="regionSeries"
@@ -101,7 +104,9 @@ function onKeydown(event: KeyboardEvent) {
           {{ t.scenarios[file.scenario] }}
           <template v-if="futureNote"> {{ futureNote }}</template>
         </p>
-        <p class="text-[13px] leading-relaxed text-ink-muted">{{ t.panel.pickRegion }}</p>
+        <p class="text-[13px] leading-relaxed text-ink-muted">
+          {{ file.geometry === 'basins' ? t.panel.pickBasin : t.panel.pickRegion }}
+        </p>
       </div>
     </div>
     <LayerLegend
@@ -112,7 +117,7 @@ function onKeydown(event: KeyboardEvent) {
       :high="copy.high"
       :min="legend.min"
       :max="legend.max"
-      :middle="copy.norm"
+      :middle="config.display === 'anomaly' ? copy.norm : undefined"
     />
   </aside>
 </template>

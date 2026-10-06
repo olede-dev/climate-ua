@@ -24,6 +24,15 @@ export function periodYear(period: FuturePeriod): number {
   return (start + end) / 2
 }
 
+/**
+ * The years a period covers, inclusive: `2041-2060` → [2041, 2060]. A single-year period names
+ * the centre of a span (Aqueduct's `2030`); it is drawn as the decade around it.
+ */
+export function periodRange(period: FuturePeriod): [start: number, end: number] {
+  const [start, end] = period.split('-').map(Number) as [number, number?]
+  return end === undefined ? [start - 5, start + 5] : [start, end]
+}
+
 export function axisSteps(axis: TimeAxis): TimeStep[] {
   const years = Array.from({ length: axis.to - axis.from + 1 }, (_, i) => axis.from + i)
   return [...years, ...axis.periods]

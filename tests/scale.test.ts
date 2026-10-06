@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import { LAYERS } from '../src/config/layers'
-import { cssGradient, mapColorExpression, scalePosition, type ColorScale } from '../src/lib/scale'
+import {
+  colorAt,
+  cssGradient,
+  mapColorExpression,
+  scalePosition,
+  type ColorScale,
+} from '../src/lib/scale'
 
 const scale: ColorScale = {
   stops: [
@@ -60,5 +66,14 @@ describe.each(Object.values(LAYERS))('$id scale', (layer) => {
   it('centres a diverging anomaly scale on the norm', () => {
     if (layer.display !== 'anomaly') return
     expect(scalePosition(layer.scale, 0)).toBe(0.5)
+  })
+})
+
+describe('colorAt', () => {
+  it('blends between stops and clamps outside the domain', () => {
+    expect(colorAt(scale, 0)).toBe('#333333')
+    expect(colorAt(scale, 1)).toBe('#991a1a')
+    expect(colorAt(scale, -9)).toBe('#0000ff')
+    expect(colorAt(scale, 9)).toBe('#ff0000')
   })
 })

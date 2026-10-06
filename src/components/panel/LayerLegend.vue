@@ -15,8 +15,8 @@ defineProps<{
 
 <template>
   <!-- Horizontal gradient with words and numbers at the ends (SPEC §7). -->
-  <div class="glass w-60 rounded-xl px-3 py-2.5 shadow-float sm:w-64">
-    <p class="text-[11px] leading-snug font-medium text-ink sm:text-xs">{{ title }}</p>
+  <div>
+    <p class="text-xs leading-snug font-medium text-ink">{{ title }}</p>
     <div class="mt-2 h-2 rounded-full" :style="{ background: gradient }" aria-hidden="true"></div>
     <div class="mt-1 grid grid-cols-3 text-[11px] leading-tight text-ink-muted">
       <span>

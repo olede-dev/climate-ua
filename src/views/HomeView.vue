@@ -5,14 +5,15 @@ import AppFooter from '../components/layout/AppFooter.vue'
 import AppHeader from '../components/layout/AppHeader.vue'
 import type { BasemapKind } from '../components/map/basemap'
 import ClimateMap, { type RegionHover } from '../components/map/ClimateMap.vue'
-import MapLegend from '../components/map/MapLegend.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
+import SidePanel from '../components/panel/SidePanel.vue'
 import { layerConfig } from '../config/layers'
 import { useLayer, useOblasts } from '../composables/useLayer'
 import { useLocale } from '../composables/useLocale'
+import { useMediaQuery } from '../composables/useMediaQuery'
 import { useUrlSync } from '../composables/useUrlSync'
-import { formatPeriod, formatWithUnit } from '../lib/format'
+import { formatPeriod, valueFormat } from '../lib/format'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, valueAt, type StepValue } from '../lib/series'
 import { isFuture, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
@@ -71,23 +72,15 @@ const mapValues = computed<Record<string, number | null>>(() =>
   ),
 )
 
-const unit = computed(() => layer.value?.unit ?? '')
+const valueFormatter = computed(() =>
+  valueFormat(locale.value, layer.value?.unit ?? '', config.value.decimals),
+)
 const signed = computed(() => config.value.display === 'anomaly')
 const format = (value: number, withSign = signed.value) =>
-  formatWithUnit(value, unit.value, locale.value, {
-    decimals: config.value.decimals,
-    signed: withSign,
-  })
+  valueFormatter.value(value, { signed: withSign })
 
 const copy = computed(() => t.value.layers.temp)
 const gradient = computed(() => cssGradient(config.value.scale))
-const legend = computed(() => {
-  const stops = config.value.scale.stops
-  return {
-    min: format(stops[0]![0]),
-    max: format(stops[stops.length - 1]![0]),
-  }
-})
 
 const stepLabel = computed(() => {
   if (step.value === null) return ''
@@ -95,12 +88,26 @@ const stepLabel = computed(() => {
   return `${formatPeriod(step.value)} · ${t.value.timeline.forecast} (${layer.value?.scenario})`
 })
 
+function regionName(id: string): string {
+  const feature = oblastsQuery.data.value?.features.find((f) => f.properties.id === id)
+  if (!feature) return id
+  return locale.value === 'uk' ? feature.properties.nameUk : feature.properties.nameEn
+}
+
+const selected = computed(() =>
+  ui.regionId === null ? null : { id: ui.regionId, name: regionName(ui.regionId) },
+)
+
+/** Tailwind's `md`: the panel floats over the map; below it, a card under the map. */
+const isWide = useMediaQuery('(min-width: 48rem)')
+/** The panel's width (`w-[22rem]`) and the gutter beside it. */
+const PANEL_INSET = 352 + 12
+
 const hover = ref<RegionHover | null>(null)
 const tooltip = computed(() => {
   const at = hover.value
   const file = layer.value
   if (!at || !file) return null
-  const feature = oblastsQuery.data.value?.features.find((f) => f.properties.id === at.id)
   const series = file.regions[at.id]
   const shown = shownValue(at.id)
   const raw = series && step.value !== null ? valueAt(series, file.history, step.value) : null
@@ -121,11 +128,7 @@ const tooltip = computed(() => {
   }
   return {
     ...at,
-    name: feature
-      ? locale.value === 'uk'
-        ? feature.properties.nameUk
-        : feature.properties.nameEn
-      : at.id,
+    name: regionName(at.id),
     value: shown ? format(shown.median) : null,
     details,
     position: shown ? scalePosition(config.value.scale, shown.median) : null,
@@ -135,11 +138,11 @@ const tooltip = computed(() => {
 
 <template>
   <!-- Every block is a rounded card on the canvas, separated by one gutter (gap and padding). -->
-  <div class="flex h-dvh flex-col gap-2 bg-canvas p-2 sm:gap-3 sm:p-3">
+  <div class="flex min-h-dvh flex-col gap-2 bg-canvas p-2 sm:gap-3 sm:p-3 md:h-dvh">
     <AppHeader />
-    <main class="flex min-h-0 flex-1">
+    <main class="flex flex-1 flex-col gap-2 sm:gap-3 md:min-h-0">
       <section
-        class="relative isolate min-w-0 flex-1 overflow-hidden rounded-2xl shadow-card"
+        class="relative isolate h-[62dvh] min-w-0 shrink-0 overflow-hidden rounded-2xl shadow-card md:h-auto md:flex-1"
         :aria-label="t.home.map"
       >
         <ClimateMap
@@ -148,20 +151,11 @@ const tooltip = computed(() => {
           :scale="config.scale"
           :future="step !== null && isFuture(step)"
           :selected-id="ui.regionId"
+          :inset-left="isWide ? PANEL_INSET : 0"
           @basemap="basemap = $event"
           @hover="hover = $event"
           @select="ui.regionId = $event"
         >
-          <MapLegend
-            class="absolute top-3 left-3 z-10"
-            :title="copy.legendTitle"
-            :gradient="gradient"
-            :low="copy.low"
-            :high="copy.high"
-            :min="legend.min"
-            :max="legend.max"
-            :middle="copy.norm"
-          />
           <p
             v-if="loadError"
             role="alert"
@@ -181,7 +175,20 @@ const tooltip = computed(() => {
             :gradient="gradient"
             :position="tooltip.position"
           />
-          <div class="pointer-events-none absolute inset-x-3 bottom-3 z-10">
+          <!-- The panel on the left above the timeline, which spans the map (SPEC §8.1). -->
+          <div class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3">
+            <div v-if="isWide && layer && step !== null" class="flex min-h-0 flex-1 items-start">
+              <SidePanel
+                class="glass pointer-events-auto max-h-full w-[22rem] rounded-2xl shadow-float"
+                :file="layer"
+                :config="config"
+                :copy="copy"
+                :step="step"
+                :format="valueFormatter"
+                :region="selected"
+                @close="ui.regionId = null"
+              />
+            </div>
             <TimeSlider
               v-if="axis && layer"
               v-model="timeModel"
@@ -192,6 +199,17 @@ const tooltip = computed(() => {
           </div>
         </ClimateMap>
       </section>
+      <SidePanel
+        v-if="!isWide && layer && step !== null"
+        class="rounded-2xl bg-surface shadow-card"
+        :file="layer"
+        :config="config"
+        :copy="copy"
+        :step="step"
+        :format="valueFormatter"
+        :region="selected"
+        @close="ui.regionId = null"
+      />
     </main>
     <AppFooter :basemap="basemap" />
   </div>

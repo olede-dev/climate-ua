@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatNumber, formatPeriod, formatWithUnit } from '../src/lib/format'
+import { formatNumber, formatPeriod, formatWithUnit, plural } from '../src/lib/format'
 
 describe('formatNumber', () => {
   it('writes a decimal comma in Ukrainian and a point in English', () => {
@@ -29,5 +29,20 @@ describe('formatPeriod', () => {
   it('uses an en dash', () => {
     expect(formatPeriod('2041-2060')).toBe('2041–2060')
     expect(formatPeriod('2050')).toBe('2050')
+  })
+})
+
+describe('plural', () => {
+  const forms = { one: 'моделі', other: 'моделей' }
+
+  it('follows the Ukrainian plural rules, falling back to other', () => {
+    expect(plural(21, 'uk', forms)).toBe('моделі')
+    expect(plural(23, 'uk', forms)).toBe('моделей')
+    expect(plural(11, 'uk', forms)).toBe('моделей')
+  })
+
+  it('follows the English ones', () => {
+    expect(plural(1, 'en', { one: 'model', other: 'models' })).toBe('model')
+    expect(plural(23, 'en', { one: 'model', other: 'models' })).toBe('models')
   })
 })

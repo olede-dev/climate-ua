@@ -11,6 +11,8 @@ export interface LayerConfig {
   /** What the map shows: the value itself or its difference from the region's norm. */
   display: 'value' | 'anomaly'
   decimals: number
+  /** The projection the sentences name while the timeline is on an observed year (SPEC §8.2). */
+  headlinePeriod: FuturePeriod
   /** Fixed for the whole timeline, so 1960 and 2080 compare (SPEC §6). */
   scale: ColorScale
 }
@@ -46,6 +48,7 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     futurePeriods: CLIMATE_PERIODS,
     display: 'anomaly',
     decimals: 1,
+    headlinePeriod: '2041-2060',
     scale: TEMP_SCALE,
   },
 }

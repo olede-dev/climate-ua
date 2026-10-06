@@ -17,6 +17,33 @@ export function scalePosition(scale: ColorScale, value: number): number {
   return Math.min(1, Math.max(0, (value - min) / (max - min)))
 }
 
+function rgb(hex: string): [number, number, number] {
+  const n = Number.parseInt(hex.slice(1), 16)
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
+}
+
+/**
+ * The colour of a value, blended in sRGB like the map and the legend; values outside the
+ * domain take the end colours.
+ */
+export function colorAt(scale: ColorScale, value: number): string {
+  const { stops } = scale
+  const upper = stops.findIndex(([stop]) => stop >= value)
+  if (upper <= 0) return stops[upper === 0 ? 0 : stops.length - 1]![1]
+  const [v0, c0] = stops[upper - 1]!
+  const [v1, c1] = stops[upper]!
+  const k = (value - v0) / (v1 - v0)
+  const a = rgb(c0)
+  const b = rgb(c1)
+  return `#${a
+    .map((channel, i) =>
+      Math.round(channel + (b[i]! - channel) * k)
+        .toString(16)
+        .padStart(2, '0'),
+    )
+    .join('')}`
+}
+
 /** CSS gradient through the stops, left to right, for the legend and the tooltip. */
 export function cssGradient(scale: ColorScale): string {
   const stops = scale.stops.map(

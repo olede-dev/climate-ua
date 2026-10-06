@@ -39,6 +39,8 @@ const props = defineProps<{
   /** Hatch the fill: the current step is a projection. */
   future: boolean
   selectedId: string | null
+  /** Pixels on the left covered by a panel; framing keeps Ukraine clear of it. */
+  insetLeft?: number
 }>()
 const emit = defineEmits<{
   basemap: [kind: BasemapKind]
@@ -50,8 +52,8 @@ const UKRAINE_BOUNDS: LngLatBoundsLike = [
   [22.0, 44.0],
   [40.3, 52.5],
 ]
-/** Room for the legend above and the timeline below. */
-const PADDING: PaddingOptions = { top: 64, bottom: 96, left: 16, right: 16 }
+/** Room for the zoom buttons above and the timeline below. */
+const PADDING = { top: 48, bottom: 96, left: 16, right: 56 }
 /** Shown until the basemap style arrives. */
 const EMPTY_STYLE: StyleSpecification = { version: 8, sources: {}, layers: [] }
 /** Colours slide between timeline steps (SPEC §7). */
@@ -130,8 +132,12 @@ function setHovered(id: string | null) {
   hoveredId = id
 }
 
+function padding(): PaddingOptions {
+  return { ...PADDING, left: PADDING.left + (props.insetLeft ?? 0) }
+}
+
 function fitUkraine(animate: boolean) {
-  map?.fitBounds(UKRAINE_BOUNDS, { padding: PADDING, animate })
+  map?.fitBounds(UKRAINE_BOUNDS, { padding: padding(), animate })
 }
 
 /** Zooms to the selected region, or back to all of Ukraine. */
@@ -140,7 +146,7 @@ function frameSelection(animate: boolean) {
   const bounds = feature && geometryBounds(feature.geometry)
   if (!map) return
   if (!bounds) return fitUkraine(animate)
-  map.fitBounds(bounds, { padding: PADDING, maxZoom: 6.5, animate })
+  map.fitBounds(bounds, { padding: padding(), maxZoom: 6.5, animate })
 }
 
 /** (Re)builds the data layers: on the first style and after every basemap swap. */
@@ -183,7 +189,7 @@ onMounted(() => {
     container: container.value,
     style: EMPTY_STYLE,
     bounds: UKRAINE_BOUNDS,
-    fitBoundsOptions: { padding: PADDING },
+    fitBoundsOptions: { padding: padding() },
     minZoom: 3,
     renderWorldCopies: false,
     // Phones with 3x screens would fill 2.25x the pixels of 2x for no visible gain.
@@ -248,6 +254,12 @@ watch(
 watch(
   () => props.future,
   (future) => map && setFutureHatch(map, future),
+)
+watch(
+  () => props.insetLeft,
+  () => {
+    if (!viewTouched) frameSelection(false)
+  },
 )
 watch(
   () => props.selectedId,

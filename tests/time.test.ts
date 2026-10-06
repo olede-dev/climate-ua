@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  periodRange,
   axisSteps,
   nextStep,
   parseStep,
@@ -106,5 +107,12 @@ describe('slider positions', () => {
     const rivers: TimeAxis = { from: 1997, to: 2025, periods: [] }
     expect(stepPosition(rivers, 2025)).toBe(1)
     expect(stepAtPosition(rivers, 1)).toBe(2025)
+  })
+})
+
+describe('periodRange', () => {
+  it('reads both ends of a span and centres a single year', () => {
+    expect(periodRange('2041-2060')).toEqual([2041, 2060])
+    expect(periodRange('2050')).toEqual([2045, 2055])
   })
 })

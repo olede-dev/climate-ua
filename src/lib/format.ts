@@ -50,3 +50,38 @@ export function formatWithUnit(
 export function formatPeriod(period: string): string {
   return period.replace('-', '–')
 }
+
+const pluralRules = new Map<Locale, Intl.PluralRules>()
+
+/**
+ * The form of a word for a count, by the language's plural rules: Ukrainian has `one` (21),
+ * `few` (23) and `many` (25); a form left out falls back to `other`.
+ */
+export function plural(
+  count: number,
+  locale: Locale,
+  forms: Partial<Record<Intl.LDMLPluralRule, string>> & { other: string },
+): string {
+  let rules = pluralRules.get(locale)
+  if (!rules) {
+    rules = new Intl.PluralRules(INTL_LOCALES[locale])
+    pluralRules.set(locale, rules)
+  }
+  return forms[rules.select(count)] ?? forms.other
+}
+
+/**
+ * Numbers as a layer writes them: with its unit unless `unit: false`, signed on request, and
+ * with the layer's decimals unless `decimals` overrides them (whole-number axis ticks).
+ */
+export type ValueFormat = (
+  value: number,
+  options?: { unit?: boolean; signed?: boolean; decimals?: number },
+) => string
+
+export function valueFormat(locale: Locale, unit: string, decimals: number): ValueFormat {
+  return (value, { unit: withUnit = true, signed = false, decimals: places = decimals } = {}) =>
+    withUnit
+      ? formatWithUnit(value, unit, locale, { decimals: places, signed })
+      : formatNumber(value, locale, { decimals: places, signed })
+}

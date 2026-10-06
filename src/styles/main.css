@@ -1,0 +1,190 @@
+@import 'tailwindcss';
+
+/* Dark mode follows the `dark` class on <html>, set by useTheme (and index.html before paint). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design tokens (inherited from rivers-ua). Components use these names, not raw
+ * palette colours, so one place switches the light and dark appearance. Data colours (layer
+ * scales, chart series) are separate and stay in their own config.
+ */
+:root {
+  --ui-canvas: #f5f5f7;
+  --ui-surface: #ffffff;
+  /* Inset grouped rows on a surface. */
+  --ui-group: #f5f5f7;
+  --ui-glass: rgb(255 255 255 / 0.82);
+  --ui-ink: #1d1d1f;
+  /* 4.9:1 on the surface, 4.5:1 on the canvas: the lightest grey allowed for text. */
+  --ui-ink-muted: #6e6e73;
+  --ui-line: rgb(0 0 0 / 0.08);
+  --ui-fill: rgb(118 118 128 / 0.12);
+  --ui-fill-strong: rgb(118 118 128 / 0.2);
+  --ui-accent: #0071e3;
+  --ui-accent-hover: #0062c4;
+  --ui-accent-ink: #0066cc;
+  --ui-shadow-color: rgb(0 0 0 / 0.08);
+  --ui-ring: rgb(0 0 0 / 0.06);
+  --ui-scrollbar: rgb(0 0 0 / 0.32);
+  --ui-scrollbar-active: rgb(0 0 0 / 0.5);
+}
+
+.dark {
+  color-scheme: dark;
+  --ui-canvas: #121214;
+  --ui-surface: #1c1c1e;
+  --ui-group: #2c2c2e;
+  --ui-glass: rgb(36 36 38 / 0.8);
+  --ui-ink: #f5f5f7;
+  --ui-ink-muted: #a1a1a6;
+  --ui-line: rgb(255 255 255 / 0.1);
+  --ui-fill: rgb(118 118 128 / 0.24);
+  --ui-fill-strong: rgb(118 118 128 / 0.34);
+  --ui-accent: #0a84ff;
+  --ui-accent-hover: #2b95ff;
+  --ui-accent-ink: #4da3ff;
+  --ui-shadow-color: rgb(0 0 0 / 0.4);
+  --ui-ring: rgb(255 255 255 / 0.08);
+  --ui-scrollbar: rgb(255 255 255 / 0.32);
+  --ui-scrollbar-active: rgb(255 255 255 / 0.5);
+}
+
+@theme inline {
+  --font-sans:
+    system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --color-canvas: var(--ui-canvas);
+  --color-surface: var(--ui-surface);
+  --color-group: var(--ui-group);
+  --color-glass: var(--ui-glass);
+  --color-ink: var(--ui-ink);
+  --color-ink-muted: var(--ui-ink-muted);
+  --color-line: var(--ui-line);
+  --color-fill: var(--ui-fill);
+  --color-fill-strong: var(--ui-fill-strong);
+  --color-accent: var(--ui-accent);
+  --color-accent-hover: var(--ui-accent-hover);
+  --color-accent-ink: var(--ui-accent-ink);
+  /* A hairline ring plus a soft drop: cards and floating panels. */
+  --shadow-card: 0 0 0 0.5px var(--ui-ring), 0 1px 3px var(--ui-shadow-color);
+  --shadow-float: 0 0 0 0.5px var(--ui-ring), 0 8px 28px var(--ui-shadow-color);
+}
+
+/* Translucent panel over the map or page; opaque enough that text keeps its contrast. */
+@utility glass {
+  background-color: var(--ui-glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+}
+
+@utility focus-ring {
+  &:focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: 2px;
+  }
+}
+
+@utility focus-ring-inset {
+  &:focus-visible {
+    outline: 2px solid var(--ui-accent);
+    outline-offset: -2px;
+  }
+}
+
+/* Tailwind v4 preflight leaves buttons with the default cursor; restore the pointer. */
+@layer base {
+  body {
+    background: var(--ui-canvas);
+    color: var(--ui-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  summary {
+    cursor: pointer;
+  }
+}
+
+/*
+ * iOS-style scrollbars in every scrolling block: a thin rounded thumb with no track, inset from
+ * the edge and clear of rounded corners, shown while the pointer is over the block. Chromium
+ * ignores ::-webkit-scrollbar once scrollbar-width/-color is set, so the standard properties
+ * only go to engines without the pseudo-elements (Firefox).
+ */
+*::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+  background: transparent;
+}
+
+*::-webkit-scrollbar-track {
+  margin: 10px;
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 36px;
+  border: 3.5px solid transparent;
+  border-radius: 999px;
+  background-color: transparent;
+  background-clip: padding-box;
+}
+
+*:hover::-webkit-scrollbar-thumb,
+*:focus-within::-webkit-scrollbar-thumb {
+  background-color: var(--ui-scrollbar);
+}
+
+*::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--ui-scrollbar-active);
+}
+
+*::-webkit-scrollbar-corner,
+*::-webkit-scrollbar-button {
+  display: none;
+  background: transparent;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  *:hover,
+  *:focus-within {
+    scrollbar-color: var(--ui-scrollbar) transparent;
+  }
+}
+
+/* The map is dark in both themes (SPEC §7); its background shows before tiles arrive. */
+.maplibregl-map {
+  background: #0e0e10;
+}
+
+/* MapLibre's controls, restyled to match the floating panels. */
+
+.maplibregl-ctrl-group:not(:empty) {
+  overflow: hidden;
+  border-radius: 12px;
+  background: var(--ui-glass);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: var(--shadow-float);
+}
+
+.maplibregl-ctrl-group button {
+  width: 32px;
+  height: 32px;
+}
+
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--ui-line);
+}
+
+.dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(1);
+}

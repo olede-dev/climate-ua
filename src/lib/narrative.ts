@@ -98,14 +98,16 @@ export interface StoryCopy {
   missingYear: string
   /** `{period}`. */
   missingPeriod: string
+  /** For a layer without projections. */
+  noForecast: string
 }
 
 export interface StoryInput {
   file: LayerFile
   series: RegionSeries
   step: TimeStep
-  /** The projection to name while the timeline is on an observed year. */
-  headline: FuturePeriod
+  /** The projection to name while the timeline is on an observed year; null: there is none. */
+  headline: FuturePeriod | null
   /** «в Україні», «у Харківській області». */
   where: string
   layerCopy: LayerStoryCopy
@@ -144,6 +146,7 @@ function observedSentence(input: StoryInput, short: boolean): Rich {
 
 function futureSentence(input: StoryInput): Rich {
   const period = isFuture(input.step) ? input.step : input.headline
+  if (period === null) return fill(input.copy.noForecast, {})
   const value = input.series.future[period]
   if (!value) return fill(input.copy.missingPeriod, { period: formatPeriod(period) })
   const range =

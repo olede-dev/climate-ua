@@ -237,3 +237,30 @@ RIVER_NAMES = {
 }
 
 WATER_SOURCE = "Utrecht University, World Water Map (PCR-GLOBWB 2); WRI Aqueduct 4.0"
+
+# --- Climate analogue (SPEC §4.4) ----------------------------------------------------------
+
+#: Beck et al. (2023), Köppen–Geiger maps at 1 km, 1901–2099 (figshare article 21789074, v2).
+KOPPEN_URL = "https://ndownloader.figshare.com/files/61012822"
+KOPPEN_DIR = RAW_DIR / "koppen"
+#: Period → GeoTIFF inside the archive; the future follows SSP2-4.5 like the climate layers.
+KOPPEN_FILES = {
+    "1991-2020": "1991_2020/koppen_geiger_0p00833333.tif",
+    "2041-2070": "2041_2070/ssp245/koppen_geiger_0p00833333.tif",
+    "2071-2099": "2071_2099/ssp245/koppen_geiger_0p00833333.tif",
+}
+#: Raster code → class, as in the archive's legend.txt (0 is the sea).
+KOPPEN_CLASSES = [
+    "Af", "Am", "Aw", "BWh", "BWk", "BSh", "BSk", "Csa", "Csb", "Csc", "Cwa", "Cwb", "Cwc",
+    "Cfa", "Cfb", "Cfc", "Dsa", "Dsb", "Dsc", "Dsd", "Dwa", "Dwb", "Dwc", "Dwd", "Dfa", "Dfb",
+    "Dfc", "Dfd", "ET", "EF",
+]
+KOPPEN_PATH = PUBLIC_DATA / "koppen.json"
+
+# --- Rivers (SPEC §4.5) --------------------------------------------------------------------
+
+RIVERS_UA = PIPELINE_DIR.parent.parent / "rivers-ua"
+RIVERS_CLIMATE = RIVERS_UA / "public" / "data" / "climate.json"
+RIVERS_STATIONS = RIVERS_UA / "src" / "config" / "stations.generated.json"
+RIVERS_SEEDS = RIVERS_UA / "src" / "config" / "station-seeds.ts"
+RIVERS_PATH = PUBLIC_DATA / "rivers.json"

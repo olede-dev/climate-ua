@@ -14,6 +14,8 @@ const HOTSPOT_SOURCE = 'hotspots'
 const HOTSPOT_DOT = 'hotspot-dot'
 export const HOTSPOT_PULSE = 'hotspot-pulse'
 const HATCH_IMAGE = 'future-hatch'
+export const STATION_SOURCE = 'stations'
+export const STATION_DOT = 'station-dot'
 
 const VALUE: ExpressionSpecification = ['feature-state', 'value']
 const HOVER: ExpressionSpecification = ['boolean', ['feature-state', 'hover'], false]
@@ -150,6 +152,39 @@ export function addRegionLayers(map: MaplibreMap, data: RegionsFile, scale: Colo
   )
 }
 
+/** River stations: dots coloured by value, over the regions and under the place names. */
+export function addStationLayers(
+  map: MaplibreMap,
+  data: FeatureCollection<Point>,
+  scale: ColorScale,
+) {
+  if (map.getSource(STATION_SOURCE)) return
+  map.addSource(STATION_SOURCE, { type: 'geojson', data, promoteId: 'id' })
+  const beforeId = map
+    .getStyle()
+    .layers.find((layer) => layer.type === 'symbol' && layer['source-layer'] === 'place')?.id
+  map.addLayer(
+    {
+      id: STATION_DOT,
+      type: 'circle',
+      source: STATION_SOURCE,
+      paint: {
+        'circle-radius': ['case', SELECTED, 9, HOVER, 8.5, 7],
+        'circle-color': mapColorExpression(scale, VALUE),
+        // A dark ring keeps the dots apart from the regions under them.
+        'circle-stroke-color': ['case', SELECTED, '#f5f5f7', HOVER, '#f5f5f7', '#1a1a19'],
+        'circle-stroke-width': ['case', SELECTED, 2.5, HOVER, 2, 1.5],
+      },
+    },
+    beforeId,
+  )
+}
+
+export function setStationData(map: MaplibreMap, data: FeatureCollection<Point>) {
+  const source = map.getSource(STATION_SOURCE)
+  if (source && 'setData' in source && typeof source.setData === 'function') source.setData(data)
+}
+
 export function setRegionData(map: MaplibreMap, data: RegionsFile) {
   const source = map.getSource(REGION_SOURCE)
   if (source && 'setData' in source && typeof source.setData === 'function') source.setData(data)
@@ -158,6 +193,8 @@ export function setRegionData(map: MaplibreMap, data: RegionsFile) {
 export function setRegionScale(map: MaplibreMap, scale: ColorScale) {
   if (map.getLayer(REGION_FILL))
     map.setPaintProperty(REGION_FILL, 'fill-color', mapColorExpression(scale, VALUE))
+  if (map.getLayer(STATION_DOT))
+    map.setPaintProperty(STATION_DOT, 'circle-color', mapColorExpression(scale, VALUE))
 }
 
 export function setFutureHatch(map: MaplibreMap, visible: boolean) {

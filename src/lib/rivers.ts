@@ -1,0 +1,46 @@
+import type { Feature, FeatureCollection, Point } from 'geojson'
+
+import type { LayerFile, RegionSeries, RiversFile } from '../types'
+
+const mean = (values: number[]) => values.reduce((sum, v) => sum + v, 0) / values.length
+
+/**
+ * The river stations as a layer: one series of low-flow days per station, no projection
+ * (SPEC §4.5). «Ukraine» is the mean of the stations, year by year.
+ */
+export function riversLayer(file: RiversFile): LayerFile {
+  const regions: Record<string, RegionSeries> = Object.fromEntries(
+    file.stations.map((s) => [
+      s.id,
+      { norm: s.normLowFlowDays, history: s.lowFlowDays, future: {} },
+    ]),
+  )
+  const years = file.years.to - file.years.from + 1
+  const history = Array.from({ length: years }, (_, i) =>
+    mean(file.stations.map((s) => s.lowFlowDays[i] ?? 0)),
+  )
+  return {
+    layer: 'rivers',
+    geometry: 'stations',
+    unit: 'днів',
+    scenario: null,
+    norm: file.years,
+    history: file.years,
+    futurePeriods: [],
+    country: { norm: mean(history), history, future: {} },
+    regions,
+    source: file.source,
+  }
+}
+
+/** Station markers for the map, keyed by `id` like the regions. */
+export function stationPoints(file: RiversFile): FeatureCollection<Point, { id: string }> {
+  return {
+    type: 'FeatureCollection',
+    features: file.stations.map((s): Feature<Point, { id: string }> => ({
+      type: 'Feature',
+      properties: { id: s.id },
+      geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
+    })),
+  }
+}

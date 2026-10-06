@@ -1,8 +1,9 @@
-import { useQuery } from '@tanstack/vue-query'
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 
 import { layerConfig } from '../config/layers'
-import type { BasinsFile, LayerFile, LayerId, OblastsFile } from '../types'
+import { riversLayer } from '../lib/rivers'
+import type { BasinsFile, KoppenFile, LayerFile, LayerId, OblastsFile, RiversFile } from '../types'
 
 /** A static JSON file under `public/`, versioned with the site. */
 async function fetchStatic<T>(path: string): Promise<T> {
@@ -11,13 +12,30 @@ async function fetchStatic<T>(path: string): Promise<T> {
   return (await response.json()) as T
 }
 
-/** One layer's data file; `staleTime: Infinity` comes from the client defaults. */
+const RIVERS_QUERY = {
+  queryKey: ['rivers'],
+  queryFn: () => fetchStatic<RiversFile>(layerConfig('rivers').path),
+}
+
+/**
+ * One layer's data file; `staleTime: Infinity` comes from the client defaults. The rivers
+ * layer is built from `rivers.json`, which `useRivers` shares.
+ */
 export function useLayer(id: MaybeRefOrGetter<LayerId>) {
-  const path = computed(() => layerConfig(toValue(id)).path)
+  const client = useQueryClient()
+  const layer = computed(() => toValue(id))
   return useQuery({
-    queryKey: ['layer', path],
-    queryFn: () => fetchStatic<LayerFile>(path.value),
+    queryKey: ['layer', layer],
+    queryFn: async () =>
+      layer.value === 'rivers'
+        ? riversLayer(await client.ensureQueryData(RIVERS_QUERY))
+        : fetchStatic<LayerFile>(layerConfig(layer.value).path),
   })
+}
+
+/** River stations with their places and coordinates (SPEC §4.5). */
+export function useRivers(enabled: MaybeRefOrGetter<boolean> = true) {
+  return useQuery({ ...RIVERS_QUERY, enabled: computed(() => toValue(enabled)) })
 }
 
 export function useOblasts() {
@@ -31,5 +49,13 @@ export function useBasins() {
   return useQuery({
     queryKey: ['geometry', 'basins'],
     queryFn: () => fetchStatic<BasinsFile>('data/basins.geojson'),
+  })
+}
+
+/** Köppen–Geiger classes by oblast, for the climate analogue (SPEC §8.5). */
+export function useKoppen() {
+  return useQuery({
+    queryKey: ['koppen'],
+    queryFn: () => fetchStatic<KoppenFile>('data/koppen.json'),
   })
 }

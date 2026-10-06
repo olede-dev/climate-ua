@@ -48,8 +48,9 @@ const PALETTES = {
     mark: '#f5f5f7',
   },
 }
-/** Years between labels on the time axis. */
+/** Years between labels on the time axis: long records, then short ones (rivers). */
 const YEAR_TICK = 25
+const SHORT_YEAR_TICK = 10
 /** Alpha of the p10–p90 box, as a hex suffix. */
 const RANGE_ALPHA = '4d'
 
@@ -199,10 +200,11 @@ const options = computed((): ChartOptions<'bar'> => {
         max: Math.max(lastEnd, now) + 1,
         // Round years only; the axis ends sit half a year past the data.
         afterBuildTicks: (axis) => {
-          const first = Math.ceil(axis.min / YEAR_TICK) * YEAR_TICK
+          const every = axis.max - axis.min > 60 ? YEAR_TICK : SHORT_YEAR_TICK
+          const first = Math.ceil(axis.min / every) * every
           axis.ticks = Array.from(
-            { length: Math.floor((axis.max - first) / YEAR_TICK) + 1 },
-            (_, i) => ({ value: first + i * YEAR_TICK }),
+            { length: Math.floor((axis.max - first) / every) + 1 },
+            (_, i) => ({ value: first + i * every }),
           )
         },
         ticks: {
@@ -252,7 +254,7 @@ const options = computed((): ChartOptions<'bar'> => {
 })
 
 const aria = computed(() =>
-  t.value.chart.aria
+  (periods.value.length > 0 ? t.value.chart.aria : t.value.chart.ariaHistory)
     .replace('{title}', props.title)
     .replace('{from}', String(props.file.history.from))
     .replace('{to}', String(props.file.history.to))

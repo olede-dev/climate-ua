@@ -77,3 +77,40 @@ describe('colorAt', () => {
     expect(colorAt(scale, 9)).toBe('#ff0000')
   })
 })
+
+describe('stepped scale', () => {
+  const classes: ColorScale = {
+    stops: [
+      [0, '#111111'],
+      [1, '#222222'],
+      [15, '#333333'],
+    ],
+    noData: '#000000',
+    stepped: true,
+  }
+
+  it('gives each value the colour of the last stop at or below it', () => {
+    expect(colorAt(classes, 0)).toBe('#111111')
+    expect(colorAt(classes, 0.5)).toBe('#111111')
+    expect(colorAt(classes, 14)).toBe('#222222')
+    expect(colorAt(classes, 15)).toBe('#333333')
+    expect(colorAt(classes, 200)).toBe('#333333')
+  })
+
+  it('draws equal bands and places a value in the middle of its band', () => {
+    expect(cssGradient(classes)).toBe(
+      'linear-gradient(to right, #111111 0.00% 33.33%, #222222 33.33% 66.67%, #333333 66.67% 100.00%)',
+    )
+    expect(scalePosition(classes, 5)).toBeCloseTo(0.5)
+    expect(scalePosition(classes, 0)).toBeCloseTo(1 / 6)
+  })
+
+  it('steps on the map', () => {
+    expect(mapColorExpression(classes, ['get', 'v'])).toEqual([
+      'case',
+      ['==', ['typeof', ['get', 'v']], 'number'],
+      ['step', ['get', 'v'], '#111111', 1, '#222222', 15, '#333333'],
+      '#000000',
+    ])
+  })
+})

@@ -32,7 +32,7 @@ export const en: Messages = {
     close: 'Close',
     statusHeading: 'Project status',
     status:
-      'Work in progress: the map shows water, temperature, extreme heat, frost and drought; rivers and the climate analogue follow.',
+      'Work in progress: the map shows water, temperature, extreme heat, frost, drought and rivers, and a region card names its climate type now and later. The mobile layout and the data notes follow.',
   },
   home: {
     map: 'Map',
@@ -47,6 +47,7 @@ export const en: Messages = {
     country: 'Ukraine',
     pickRegion: 'Click a region to see its history and projection.',
     pickBasin: 'Click a subbasin to see its history and projection.',
+    pickStation: 'Click a point on a river to see its history.',
     close: 'Close the region card',
     loading: 'Loading the chart',
   },
@@ -60,11 +61,14 @@ export const en: Messages = {
     range: ' ({low} to {high})',
     missingYear: 'There is no data for {year}.',
     missingPeriod: 'There is no projection for {period}.',
+    noForecast: 'There are no projections for rivers.',
+    stations: 'across {n} river stations on average',
   },
   chart: {
     now: 'Now',
     norm: 'norm',
     aria: '{title}: bars by year {from}–{to}, then projections by period up to {end}.',
+    ariaHistory: '{title}: bars by year {from}–{to}.',
   },
   basin: {
     named: '{river} basin',
@@ -77,6 +81,17 @@ export const en: Messages = {
     industrial: 'Industry',
     kakhovka:
       'The Kakhovka Reservoir was destroyed in June 2023. Neither the data (up to 2019) nor the projections reflect this.',
+  },
+  station: {
+    name: '{river} at {place}',
+    where: 'on the {river} at {place}',
+  },
+  koppen: {
+    title: 'Köppen climate type',
+    now: 'The region’s climate today: {name} ({code}).',
+    future: 'In {period}: {name} ({code}).',
+    same: 'In {period} the Köppen climate type stays the same.',
+    note: 'Climate type after Beck et al. (2023), projected under scenario {scenario}; the class covering most of the region.',
   },
   layers: {
     water: {
@@ -198,6 +213,35 @@ export const en: Messages = {
       futureNote:
         'The future is a 20-year average, not a forecast for any one year: the median of {models}; the brackets give the range 80% of the models fall in.',
       models: { one: '{n} climate model', other: '{n} climate models' },
+    },
+    rivers: {
+      name: 'Rivers',
+      legendTitle: 'Low-flow days a year',
+      low: 'None',
+      high: 'Many',
+      norm: '1997–2025 average',
+      mean: 'Year',
+      meanPeriod: 'Period',
+      normValue: '1997–2025 average',
+      unit: {
+        one: 'low-flow day',
+        few: 'low-flow days',
+        many: 'low-flow days',
+        other: 'low-flow days',
+      },
+      chartTitle: 'Low-flow days by year, 1997–2025',
+      story: {
+        norm: 'In {norm}, there were {value} a year {where} on average.',
+        observed: 'In {year}, there were {value} {where}, {delta}.',
+        observedShort: 'In {year}, it was {value}, {delta}.',
+        future: 'For {period}, the projection is {value}{range}, {delta}.',
+        above: '{delta} more than on average',
+        below: '{delta} fewer than on average',
+        same: 'in line with the average',
+      },
+      futureNote:
+        'A low-flow day is one with less water in the river than on 9 in 10 of the same calendar days in 1997–2020 (GloFAS v4 modelled discharge).',
+      models: { one: '{n} model', other: '{n} models' },
     },
   },
   tooltip: {

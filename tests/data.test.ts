@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import type { BasinsFile, LayerFile, OblastsFile } from '../src/types'
+import { koppenText } from '../src/config/koppen'
+import type { BasinsFile, KoppenFile, LayerFile, OblastsFile, RiversFile } from '../src/types'
 
 // The pipeline output under public/data, checked as committed (SPEC §9).
 const layers = import.meta.glob<LayerFile>('../public/data/layers/*.json', {
@@ -14,6 +15,12 @@ const [oblastsText] = Object.values(
     import: 'default',
     query: '?raw',
   }),
+)
+const [rivers] = Object.values(
+  import.meta.glob<RiversFile>('../public/data/rivers.json', { eager: true, import: 'default' }),
+)
+const [koppen] = Object.values(
+  import.meta.glob<KoppenFile>('../public/data/koppen.json', { eager: true, import: 'default' }),
 )
 const oblasts = JSON.parse(oblastsText ?? '{"features":[]}') as OblastsFile
 const oblastIds = oblasts.features.map((f) => f.properties.id).sort()
@@ -87,6 +94,46 @@ describe.each(Object.entries(layers))('%s', (_path, layer) => {
       if (p10 !== undefined && p90 !== undefined) {
         expect(p10).toBeLessThanOrEqual(median)
         expect(median).toBeLessThanOrEqual(p90)
+      }
+    }
+  })
+})
+
+describe('rivers.json', () => {
+  it('has named stations inside Ukraine with one count per year', () => {
+    expect(rivers).toBeDefined()
+    const { years, stations } = rivers!
+    expect(stations.length).toBeGreaterThan(5)
+    expect(new Set(stations.map((s) => s.id)).size).toBe(stations.length)
+    for (const s of stations) {
+      expect(s.id).toMatch(/^[a-z0-9-]{1,40}$/)
+      for (const name of [s.river, s.place, s.riverEn, s.placeEn]) expect(name, s.id).not.toBe('')
+      expect(s.lon).toBeGreaterThan(22)
+      expect(s.lon).toBeLessThan(40.3)
+      expect(s.lat).toBeGreaterThan(44.3)
+      expect(s.lat).toBeLessThan(52.4)
+      expect(s.lowFlowDays, s.id).toHaveLength(years.to - years.from + 1)
+      for (const days of s.lowFlowDays) {
+        expect(Number.isInteger(days)).toBe(true)
+        expect(days).toBeGreaterThanOrEqual(0)
+        expect(days).toBeLessThanOrEqual(366)
+      }
+      const mean = s.lowFlowDays.reduce((a, b) => a + b, 0) / s.lowFlowDays.length
+      expect(s.normLowFlowDays).toBeCloseTo(mean, 1)
+    }
+  })
+})
+
+describe('koppen.json', () => {
+  it('names a class for every oblast and period, with words for each', () => {
+    expect(koppen).toBeDefined()
+    expect(Object.keys(koppen!.regions).sort()).toEqual(oblastIds)
+    for (const [id, classes] of Object.entries(koppen!.regions)) {
+      expect(Object.keys(classes).sort(), id).toEqual([...koppen!.periods].sort())
+      for (const code of Object.values(classes)) {
+        expect(code, id).toMatch(/^[A-E][A-Za-z]{0,2}$/)
+        expect(koppenText(code, 'uk'), code).not.toBeNull()
+        expect(koppenText(code, 'en'), code).not.toBeNull()
       }
     }
   })

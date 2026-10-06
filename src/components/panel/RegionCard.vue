@@ -8,9 +8,11 @@ import type { Rich } from '../../lib/narrative'
 import type { TimeStep } from '../../lib/time'
 import type { LayerFile, RegionSeries, Sectors } from '../../types'
 import { RichText } from '../ui/RichText'
+import ClimateAnalog from './ClimateAnalog.vue'
 import SectorBar from './SectorBar.vue'
 
 defineProps<{
+  id: string
   name: string
   /** Under the name: the oblasts a basin spans. */
   subtitle?: string | null
@@ -91,6 +93,8 @@ onMounted(() => heading.value?.focus())
         :title="chartTitle"
       />
     </figure>
+
+    <ClimateAnalog v-if="config.geometry === 'oblasts'" :region-id="id" />
 
     <SectorBar v-if="series.sectors" :sectors="series.sectors" :year="file.history.to" />
 

@@ -11,8 +11,11 @@ export interface LayerConfig {
   /** What the map shows: the value itself or its difference from the region's norm. */
   display: 'value' | 'anomaly'
   decimals: number
-  /** The projection the sentences name while the timeline is on an observed year (SPEC §8.2). */
-  headlinePeriod: FuturePeriod
+  /**
+   * The projection the sentences name while the timeline is on an observed year (SPEC §8.2);
+   * null for a layer without one.
+   */
+  headlinePeriod: FuturePeriod | null
   /** Fixed for the whole timeline, so 1960 and 2080 compare (SPEC §6). */
   scale: ColorScale
   /** Values above this are hotspots (SPEC §8.4); layers without a hotspot view leave it out. */
@@ -107,6 +110,24 @@ const DROUGHT_SCALE: ColorScale = {
   noData: '#26262a',
 }
 
+/**
+ * Low-flow days a year, in the classes of rivers-ua (none, 1–14, 15–44, 45–89, 90 and more).
+ * One violet hue, a colour no other layer uses, at hue 300° in OKLCH with even lightness steps
+ * from L 0.465 to 0.87, checked with the `dataviz` validator (`--ordinal --mode dark`). By
+ * definition a station averages about 37 such days, the middle class.
+ */
+const RIVERS_SCALE: ColorScale = {
+  stops: [
+    [0, '#6e2db6'],
+    [1, '#8a4fd7'],
+    [15, '#a86ffa'],
+    [45, '#c19dfe'],
+    [90, '#dbcafe'],
+  ],
+  noData: '#6e6e73',
+  stepped: true,
+}
+
 export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
   water: {
     id: 'water',
@@ -161,6 +182,16 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     decimals: 1,
     headlinePeriod: '2041-2060',
     scale: DROUGHT_SCALE,
+  },
+  rivers: {
+    id: 'rivers',
+    geometry: 'stations',
+    path: 'data/rivers.json',
+    futurePeriods: [],
+    display: 'value',
+    decimals: 0,
+    headlinePeriod: null,
+    scale: RIVERS_SCALE,
   },
 }
 

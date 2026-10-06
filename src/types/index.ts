@@ -27,6 +27,39 @@ export interface BasinProperties {
 
 export type BasinsFile = FeatureCollection<Polygon | MultiPolygon, BasinProperties>
 
+/** `public/data/rivers.json`, written by `pipeline/import_rivers.py` (SPEC §4.5). */
+export interface RiversFile {
+  years: { from: number; to: number }
+  stations: {
+    id: string
+    river: string
+    place: string
+    riverEn: string
+    placeEn: string
+    /** Where the map draws the station: on the river line. */
+    lat: number
+    lon: number
+    /** Days below the day's p10 discharge norm, one count per year from `years.from`. */
+    lowFlowDays: number[]
+    /** Mean of `lowFlowDays`. */
+    normLowFlowDays: number
+  }[]
+  source: string
+}
+
+export type Station = RiversFile['stations'][number]
+
+export type KoppenPeriod = '1991-2020' | '2041-2070' | '2071-2099'
+
+/** `public/data/koppen.json`, written by `pipeline/build_koppen.py` (SPEC §4.4). */
+export interface KoppenFile {
+  periods: KoppenPeriod[]
+  scenario: 'SSP2-4.5'
+  /** Oblast id → the class covering most of it, e.g. `Dfb`. */
+  regions: Record<string, Record<KoppenPeriod, string>>
+  source: string
+}
+
 /** Either geometry file: the map only needs the `id` of each feature. */
 export type RegionsFile = FeatureCollection<Polygon | MultiPolygon, { id: string }>
 
@@ -34,7 +67,7 @@ export type ClimatePeriod = '2021-2040' | '2041-2060' | '2081-2100'
 export type WaterPeriod = '2030' | '2050' | '2080'
 export type FuturePeriod = ClimatePeriod | WaterPeriod
 
-export type LayerId = 'water' | 'temp' | 'heat' | 'frost' | 'drought'
+export type LayerId = 'water' | 'temp' | 'heat' | 'frost' | 'drought' | 'rivers'
 
 /** Median across models, with p10–p90 where the source has several models. */
 export interface FutureValue {
@@ -58,12 +91,16 @@ export interface Sectors {
   industrial: number
 }
 
-/** `public/data/layers/<id>.json`, written by the pipeline (SPEC §5.4). */
+/**
+ * `public/data/layers/<id>.json`, written by the pipeline (SPEC §5.4); the rivers layer is
+ * built from `RiversFile` in the app.
+ */
 export interface LayerFile {
   layer: LayerId
-  geometry: 'oblasts' | 'basins'
+  geometry: 'oblasts' | 'basins' | 'stations'
   unit: string
-  scenario: 'SSP2-4.5' | 'SSP3-7.0'
+  /** null: the layer has no projection (rivers). */
+  scenario: 'SSP2-4.5' | 'SSP3-7.0' | null
   norm: { from: number; to: number }
   history: { from: number; to: number }
   futurePeriods: FuturePeriod[]

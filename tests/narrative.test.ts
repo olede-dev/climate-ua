@@ -136,3 +136,34 @@ describe('summaryStory', () => {
     )
   })
 })
+
+describe('a layer without projections', () => {
+  const rivers: RegionSeries = { norm: 36.7, history: [20, 58], future: {} }
+  const riversInput: StoryInput = {
+    file: {
+      ...file,
+      layer: 'rivers',
+      geometry: 'stations',
+      scenario: null,
+      norm: { from: 1997, to: 1998 },
+      history: { from: 1997, to: 1998 },
+      futurePeriods: [],
+    },
+    series: rivers,
+    step: 1998,
+    headline: null,
+    where: 'на річці Дніпро (Київ)',
+    layerCopy: uk.layers.rivers.story,
+    copy: uk.story,
+    format: valueFormat('uk', uk.layers.rivers.unit, 0),
+    decimals: 0,
+  }
+
+  it('says there is no forecast instead of a projection', () => {
+    expect(plain(regionStory(riversInput))).toBe(
+      'У 1997–1998 на річці Дніпро (Київ) було в середньому 37 днів маловоддя на рік. ' +
+        'У 1998 році — 58 днів, на 21 день більше, ніж у середньому. ' +
+        'Прогнозу для річок немає.',
+    )
+  })
+})

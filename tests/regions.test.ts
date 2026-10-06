@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { MESSAGES } from '../src/i18n'
-import { basinLabel, oblastLabel } from '../src/lib/regions'
-import type { BasinProperties } from '../src/types'
+import { basinLabel, oblastLabel, stationLabel } from '../src/lib/regions'
+import type { BasinProperties, Station } from '../src/types'
 
 const NAMES = { chernihiv: 'Чернігівська область', sumy: 'Сумська область' }
 const NAMES_EN = { chernihiv: 'Chernihiv Oblast', sumy: 'Sumy Oblast' }
@@ -60,5 +60,27 @@ describe('oblastLabel', () => {
       subtitle: null,
       kakhovka: false,
     })
+  })
+})
+
+describe('stationLabel', () => {
+  const station: Station = {
+    id: 'dnipro-kyiv',
+    river: 'Дніпро',
+    place: 'Київ',
+    riverEn: 'Dnipro',
+    placeEn: 'Kyiv',
+    lat: 50.39,
+    lon: 30.59,
+    lowFlowDays: [1, 2],
+    normLowFlowDays: 1.5,
+  }
+
+  it('names the river and the place in either language', () => {
+    expect(stationLabel(station, 'uk', MESSAGES.uk.station)).toMatchObject({
+      name: 'Дніпро — Київ',
+      where: 'на річці Дніпро (Київ)',
+    })
+    expect(stationLabel(station, 'en', MESSAGES.en.station).where).toBe('on the Dnipro at Kyiv')
   })
 })

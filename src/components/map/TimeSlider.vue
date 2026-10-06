@@ -17,8 +17,8 @@ import {
 
 const props = defineProps<{
   axis: TimeAxis
-  /** The projection scenario, always named next to the timeline (SPEC §1). */
-  scenario: string
+  /** The projection scenario, always named next to the timeline (SPEC §1); null: none. */
+  scenario: string | null
 }>()
 const step = defineModel<TimeStep>({ required: true })
 const playing = defineModel<boolean>('playing', { required: true })
@@ -139,7 +139,11 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
           >
         </p>
         <!-- On phones a future step already names the scenario on the left. -->
-        <p class="shrink-0 text-[11px] text-ink-muted" :class="{ 'max-sm:hidden': future }">
+        <p
+          v-if="scenario"
+          class="shrink-0 text-[11px] text-ink-muted"
+          :class="{ 'max-sm:hidden': future }"
+        >
           <span class="max-sm:hidden">{{ t.timeline.scenario }}</span> {{ scenario }}
         </p>
       </div>

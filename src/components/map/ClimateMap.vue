@@ -3,7 +3,6 @@ import type { FeatureCollection, Point } from 'geojson'
 import * as maplibregl from 'maplibre-gl'
 import type {
   LngLatBoundsLike,
-  MapLayerMouseEvent,
   MapMouseEvent,
   PaddingOptions,
   StyleSpecification,
@@ -17,6 +16,7 @@ import type { RegionsFile } from '../../types'
 import { basemapStyle, type BasemapKind } from './basemap'
 import {
   addRegionLayers,
+  addStationLayers,
   REGION_FILL,
   REGION_SOURCE,
   setFillOpacity,
@@ -25,6 +25,9 @@ import {
   setHotspotPulse,
   setRegionData,
   setRegionScale,
+  setStationData,
+  STATION_DOT,
+  STATION_SOURCE,
 } from './regionLayers'
 
 /** A region under the pointer, at a point in the map container's pixels. */
@@ -36,7 +39,12 @@ export interface RegionHover {
 
 const props = defineProps<{
   regions: RegionsFile | undefined
-  /** The value each region shows now; a missing or null value draws the no-data fill. */
+  /**
+   * Points drawn over the regions (river stations). When set, they carry the values, the
+   * hover and the selection, and the regions are plain outlines.
+   */
+  markers: FeatureCollection<Point> | null
+  /** The value each region (or marker) shows now; a missing or null value draws no data. */
   values: Record<string, number | null>
   scale: ColorScale
   /** Hatch the fill: the current step is a projection. */
@@ -67,6 +75,11 @@ const EMPTY_STYLE: StyleSpecification = { version: 8, sources: {}, layers: [] }
 const TWEEN_MS = 300
 /** One beat of the hotspot markers. */
 const PULSE_MS = 1600
+/** Pixels around the pointer that still hit a marker. */
+const MARKER_HIT = 6
+/** Half the box a selected marker is framed in, degrees. */
+const MARKER_FRAME = { lon: 2.4, lat: 1.5 }
+const NO_POINTS: FeatureCollection<Point> = { type: 'FeatureCollection', features: [] }
 
 const { locale, t } = useLocale()
 const container = useTemplateRef<HTMLDivElement>('container')
@@ -101,15 +114,24 @@ function applyStyle() {
   })
 }
 
+/** The source that carries values, hover and selection. */
+function valueSource(): string {
+  return props.markers ? STATION_SOURCE : REGION_SOURCE
+}
+
+function targetLayer(): string {
+  return props.markers ? STATION_DOT : REGION_FILL
+}
+
 function setValue(id: string, value: number | null) {
-  map?.setFeatureState({ source: REGION_SOURCE, id }, { value })
+  map?.setFeatureState({ source: valueSource(), id }, { value })
   shown[id] = value
 }
 
 /** Moves every region from its drawn value to the new one; a gap in either jumps. */
 function tweenTo(target: Record<string, number | null>) {
   cancelAnimationFrame(tweenFrame)
-  if (!map?.getSource(REGION_SOURCE)) return
+  if (!map?.getSource(valueSource())) return
   const from = { ...shown }
   const ids = Object.keys(target)
   if (reducedMotion.matches) {
@@ -131,16 +153,19 @@ function tweenTo(target: Record<string, number | null>) {
 }
 
 function setSelected(id: string | null, previous: string | null) {
-  if (!map?.getSource(REGION_SOURCE)) return
-  if (previous) map.setFeatureState({ source: REGION_SOURCE, id: previous }, { selected: false })
-  if (id) map.setFeatureState({ source: REGION_SOURCE, id }, { selected: true })
+  if (!map?.getSource(valueSource())) return
+  if (previous) map.setFeatureState({ source: valueSource(), id: previous }, { selected: false })
+  if (id) map.setFeatureState({ source: valueSource(), id }, { selected: true })
 }
 
 function setHovered(id: string | null) {
   if (!map || id === hoveredId) return
-  if (hoveredId) map.setFeatureState({ source: REGION_SOURCE, id: hoveredId }, { hover: false })
-  if (id) map.setFeatureState({ source: REGION_SOURCE, id }, { hover: true })
-  if ((id === null) !== (hoveredId === null)) setFillOpacity(map, id !== null, props.hot !== null)
+  if (hoveredId) map.setFeatureState({ source: valueSource(), id: hoveredId }, { hover: false })
+  if (id) map.setFeatureState({ source: valueSource(), id }, { hover: true })
+  // Regions dim around a hovered region; a hovered marker grows instead.
+  if (!props.markers && (id === null) !== (hoveredId === null))
+    setFillOpacity(map, id !== null, props.hot !== null)
+  map.getCanvas().style.cursor = id ? 'pointer' : ''
   hoveredId = id
 }
 
@@ -184,39 +209,75 @@ function fitUkraine(animate: boolean) {
   map?.fitBounds(UKRAINE_BOUNDS, { padding: padding(), animate })
 }
 
+function selectionBounds(): LngLatBoundsLike | null {
+  if (props.markers) {
+    const point = props.markers.features.find((f) => f.properties?.id === props.selectedId)
+    if (!point) return null
+    const [lon, lat] = point.geometry.coordinates as [number, number]
+    return [
+      [lon - MARKER_FRAME.lon, lat - MARKER_FRAME.lat],
+      [lon + MARKER_FRAME.lon, lat + MARKER_FRAME.lat],
+    ]
+  }
+  const feature = props.regions?.features.find((f) => f.properties.id === props.selectedId)
+  return (feature && geometryBounds(feature.geometry)) ?? null
+}
+
 /** Zooms to the selected region, or back to all of Ukraine. */
 function frameSelection(animate: boolean) {
-  const feature = props.regions?.features.find((f) => f.properties.id === props.selectedId)
-  const bounds = feature && geometryBounds(feature.geometry)
+  const bounds = selectionBounds()
   if (!map) return
   if (!bounds) return fitUkraine(animate)
   map.fitBounds(bounds, { padding: padding(), maxZoom: 6.5, animate })
+}
+
+/**
+ * Draws the current values, selection and hotspots from scratch: after the layers are built
+ * and whenever the regions or the markers change, since nothing drawn before belongs to them.
+ */
+function redraw() {
+  if (!map?.getSource(REGION_SOURCE)) return
+  cancelAnimationFrame(tweenFrame)
+  for (const source of [REGION_SOURCE, STATION_SOURCE]) {
+    if (map.getSource(source)) map.removeFeatureState({ source })
+  }
+  shown = {}
+  for (const [id, value] of Object.entries(props.values)) setValue(id, value)
+  setSelected(props.selectedId, null)
+  hoveredId = null
+  map.getCanvas().style.cursor = ''
+  hotIds = new Set()
+  applyHotspots()
 }
 
 /** (Re)builds the data layers: on the first style and after every basemap swap. */
 function installRegions() {
   if (!map || !props.regions || !styleReady) return
   addRegionLayers(map, props.regions, props.scale)
+  addStationLayers(map, props.markers ?? NO_POINTS, props.scale)
   setFutureHatch(map, props.future)
-  shown = {}
-  for (const [id, value] of Object.entries(props.values)) setValue(id, value)
-  setSelected(props.selectedId, null)
-  hoveredId = null
-  hotIds = new Set()
-  applyHotspots()
+  redraw()
 }
 
-function regionAt(event: MapMouseEvent): string | null {
-  if (!map?.getLayer(REGION_FILL)) return null
-  const [feature] = map.queryRenderedFeatures(event.point, { layers: [REGION_FILL] })
+/** The region or marker under the pointer. */
+function featureAt(event: MapMouseEvent): string | null {
+  const layer = targetLayer()
+  if (!map?.getLayer(layer)) return null
+  const { x, y } = event.point
+  const where: Parameters<maplibregl.Map['queryRenderedFeatures']>[0] = props.markers
+    ? [
+        [x - MARKER_HIT, y - MARKER_HIT],
+        [x + MARKER_HIT, y + MARKER_HIT],
+      ]
+    : event.point
+  const [feature] = map.queryRenderedFeatures(where, { layers: [layer] })
   return typeof feature?.id === 'string' ? feature.id : null
 }
 
-function onMove(event: MapLayerMouseEvent) {
-  const id = event.features?.[0]?.id
-  if (typeof id !== 'string') return
+function onMove(event: MapMouseEvent) {
+  const id = featureAt(event)
   setHovered(id)
-  emit('hover', { id, x: event.point.x, y: event.point.y })
+  emit('hover', id === null ? null : { id, x: event.point.x, y: event.point.y })
 }
 
 function onLeave() {
@@ -225,7 +286,7 @@ function onLeave() {
 }
 
 function onClick(event: MapMouseEvent) {
-  const id = regionAt(event)
+  const id = featureAt(event)
   emit('select', id === props.selectedId ? null : id)
 }
 
@@ -253,11 +314,9 @@ onMounted(() => {
     styleReady = true
     installRegions()
   })
-  map.on('mousemove', REGION_FILL, onMove)
-  map.on('mouseleave', REGION_FILL, onLeave)
+  map.on('mousemove', onMove)
+  map.on('mouseout', onLeave)
   map.on('click', onClick)
-  map.on('mouseenter', REGION_FILL, () => (map!.getCanvas().style.cursor = 'pointer'))
-  map.on('mouseleave', REGION_FILL, () => (map!.getCanvas().style.cursor = ''))
   // The tooltip is pinned to a point; once the map moves, the point is stale.
   map.on('movestart', () => emit('hover', null))
 
@@ -290,13 +349,17 @@ watch(
     if (!map || !regions) return
     if (map.getSource(REGION_SOURCE)) {
       setRegionData(map, regions)
-      // Another geometry: nothing drawn so far belongs to it.
-      shown = {}
-      for (const [id, value] of Object.entries(props.values)) setValue(id, value)
-      setSelected(props.selectedId, null)
-      hotIds = new Set()
-      applyHotspots()
+      redraw()
     } else installRegions()
+    if (!viewTouched) frameSelection(false)
+  },
+)
+watch(
+  () => props.markers,
+  (markers) => {
+    if (!map?.getSource(STATION_SOURCE)) return
+    setStationData(map, markers ?? NO_POINTS)
+    redraw()
     if (!viewTouched) frameSelection(false)
   },
 )

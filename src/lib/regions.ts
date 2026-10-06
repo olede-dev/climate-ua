@@ -1,5 +1,5 @@
 import type { Locale, Messages } from '../i18n'
-import type { BasinProperties, OblastProperties } from '../types'
+import type { BasinProperties, OblastProperties, Station } from '../types'
 import { inRegion } from './narrative'
 
 /** How the panel, the card and the tooltip name a region. */
@@ -50,4 +50,17 @@ export function basinLabel(
     subtitle: oblasts.length > 0 ? oblasts.join(' · ') : null,
     kakhovka: basin.kakhovka,
   }
+}
+
+/** A river station: «Дніпро — Київ», «на річці Дніпро (Київ)». */
+export function stationLabel(
+  station: Station,
+  locale: Locale,
+  copy: Messages['station'],
+): RegionLabel {
+  const slots = (template: string) =>
+    template
+      .replace('{river}', locale === 'uk' ? station.river : station.riverEn)
+      .replace('{place}', locale === 'uk' ? station.place : station.placeEn)
+  return { name: slots(copy.name), where: slots(copy.where), subtitle: null, kakhovka: false }
 }

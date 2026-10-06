@@ -41,7 +41,13 @@ function story(where: string, series: StoryInput['series']): StoryInput {
   }
 }
 
-const summary = computed(() => summaryStory(story(t.value.story.country, props.file.country)))
+/** «в Україні»; for the stations, how many the figure averages. */
+const countryWhere = computed(() =>
+  props.file.geometry === 'stations'
+    ? t.value.story.stations.replace('{n}', String(Object.keys(props.file.regions).length))
+    : t.value.story.country,
+)
+const summary = computed(() => summaryStory(story(countryWhere.value, props.file.country)))
 const regionSeries = computed(() =>
   props.region ? props.file.regions[props.region.id] : undefined,
 )
@@ -73,9 +79,19 @@ const legend = computed(() => {
   return {
     gradient: cssGradient(props.config.scale),
     min: end(stops[0]![0]),
-    max: end(stops[stops.length - 1]![0]),
+    // The top class of a stepped scale is open-ended.
+    max: `${props.config.scale.stepped ? '≥ ' : ''}${end(stops[stops.length - 1]![0])}`,
   }
 })
+
+const pickHint = computed(
+  () =>
+    ({
+      basins: t.value.panel.pickBasin,
+      oblasts: t.value.panel.pickRegion,
+      stations: t.value.panel.pickStation,
+    })[props.file.geometry],
+)
 
 function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && props.region) emit('close')
@@ -87,6 +103,7 @@ function onKeydown(event: KeyboardEvent) {
     <div class="min-h-0 flex-1 overflow-y-auto p-4">
       <RegionCard
         v-if="region && regionSeries && card"
+        :id="region.id"
         :key="region.id"
         :name="region.name"
         :subtitle="region.subtitle"
@@ -104,11 +121,11 @@ function onKeydown(event: KeyboardEvent) {
         <h2 class="text-xs font-medium text-ink-muted tabular-nums">{{ when }}</h2>
         <p class="text-lg leading-snug text-ink sm:text-xl"><RichText :text="summary" /></p>
         <p class="text-[13px] leading-relaxed text-ink-muted">
-          {{ t.scenarios[file.scenario] }}
-          <template v-if="futureNote"> {{ futureNote }}</template>
+          <template v-if="file.scenario">{{ t.scenarios[file.scenario] }} </template>
+          {{ futureNote }}
         </p>
         <p class="text-[13px] leading-relaxed text-ink-muted">
-          {{ file.geometry === 'basins' ? t.panel.pickBasin : t.panel.pickRegion }}
+          {{ pickHint }}
         </p>
       </div>
     </div>

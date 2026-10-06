@@ -12,12 +12,13 @@ import MapTooltip from '../components/map/MapTooltip.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
 import { LAYER_IDS, layerConfig } from '../config/layers'
-import { useBasins, useLayer, useOblasts } from '../composables/useLayer'
+import { useBasins, useLayer, useOblasts, useRivers } from '../composables/useLayer'
 import { useLocale } from '../composables/useLocale'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useUrlSync } from '../composables/useUrlSync'
 import { formatPeriod, valueFormat } from '../lib/format'
-import { basinLabel, oblastLabel, oblastName, type RegionLabel } from '../lib/regions'
+import { basinLabel, oblastLabel, oblastName, stationLabel, type RegionLabel } from '../lib/regions'
+import { stationPoints } from '../lib/rivers'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, valueAt, type StepValue } from '../lib/series'
 import { isFuture, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
@@ -35,12 +36,23 @@ const oblastsQuery = useOblasts()
 // Basin names list their oblasts, so the oblasts load for every layer.
 const basinsQuery = useBasins()
 const layer = computed(() => layerQuery.data.value)
+// Stations are drawn over the oblast outlines (SPEC §6).
 const geometryQuery = computed(() =>
   config.value.geometry === 'basins' ? basinsQuery : oblastsQuery,
 )
+const riversQuery = useRivers(() => config.value.geometry === 'stations')
+const markers = computed(() =>
+  config.value.geometry === 'stations' && riversQuery.data.value
+    ? stationPoints(riversQuery.data.value)
+    : null,
+)
 const regionsFile = computed<RegionsFile | undefined>(() => geometryQuery.value.data.value)
 const loadError = computed(
-  () => layerQuery.isError.value || oblastsQuery.isError.value || geometryQuery.value.isError.value,
+  () =>
+    layerQuery.isError.value ||
+    oblastsQuery.isError.value ||
+    geometryQuery.value.isError.value ||
+    riversQuery.isError.value,
 )
 
 const axis = computed<TimeAxis | null>(() =>
@@ -106,6 +118,14 @@ const stepLabel = computed(() => {
 /** Names of the regions of the current geometry. */
 const labels = computed<Record<string, RegionLabel>>(() => {
   const oblasts = oblastsQuery.data.value?.features ?? []
+  if (config.value.geometry === 'stations') {
+    return Object.fromEntries(
+      (riversQuery.data.value?.stations ?? []).map((s) => [
+        s.id,
+        stationLabel(s, locale.value, t.value.station),
+      ]),
+    )
+  }
   if (config.value.geometry === 'oblasts') {
     return Object.fromEntries(
       oblasts.map((f) => [f.properties.id, oblastLabel(f.properties, locale.value)]),
@@ -204,6 +224,7 @@ const tooltip = computed(() => {
       >
         <ClimateMap
           :regions="regionsFile"
+          :markers="markers"
           :values="mapValues"
           :scale="config.scale"
           :future="step !== null && isFuture(step)"

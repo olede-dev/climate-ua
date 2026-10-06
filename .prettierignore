@@ -1,0 +1,10 @@
+dist
+coverage
+node_modules
+package-lock.json
+public/data
+src/config/*.generated.json
+# Agent docs and the spec are formatted by hand / by their own tooling.
+*.md
+docs
+.claude

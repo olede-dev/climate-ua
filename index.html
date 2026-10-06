@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Як змінювались клімат і водні ресурси України з 1950 року і що очікується до кінця століття."
+    />
+    <meta name="theme-color" content="#f5f5f7" />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="uk_UA" />
+    <meta property="og:title" content="Клімат України — минуле і майбутнє" />
+    <meta
+      property="og:description"
+      content="Вода, спека, морози й посуха по регіонах України: спостереження з 1950 року і прогнози до 2100."
+    />
+    <meta property="og:url" content="https://olede-dev.github.io/climate-ua/" />
+    <title>Клімат України — минуле і майбутнє</title>
+    <script>
+      // Applies the theme before first paint; src/composables/useTheme.ts takes over after mount.
+      ;(function () {
+        var stored = null
+        try {
+          stored = localStorage.getItem('theme')
+        } catch (e) {}
+        var dark =
+          stored === 'dark' ||
+          (stored !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        if (dark) document.documentElement.classList.add('dark')
+      })()
+      // Sets the page language before first paint; src/composables/useLocale.ts takes over after mount.
+      ;(function () {
+        try {
+          if (localStorage.getItem('lang') === 'en') document.documentElement.lang = 'en'
+        } catch (e) {}
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

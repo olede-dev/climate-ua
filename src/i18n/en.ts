@@ -31,10 +31,35 @@ export const en: Messages = {
     heading: 'About the data',
     close: 'Close',
     statusHeading: 'Project status',
-    status: 'Work in progress: data layers arrive in the next stages.',
+    status: 'Work in progress: the map shows the Temperature layer; other layers follow.',
   },
   home: {
     map: 'Map',
-    comingSoon: 'Data layers coming soon',
+    loadError: 'The map data could not be loaded. Reload the page.',
+  },
+  layers: {
+    temp: {
+      name: 'Temperature',
+      legendTitle: 'Mean annual temperature compared with the 1991–2020 norm',
+      low: 'Colder',
+      high: 'Warmer',
+      norm: 'norm',
+      mean: 'Annual mean',
+      meanPeriod: 'Period mean',
+      normValue: 'norm',
+    },
+  },
+  tooltip: {
+    range: '{low} to {high}',
+    noData: 'No data',
+  },
+  timeline: {
+    label: 'Year or period',
+    play: 'Play the changes over time',
+    pause: 'Pause',
+    forecast: 'projection',
+    observed: 'observed',
+    future: 'Future',
+    scenario: 'Projection scenario',
   },
 }

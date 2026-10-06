@@ -22,6 +22,15 @@ const STYLE_URL = 'https://tiles.openfreemap.org/styles/dark'
 /** Muted water, so it frames the data layers without competing with them. */
 const WATER = { fill: '#15202e', line: '#1f3247' }
 
+/**
+ * Region names come from the data layers. The basemap's own first-level labels would repeat
+ * them, and OSM names Crimea twice there (SPEC §4.6), so that layer is left out.
+ */
+const DROPPED_LAYERS = new Set(['place_state'])
+
+/** Place labels drawn over the coloured regions: light and quiet, with a dark halo. */
+const PLACE_LABEL = { color: 'rgba(236, 238, 243, 0.78)', halo: 'rgba(10, 10, 12, 0.8)' }
+
 // Esri's label layers are left out of the fallback: they use Russian-derived names such as "Kiev".
 const ESRI_CANVAS_URL = (style: string) =>
   `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/${style}/MapServer/tile/{z}/{y}/{x}`
@@ -82,21 +91,38 @@ function adaptStyle(
 ): StyleSpecification {
   const water = WATER
   const label = ['coalesce', ['get', `name:${locale}`], ['get', 'name:latin'], ['get', 'name']]
-  const layers = style.layers.map((layer): LayerSpecification => {
+  const layers = style.layers.flatMap((layer): LayerSpecification[] => {
+    if (DROPPED_LAYERS.has(layer.id)) return []
     if (layer.type === 'fill' && layer['source-layer'] === 'water') {
-      return { ...layer, paint: { ...layer.paint, 'fill-color': water.fill } }
+      return [{ ...layer, paint: { ...layer.paint, 'fill-color': water.fill } }]
     }
     if (layer.type === 'line' && layer['source-layer'] === 'waterway') {
-      return { ...layer, paint: { ...layer.paint, 'line-color': water.line } }
+      return [{ ...layer, paint: { ...layer.paint, 'line-color': water.line } }]
     }
     if (layer.type === 'symbol' && layer.layout?.['text-field'] !== undefined) {
       const outside = hiddenLabels && (['!', ['within', hiddenLabels]] as FilterSpecification)
       const filter = outside
         ? ((layer.filter ? ['all', layer.filter, outside] : outside) as FilterSpecification)
         : layer.filter
-      return { ...layer, filter, layout: { ...layer.layout, 'text-field': label } } as typeof layer
+      const paint =
+        layer['source-layer'] === 'place'
+          ? {
+              ...layer.paint,
+              'text-color': PLACE_LABEL.color,
+              'text-halo-color': PLACE_LABEL.halo,
+              'text-halo-width': 1.2,
+            }
+          : layer.paint
+      return [
+        {
+          ...layer,
+          filter,
+          paint,
+          layout: { ...layer.layout, 'text-field': label },
+        } as typeof layer,
+      ]
     }
-    return layer
+    return [layer]
   })
   const relief = reliefLayers()
   const firstLabel = layers.findIndex((layer) => layer.type === 'symbol')

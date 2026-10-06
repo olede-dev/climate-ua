@@ -104,6 +104,9 @@ class ClimateLayer:
     #: Lower and upper bound of a valid annual value; deltas are clipped to it (SPEC §5.2).
     bounds: tuple[float | None, float | None]
     decimals: int
+    #: How a model's change joins the observed norm: added as it is, or scaled by how the
+    #: observed norm compares with the model's own (`scaled_delta`, SPEC §5.2).
+    delta: Literal["add", "scale"] = "add"
 
 
 CLIMATE_LAYERS = {
@@ -124,6 +127,7 @@ CLIMATE_LAYERS = {
         annual="sum",
         bounds=(0, 365),
         decimals=1,
+        delta="scale",
     ),
     "frost": ClimateLayer(
         id="frost",
@@ -133,6 +137,7 @@ CLIMATE_LAYERS = {
         annual="sum",
         bounds=(0, 365),
         decimals=1,
+        delta="scale",
     ),
     "drought": ClimateLayer(
         id="drought",
@@ -144,6 +149,10 @@ CLIMATE_LAYERS = {
         decimals=1,
     ),
 }
+
+#: Days added to both norms before scaling a delta: where a model or the observations have
+#: almost no such days, the ratio is unstable, and the change falls back to being added.
+SCALE_PSEUDO_DAYS = 1.0
 
 #: SPEI-6 below this marks a dry month (moderate drought and worse, SPEC §4.3).
 DRY_SPEI = -1.0

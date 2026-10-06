@@ -66,15 +66,15 @@ const TEMP_SCALE: ColorScale = {
 /**
  * One orange hue (SPEC §6), dim to bright, at hue 50° in OKLCH with even lightness steps from
  * L 0.465 to 0.87, checked with the `dataviz` validator (`--ordinal --mode dark`). Stops crowd
- * the low end: most oblasts had under 5 such days a year, the south may reach 25–40.
+ * the low end: most oblasts had under 5 such days a year; by 2081–2100 the south reaches 10–15.
  */
 const HEAT_SCALE: ColorScale = {
   stops: [
     [0, '#8d4002'],
-    [3, '#b85605'],
-    [8, '#e46e15'],
-    [15, '#ff9555'],
-    [30, '#fec6a8'],
+    [2, '#b85605'],
+    [5, '#e46e15'],
+    [10, '#ff9555'],
+    [20, '#fec6a8'],
   ],
   noData: '#26262a',
 }

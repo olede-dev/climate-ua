@@ -56,7 +56,7 @@ export const en: Messages = {
       {
         heading: 'The delta method',
         paragraphs: [
-          'Every model is off in its own way: one runs warmer than reality overall, another colder. So only the change is taken from a model: future = observed norm + (model in the future − model in the baseline). The change is computed for each model, then the median is taken. This keeps charts from jumping where the past meets the future. Days and months are clipped to what is possible (0–365 days, 0–12 months).',
+          'Every model is off in its own way: one runs warmer than reality overall, another colder. So only the change is taken from a model: future = observed norm + (model in the future − model in the baseline). The change is computed for each model, then the median is taken. This keeps charts from jumping where the past meets the future. Days and months are clipped to what is possible (0–365 days, 0–12 months). For heat and frost the change is also scaled: the models had three times the hot days of ERA5, so a model with twice the real number of such days in 1991–2020 adds half its change.',
         ],
       },
     ],

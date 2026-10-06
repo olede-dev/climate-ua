@@ -2,7 +2,8 @@
 
 History: ERA5 by year, averaged over each region by the area each grid cell shares with it.
 Future: the delta method of SPEC §5.2, per CMIP6 model, then the median and p10–p90 across
-models. Run `fetch_atlas.py` and `build_oblasts.py` first.
+models. Day counts above or below a threshold (heat, frost) scale the change (`scaled_delta`).
+Run `fetch_atlas.py` and `build_oblasts.py` first.
 """
 
 import geopandas as gpd
@@ -72,6 +73,20 @@ def clip(values: np.ndarray, layer: config.ClimateLayer) -> np.ndarray:
     return np.clip(values, low, high) if low is not None or high is not None else values
 
 
+def scaled_delta(delta: np.ndarray, norm: float, model_norm: np.ndarray) -> np.ndarray:
+    """A model's change in a count of threshold days, rescaled to the observed climate.
+
+    A model that runs warm has more hot days in its baseline, and as it warms its count grows
+    from that larger base: added to the observed norm as it is, the change overshoots (the
+    median model had 3× the hot days of ERA5 in 1991–2020, and the 2021–2040 projection
+    landed well above the observed 2021–2025). Scaling by norm / model norm keeps the model's
+    relative change. `SCALE_PSEUDO_DAYS` on both sides keeps the ratio finite where either has
+    almost no such days, and there the change is close to added.
+    """
+    k = config.SCALE_PSEUDO_DAYS
+    return delta * (norm + k) / (model_norm + k)
+
+
 def build(layer: config.ClimateLayer, regions: gpd.GeoDataFrame) -> dict:
     country = gpd.GeoDataFrame({"id": [COUNTRY_ID]}, geometry=[regions.geometry.union_all()], crs=regions.crs)
     areas = gpd.GeoDataFrame(
@@ -94,8 +109,12 @@ def build(layer: config.ClimateLayer, regions: gpd.GeoDataFrame) -> dict:
         values = history.sel(region=region_id).values
         future = {}
         for name, period in config.FUTURE_PERIODS.items():
-            delta = (period_mean(modelled, period) - model_norm).sel(region=region_id).values
-            per_model = clip(float(norm.sel(region=region_id)) + delta, layer)
+            base = model_norm.sel(region=region_id).values
+            delta = period_mean(modelled, period).sel(region=region_id).values - base
+            observed_norm = float(norm.sel(region=region_id))
+            if layer.delta == "scale":
+                delta = scaled_delta(delta, observed_norm, base)
+            per_model = clip(observed_norm + delta, layer)
             p10, median, p90 = np.percentile(per_model, [10, 50, 90])
             future[name] = {k: round(float(v), layer.decimals) for k, v in (("median", median), ("p10", p10), ("p90", p90))}
         return {

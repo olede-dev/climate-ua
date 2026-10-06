@@ -19,6 +19,21 @@ npm run dev
 npm run lint && npm test -- --run && npm run build
 ```
 
+## Дані
+
+Сайт статичний: усе, що він показує, лежить у `public/data/` і закомічене. Ці файли будує конвеєр на Python у `pipeline/` (керується [uv](https://docs.astral.sh/uv/)). Його запускають вручну, а не в CI.
+
+Перед першим запуском потрібен акаунт [Copernicus CDS](https://cds.climate.copernicus.eu/): ключ у `~/.cdsapirc` і прийнята ліцензія датасету [C3S Atlas](https://cds.climate.copernicus.eu/datasets/multi-origin-c3s-atlas).
+
+```bash
+cd pipeline
+uv run python build_oblasts.py   # межі областей → public/data/oblasts.geojson
+uv run python fetch_atlas.py     # ERA5 і CMIP6 → pipeline/data/raw (кілька хвилин)
+uv run python build_climate.py   # шари клімату → public/data/layers/*.json
+```
+
+Джерела: Copernicus Interactive Climate Atlas (C3S, CC BY 4.0); межі — geoBoundaries (© OpenStreetMap, ODbL) і Natural Earth.
+
 ## Стек
 
 Vue 3 + TypeScript, Vite, Pinia, TanStack Query, MapLibre GL, Chart.js, Tailwind CSS v4, Vitest. Деплой на GitHub Pages при пуші в `main`.

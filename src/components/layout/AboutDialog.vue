@@ -3,6 +3,9 @@ import { useTemplateRef } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
 
+const REPO_URL = 'https://github.com/olede-dev/climate-ua'
+const link = 'rounded text-accent-ink hover:underline focus-ring'
+
 const { t } = useLocale()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')
 let opener: HTMLElement | null = null
@@ -61,9 +64,42 @@ defineExpose({ open })
         </button>
       </div>
 
+      <p>{{ t.about.intro }}</p>
+
+      <section v-for="section in t.about.sections" :key="section.heading" class="space-y-1">
+        <h3 class="font-semibold">{{ section.heading }}</h3>
+        <p v-for="paragraph in section.paragraphs" :key="paragraph">{{ paragraph }}</p>
+      </section>
+
       <section class="space-y-1">
-        <h3 class="font-semibold">{{ t.about.statusHeading }}</h3>
-        <p>{{ t.about.status }}</p>
+        <h3 class="font-semibold">{{ t.about.measuresHeading }}</h3>
+        <dl class="space-y-1">
+          <div v-for="measure in t.about.measures" :key="measure.name">
+            <dt class="inline font-medium">{{ measure.name }}:</dt>
+            {{ ' ' }}
+            <dd class="inline">{{ measure.text }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="space-y-1">
+        <h3 class="font-semibold">{{ t.about.limitsHeading }}</h3>
+        <ul class="list-disc space-y-1 pl-5">
+          <li v-for="limit in t.about.limits" :key="limit">{{ limit }}</li>
+        </ul>
+      </section>
+
+      <section class="space-y-1">
+        <h3 class="font-semibold">{{ t.about.sourcesHeading }}</h3>
+        <ul class="space-y-1">
+          <li v-for="source in t.about.sources" :key="source.url">
+            <a :class="link" :href="source.url" target="_blank" rel="noopener">{{ source.name }}</a>
+            <span class="text-ink-muted"> — {{ source.detail }}</span>
+          </li>
+        </ul>
+        <p class="pt-2">
+          <a :class="link" :href="REPO_URL" target="_blank" rel="noopener">{{ t.about.code }}</a>
+        </p>
       </section>
     </div>
   </dialog>

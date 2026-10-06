@@ -30,9 +30,103 @@ export const en: Messages = {
   about: {
     heading: 'About the data',
     close: 'Close',
-    statusHeading: 'Project status',
-    status:
-      'Work in progress: the map shows water, temperature, extreme heat, frost, drought and rivers, and a region card names its climate type now and later. The mobile layout and the data notes follow.',
+    intro:
+      'The map shows how the climate and water resources of Ukraine have changed and what to expect next. Every number comes from a model: a reanalysis, a hydrological model or climate models, not from readings at individual weather stations.',
+    sections: [
+      {
+        heading: 'The past',
+        paragraphs: [
+          'Temperature, extreme heat, frost and drought come from the ERA5 reanalysis, year by year since 1950. A region’s value is the mean over the grid cells (~25 km), weighted by how much of each cell lies in the region. The norm is 1991–2020.',
+          'Water comes from the PCR-GLOBWB 2 hydrological model of Utrecht University, 1980–2019, on HydroBASINS subbasins. Rivers come from the GloFAS v4 reanalysis, 1997–2025.',
+        ],
+      },
+      {
+        heading: 'The future: why periods',
+        paragraphs: [
+          'Climate models do not forecast the weather of a given year: 2047 in a model is just one possible year. So the future is shown as a 20-year mean (2021–2040, 2041–2060, 2081–2100), and for water as a 30-year mean around 2030, 2050 and 2080.',
+          'Climate layers show the median of 17–23 CMIP6 models (depending on the measure); the brackets give the range that 80% of the models fall in. Water shows the median of 5 WRI Aqueduct models, without a range.',
+        ],
+      },
+      {
+        heading: 'Scenarios',
+        paragraphs: [
+          'Climate layers use SSP2-4.5: the world cuts emissions slowly. Water uses SSP3-7.0, which WRI calls “business as usual”: WRI Aqueduct has no SSP2-4.5. So water and climate projections should not be compared directly.',
+        ],
+      },
+      {
+        heading: 'The delta method',
+        paragraphs: [
+          'Every model is off in its own way: one runs warmer than reality overall, another colder. So only the change is taken from a model: future = observed norm + (model in the future − model in the baseline). The change is computed for each model, then the median is taken. This keeps charts from jumping where the past meets the future. Days and months are clipped to what is possible (0–365 days, 0–12 months).',
+        ],
+      },
+    ],
+    measuresHeading: 'What each layer means',
+    measures: [
+      {
+        name: 'Water',
+        text: 'water stress: the share of available renewable water that people withdraw for irrigation, households and industry. WRI classes: under 10% is low, over 80% extremely high. The Utrecht data have no available water, so for the past the WRI baseline stress (1979–2019) changes with each year’s withdrawals; available water is the mean. All of Ukraine is the mean of the subbasins, weighted by their area.',
+      },
+      {
+        name: 'Temperature',
+        text: 'mean annual temperature; the map shows its departure from the 1991–2020 norm.',
+      },
+      { name: 'Extreme heat', text: 'days with a maximum temperature above 35 °C.' },
+      { name: 'Frost', text: 'days with a minimum temperature below 0 °C.' },
+      {
+        name: 'Drought',
+        text: 'months with SPEI-6 below −1 (moderate drought or worse), averaged over the region. The C3S Atlas standardises the index on 1971–2005 (1971–2010 for ERA5), not on 1991–2020.',
+      },
+      {
+        name: 'Rivers',
+        text: 'low-flow days: a river carries less water than on 9 in 10 of the same days of 1997–2020. There is no projection for rivers.',
+      },
+      {
+        name: 'Climate type',
+        text: 'the Köppen–Geiger classification by Beck et al. (2023) on a 1 km grid; for a region, the class covering most of it.',
+      },
+    ],
+    limitsHeading: 'Limitations',
+    limits: [
+      'All data are modelled. Conditions in a particular town or village may differ from the mean of its region or subbasin.',
+      'Climate models have a resolution of about 100 km: a small region is covered by only 1–3 cells.',
+      'The Kakhovka Reservoir was destroyed in June 2023. The water data (to 2019) and the WRI projections do not reflect this; the cards of the lower Dnipro subbasins carry a note.',
+      'There are no ground observations from the temporarily occupied territories, but every source is a gridded model, so the map covers all of Ukraine, Crimea included.',
+    ],
+    sourcesHeading: 'Sources',
+    sources: [
+      {
+        name: 'Utrecht University, World Water Map (PCR-GLOBWB 2)',
+        detail: 'Sutanudjaja et al. (2018), CC BY 4.0',
+        url: 'https://doi.org/10.24416/UU01-0Q6SU6',
+      },
+      {
+        name: 'WRI Aqueduct 4.0',
+        detail: 'World Resources Institute',
+        url: 'https://www.wri.org/aqueduct',
+      },
+      {
+        name: 'Copernicus Interactive Climate Atlas',
+        detail: 'C3S / ECMWF: ERA5, CMIP6; CC BY 4.0',
+        url: 'https://atlas.climate.copernicus.eu/',
+      },
+      {
+        name: 'Beck et al. (2023), Scientific Data 10, 724',
+        detail: 'Köppen–Geiger maps, CC BY 4.0',
+        url: 'https://doi.org/10.1038/s41597-023-02549-6',
+      },
+      {
+        name: 'GloFAS v4 via rivers-ua',
+        detail: 'Copernicus Emergency Management Service',
+        url: 'https://github.com/olede-dev/rivers-ua',
+      },
+      {
+        name: 'geoBoundaries and Natural Earth',
+        detail:
+          'region boundaries: © OpenStreetMap, ODbL; subbasins: HydroBASINS from WRI Aqueduct',
+        url: 'https://www.geoboundaries.org/',
+      },
+    ],
+    code: 'Code and data pipeline',
   },
   home: {
     map: 'Map',
@@ -42,6 +136,13 @@ export const en: Messages = {
     hotspots: 'Hotspots',
     hotspotsHint:
       'Show the subbasins where people withdraw more than {value} of the available water',
+  },
+  table: {
+    oblasts: 'Oblast',
+    basins: 'Subbasin',
+    stations: 'Station',
+    value: 'Value',
+    hint: 'Pick a region to open its card.',
   },
   panel: {
     country: 'Ukraine',

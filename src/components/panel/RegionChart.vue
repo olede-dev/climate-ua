@@ -34,15 +34,16 @@ const props = defineProps<{
   title: string
 }>()
 
+/** Text takes the muted grey for glass (main.css): the chart sits on the glass panel over the map. */
 const PALETTES = {
   light: {
-    text: '#6e6e73',
+    text: '#5c5c61',
     grid: 'rgba(0, 0, 0, 0.06)',
     reference: '#6e6e73',
     mark: '#1d1d1f',
   },
   dark: {
-    text: '#a1a1a6',
+    text: '#b0b0b5',
     grid: 'rgba(255, 255, 255, 0.08)',
     reference: '#a1a1a6',
     mark: '#f5f5f7',

@@ -44,8 +44,9 @@ const RegionChart = defineAsyncComponent({
 })
 
 const heading = useTemplateRef<HTMLHeadingElement>('heading')
-// The card opens beside the map; move focus so keyboard and screen-reader users follow.
-onMounted(() => heading.value?.focus())
+// The card opens beside the map; move focus so keyboard and screen-reader users follow. Where
+// the card sits under the map, HomeView scrolls to it, so focus must not jump the page first.
+onMounted(() => heading.value?.focus({ preventScroll: true }))
 </script>
 
 <template>

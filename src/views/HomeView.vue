@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FeatureCollection, Point } from 'geojson'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 
 import AppFooter from '../components/layout/AppFooter.vue'
 import AppHeader from '../components/layout/AppHeader.vue'
@@ -8,6 +8,7 @@ import type { BasemapKind } from '../components/map/basemap'
 import ClimateMap, { type RegionHover } from '../components/map/ClimateMap.vue'
 import HotspotToggle from '../components/map/HotspotToggle.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
+import RegionTable, { type RegionRow } from '../components/map/RegionTable.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
 import LayerList from '../components/panel/LayerList.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
@@ -157,6 +158,19 @@ const selected = computed(() =>
   ui.regionId === null ? null : { id: ui.regionId, ...regionLabel(ui.regionId) },
 )
 
+/** The map as a table, by name (SPEC §8.8). */
+const tableRows = computed<RegionRow[]>(() =>
+  Object.keys(layer.value?.regions ?? {})
+    .map((id) => {
+      const value = shownValue(id)
+      return { id, name: regionLabel(id).name, value: value ? format(value.median) : null }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, locale.value)),
+)
+const tableCaption = computed(
+  () => `${copy.value.legendTitle} · ${stepLabel.value}. ${t.value.table.hint}`,
+)
+
 /** Regions above the layer's hotspot threshold now, or null when hotspots are off. */
 const hot = computed<string[] | null>(() => {
   const above = config.value.hotspotAbove
@@ -186,6 +200,23 @@ const hotspotsHint = computed(() =>
 const isWide = useMediaQuery('(min-width: 48rem)')
 /** The panel's width (`w-[22rem]`) and the gutter beside it. */
 const PANEL_INSET = 352 + 12
+
+/** The panel under the map on narrow screens. */
+const sheet = useTemplateRef<InstanceType<typeof SidePanel>>('sheet')
+// A region picked on the map opens its card under it, out of sight on a phone: bring it up. A
+// region from the URL waits, so a shared link still opens on the map.
+watch(
+  () => ui.regionId,
+  async (id) => {
+    if (id === null || isWide.value) return
+    await nextTick()
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ;(sheet.value?.$el as HTMLElement | undefined)?.scrollIntoView({
+      block: 'start',
+      behavior: reduce ? 'auto' : 'smooth',
+    })
+  },
+)
 
 const hover = ref<RegionHover | null>(null)
 const tooltip = computed(() => {
@@ -229,6 +260,15 @@ const tooltip = computed(() => {
         class="relative isolate h-[62dvh] min-w-0 shrink-0 overflow-hidden rounded-2xl shadow-card md:h-auto md:flex-1"
         :aria-label="t.home.map"
       >
+        <RegionTable
+          :rows="tableRows"
+          :caption="tableCaption"
+          :region-column="t.table[config.geometry]"
+          :value-column="t.table.value"
+          :no-data="t.tooltip.noData"
+          :selected-id="ui.regionId"
+          @select="ui.regionId = $event"
+        />
         <ClimateMap
           :regions="regionsFile"
           :markers="markers"
@@ -304,7 +344,8 @@ const tooltip = computed(() => {
       </aside>
       <SidePanel
         v-if="!isWide && layer && step !== null"
-        class="rounded-2xl bg-surface shadow-card"
+        ref="sheet"
+        class="scroll-mt-20 rounded-2xl bg-surface shadow-card"
         :file="layer"
         :config="config"
         :copy="copy"

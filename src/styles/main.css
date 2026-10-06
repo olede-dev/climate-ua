@@ -13,10 +13,12 @@
   --ui-surface: #ffffff;
   /* Inset grouped rows on a surface. */
   --ui-group: #f5f5f7;
-  --ui-glass: rgb(255 255 255 / 0.82);
+  --ui-glass: rgb(255 255 255 / 0.86);
+  /* Muted text on glass over the dark map: 4.9:1 at worst (over the darkest map colour). */
+  --ui-ink-muted-glass: #5c5c61;
   --ui-ink: #1d1d1f;
-  /* 4.9:1 on the surface, 4.5:1 on the canvas: the lightest grey allowed for text. */
-  --ui-ink-muted: #6e6e73;
+  /* 4.7:1 on the selected-row fill, the lightest background it sits on (SPEC §8.8). */
+  --ui-ink-muted: #6a6a6f;
   --ui-line: rgb(0 0 0 / 0.08);
   --ui-fill: rgb(118 118 128 / 0.12);
   --ui-fill-strong: rgb(118 118 128 / 0.2);
@@ -34,7 +36,9 @@
   --ui-canvas: #121214;
   --ui-surface: #1c1c1e;
   --ui-group: #2c2c2e;
-  --ui-glass: rgb(36 36 38 / 0.8);
+  --ui-glass: rgb(36 36 38 / 0.86);
+  /* 5:1 at worst (over the brightest layer colour). */
+  --ui-ink-muted-glass: #b0b0b5;
   --ui-ink: #f5f5f7;
   --ui-ink-muted: #a1a1a6;
   --ui-line: rgb(255 255 255 / 0.1);
@@ -70,8 +74,12 @@
   --shadow-float: 0 0 0 0.5px var(--ui-ring), 0 8px 28px var(--ui-shadow-color);
 }
 
-/* Translucent panel over the map or page; opaque enough that text keeps its contrast. */
+/*
+ * Translucent panel over the map or page; opaque enough that text keeps its contrast. Whatever
+ * the map shows beneath, muted text inside stays at 4.5:1 or more (SPEC §8.8).
+ */
 @utility glass {
+  --ui-ink-muted: var(--ui-ink-muted-glass);
   background-color: var(--ui-glass);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);

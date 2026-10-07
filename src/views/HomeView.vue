@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import type { FeatureCollection, Point } from 'geojson'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 
 import AppFooter from '../components/layout/AppFooter.vue'
 import AppHeader from '../components/layout/AppHeader.vue'
 import type { BasemapKind } from '../components/map/basemap'
 import ClimateMap, { type RegionHover } from '../components/map/ClimateMap.vue'
-import HotspotToggle from '../components/map/HotspotToggle.vue'
 import MapLegend from '../components/map/MapLegend.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
 import RegionTable, { type RegionRow } from '../components/map/RegionTable.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
-import PeriodPicker from '../components/map/PeriodPicker.vue'
 import WaterTabs from '../components/map/WaterTabs.vue'
 import LayerList from '../components/panel/LayerList.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
@@ -26,33 +23,44 @@ import { stationPoints } from '../lib/rivers'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, valueAt, type StepValue } from '../lib/series'
 import { isFuture, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
-import { WATER_USE_VIEWS, waterUseCopy, waterUseLayer, waterUseScale } from '../lib/waterUse'
+import {
+  WATER_SCENARIOS,
+  WATER_USE_VIEWS,
+  blankEmptyBasins,
+  waterProjectionLayer,
+  waterUseCopy,
+  waterUseLayer,
+  waterUseScale,
+} from '../lib/waterUse'
 import { useUiStore } from '../stores/ui'
-import type { FuturePeriod, LayerFile, RegionsFile, WaterView } from '../types'
+import type { LayerFile, RegionsFile, WaterView } from '../types'
 
 useUrlSync()
 const { locale, t } = useLocale()
 const ui = useUiStore()
 const basemap = ref<BasemapKind>('openfreemap')
 
-/** The water layer's demand or gap by year; its future view is the stress layer file. */
+/** The water layer's demand or gap by year; its future view is the projected gap by year. */
 const waterHistory = computed(() => ui.layer === 'water' && ui.waterView !== 'future')
-const waterUseQuery = useWaterUse(waterHistory)
 const waterFuture = computed(() => ui.layer === 'water' && ui.waterView === 'future')
-const layerQuery = useLayer(() => ui.layer)
+const waterUseQuery = useWaterUse(() => ui.layer === 'water')
+// The water layer comes from water-use.json alone.
+const layerQuery = useLayer(() => (ui.layer === 'water' ? null : ui.layer))
 const oblastsQuery = useOblasts()
 // Basin names list their oblasts, so the oblasts load for every layer.
 const basinsQuery = useBasins()
 const layer = computed<LayerFile | undefined>(() => {
-  if (!waterHistory.value) return layerQuery.data.value
+  if (ui.layer !== 'water') return layerQuery.data.value
   const file = waterUseQuery.data.value
-  return file && ui.waterView !== 'future'
-    ? waterUseLayer(file, ui.waterView, ui.waterSector)
-    : undefined
+  if (!file) return undefined
+  if (ui.waterView === 'future') return waterProjectionLayer(file, ui.waterScenario)
+  const history = waterUseLayer(file, ui.waterView, ui.waterSector)
+  // A zero gap is a real value (renewable water covers the demand), not missing data.
+  return ui.waterView === 'gap' ? history : blankEmptyBasins(history)
 })
 const config = computed(() =>
-  waterHistory.value && layer.value && ui.waterView !== 'future'
-    ? waterUseConfig(ui.waterView, waterUseScale(layer.value))
+  ui.layer === 'water' && layer.value
+    ? waterUseConfig(waterUseScale(layer.value))
     : layerConfig(ui.layer),
 )
 // Stations are drawn over the oblast outlines (SPEC §6).
@@ -87,9 +95,7 @@ const axis = computed<TimeAxis | null>(() =>
 /** The step on screen: the stored one fitted to this layer's axis, or its latest observed year. */
 const step = computed<TimeStep | null>(() => {
   if (!axis.value) return null
-  const shown = snapStep(axis.value, ui.time ?? axis.value.to)
-  // The future view shows periods only: a year from a link opens the headline period.
-  return waterFuture.value && !isFuture(shown) ? (config.value.headlinePeriod ?? shown) : shown
+  return snapStep(axis.value, ui.time ?? axis.value.to)
 })
 // A step from another layer or a stale URL is replaced by the one actually shown.
 watch(step, (shown) => {
@@ -121,34 +127,45 @@ const mapValues = computed<Record<string, number | null>>(() =>
 )
 
 const copy = computed(() =>
-  waterHistory.value && ui.waterView !== 'future'
-    ? waterUseCopy(t.value, ui.waterView, ui.waterSector)
+  ui.layer === 'water'
+    ? waterUseCopy(t.value, ui.waterView === 'future' ? 'gap' : ui.waterView, ui.waterSector)
     : t.value.layers[config.value.id],
 )
 const waterState = computed(() =>
   ui.layer === 'water' ? { view: ui.waterView, sector: ui.waterSector } : null,
 )
-/** The projection periods as buttons: each is 30 years around the year named (Aqueduct). */
-const periodChoices = computed(() =>
-  (layer.value?.futurePeriods ?? []).map((id) => ({
-    id,
-    label: id,
-    note: `${Number(id) - 15}–${Number(id) + 15}`,
-  })),
-)
-const periodModel = computed<FuturePeriod>({
-  get: () => (step.value !== null && isFuture(step.value) ? step.value : '2050'),
-  set: (value) => (ui.time = value),
+/** What the projection card adds to its layer: the models' range and the observed gap. */
+const projection = computed(() => {
+  const file = waterUseQuery.data.value
+  if (!waterFuture.value || !file) return null
+  return {
+    scenario: ui.waterScenario,
+    band: file.projection.scenarios[ui.waterScenario].country,
+    observed: { series: file.views.gap.sectors.total.country, year: file.history.to },
+  }
 })
+/** The open basin's chart in the future view: its observed gap, then the projection. */
+const regionProjection = computed(() => {
+  const file = waterUseQuery.data.value
+  const id = ui.regionId
+  if (!waterFuture.value || !file || id === null) return null
+  const band = file.projection.scenarios[ui.waterScenario].regions[id]
+  const observed = waterUseLayer(file, 'gap', 'total')
+  const series = observed.regions[id]
+  return band && series ? { file: observed, series, from: file.projection.from, band } : null
+})
+const scenarioChoices = computed(() =>
+  WATER_SCENARIOS.map((id) => ({ id, label: t.value.waterUse.scenarios[id].name })),
+)
 const waterViews = computed(() =>
   WATER_USE_VIEWS.map((id) => ({ id, label: t.value.waterUse.views[id] })),
 )
 
-/** The future view opens on the headline period; history returns to the latest year. */
+/** The future view opens on this year; history returns to the latest observed year. */
 function setWaterView(view: WaterView) {
   ui.waterView = view
   ui.playing = false
-  ui.time = view === 'future' ? layerConfig('water').headlinePeriod : null
+  ui.time = view === 'future' ? new Date().getFullYear() : null
 }
 // The unit comes with the copy: a count of days is a word that agrees with the number.
 const valueFormatter = computed(() =>
@@ -188,6 +205,10 @@ const legend = computed(() => {
 
 const stepLabel = computed(() => {
   if (step.value === null) return ''
+  if (waterFuture.value) {
+    const name = t.value.waterUse.scenarios[ui.waterScenario].name
+    return `${step.value} · ${t.value.timeline.forecast} (${name})`
+  }
   if (!isFuture(step.value)) return String(step.value)
   return `${formatPeriod(step.value)} · ${t.value.timeline.forecast} (${layer.value?.scenario})`
 })
@@ -238,31 +259,6 @@ const tableRows = computed<RegionRow[]>(() =>
 )
 const tableCaption = computed(
   () => `${copy.value.legendTitle} · ${stepLabel.value}. ${t.value.table.hint}`,
-)
-
-/** Regions above the layer's hotspot threshold now, or null when hotspots are off. */
-const hot = computed<string[] | null>(() => {
-  const above = config.value.hotspotAbove
-  if (above === undefined || !ui.hotspots) return null
-  return Object.entries(mapValues.value)
-    .filter(([, value]) => value !== null && value > above)
-    .map(([id]) => id)
-})
-const hotPoints = computed<FeatureCollection<Point>>(() => {
-  const ids = new Set(hot.value ?? [])
-  return {
-    type: 'FeatureCollection',
-    features: (basinsQuery.data.value?.features ?? [])
-      .filter((f) => ids.has(f.properties.id))
-      .map((f) => ({
-        type: 'Feature',
-        properties: { id: f.properties.id },
-        geometry: { type: 'Point', coordinates: f.properties.point },
-      })),
-  }
-})
-const hotspotsHint = computed(() =>
-  t.value.home.hotspotsHint.replace('{value}', format(config.value.hotspotAbove ?? 0, false)),
 )
 
 /** Tailwind's `md`: the panel floats over the map; below it, a card under the map. */
@@ -345,8 +341,6 @@ const tooltip = computed(() => {
           :scale="config.scale"
           :future="step !== null && isFuture(step)"
           :selected-id="ui.regionId"
-          :hot="hot"
-          :hot-points="hotPoints"
           :inset-left="isWide ? PANEL_INSET : 0"
           @basemap="basemap = $event"
           @hover="hover = $event"
@@ -373,19 +367,18 @@ const tooltip = computed(() => {
           />
           <!-- Gap or demand over the map, as on the World Water Map. -->
           <WaterTabs
-            v-if="waterHistory && ui.waterView !== 'future'"
+            v-if="waterHistory"
             v-model="ui.waterView"
             class="absolute top-3 left-1/2 z-10 -translate-x-1/2 md:left-[calc(50%+11rem)]"
             :views="waterViews"
             :label="t.waterUse.viewsLabel"
           />
-          <!-- Hotspots beside the zoom buttons (SPEC §8.1). -->
-          <HotspotToggle
-            v-if="config.hotspotAbove !== undefined"
-            v-model="ui.hotspots"
-            class="absolute top-3 right-14 z-10"
-            :label="t.home.hotspots"
-            :hint="hotspotsHint"
+          <WaterTabs
+            v-else-if="waterFuture"
+            v-model="ui.waterScenario"
+            class="absolute top-3 left-1/2 z-10 -translate-x-1/2 md:left-[calc(50%+11rem)]"
+            :views="scenarioChoices"
+            :label="t.waterUse.scenariosLabel"
           />
           <!-- The panel on the left above the timeline, which spans the map (SPEC §8.1). -->
           <div class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3">
@@ -400,6 +393,8 @@ const tooltip = computed(() => {
                 :format="valueFormatter"
                 :region="selected"
                 :water="waterState"
+                :projection="projection"
+                :region-projection="regionProjection"
                 @close="ui.regionId = null"
                 @sector="ui.waterSector = $event"
                 @view="setWaterView"
@@ -417,19 +412,12 @@ const tooltip = computed(() => {
                 :middle="config.display === 'anomaly' ? copy.norm : undefined"
               />
             </div>
-            <PeriodPicker
-              v-if="waterFuture && layer"
-              v-model="periodModel"
-              :periods="periodChoices"
-              :label="t.waterUse.periodsLabel"
-              :scenario="layer.scenario"
-            />
             <TimeSlider
-              v-else-if="axis && layer"
+              v-if="axis && layer"
               v-model="timeModel"
               v-model:playing="ui.playing"
               :axis="axis"
-              :scenario="layer.scenario"
+              :scenario="waterFuture ? t.waterUse.scenarios[ui.waterScenario].name : layer.scenario"
             />
           </div>
         </ClimateMap>
@@ -453,6 +441,8 @@ const tooltip = computed(() => {
         :format="valueFormatter"
         :region="selected"
         :water="waterState"
+        :projection="projection"
+        :region-projection="regionProjection"
         @close="ui.regionId = null"
         @sector="ui.waterSector = $event"
         @view="setWaterView"

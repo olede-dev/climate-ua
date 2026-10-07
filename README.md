@@ -39,16 +39,14 @@ npm run lint && npm test -- --run && npm run build
 Перед першим запуском:
 
 1. Акаунт [Copernicus CDS](https://cds.climate.copernicus.eu/): ключ у `~/.cdsapirc` і прийнята ліцензія датасету [C3S Atlas](https://cds.climate.copernicus.eu/datasets/multi-origin-c3s-atlas).
-2. Пакет [World Water Map](https://doi.org/10.24416/UU01-0Q6SU6) Утрехтського університету — вручну через браузер (репозиторій закритий перевіркою на ботів). Потрібні 8 файлів `demand/gridded_annual/*GrossDemand_annuaTot_output.nc` і `gap/gridded_annual/*WaterGap_annuaTot_output.nc` (~760 МБ) у `pipeline/data/raw/wwm/` зі збереженням структури папок.
 
 ```bash
 cd pipeline
 uv run python build_oblasts.py   # межі областей → public/data/oblasts.geojson
 uv run python fetch_atlas.py     # ERA5 і CMIP6 → pipeline/data/raw (кілька хвилин)
 uv run python build_climate.py   # → public/data/layers/{temp,heat,frost,drought}.json
-uv run python fetch_aqueduct.py  # WRI Aqueduct 4.0, ~260 МБ
+uv run python fetch_wwm_basins.py # басейни World Water Map з даними й прогнозом (ArcGIS)
 uv run python build_basins.py    # суббасейни → public/data/basins.geojson
-uv run python build_water.py     # Утрехт + Aqueduct → public/data/layers/water.json
 uv run python build_water_use.py # попит і дефіцит по галузях → public/data/water-use.json
 uv run python fetch_koppen.py    # карти Кеппена–Гейгера, ~130 МБ
 uv run python build_koppen.py    # → public/data/koppen.json
@@ -60,8 +58,7 @@ uv run python build_rivers.py    # → public/data/rivers.json
 
 ## Джерела
 
-- Вода, минуле — [World Water Map Data Package](https://doi.org/10.24416/UU01-0Q6SU6), Утрехтський університет (модель PCR-GLOBWB 2, Sutanudjaja et al. 2018), CC BY 4.0.
-- Вода, майбутнє, і межі суббасейнів — [WRI Aqueduct 4.0](https://www.wri.org/aqueduct), World Resources Institute.
+- Вода — модель PCR-GLOBWB 2 Утрехтського університету (Sutanudjaja et al. 2018) у вигляді [World Water Map](https://worldwatermap.nationalgeographic.org/) (National Geographic Society): суббасейни HydroBASINS рівня 7, попит і дефіцит 1980–2019 та прогноз дефіциту до 2050 з їхнього сервісу ArcGIS. Пакет даних — [doi:10.24416/UU01-0Q6SU6](https://doi.org/10.24416/UU01-0Q6SU6), CC BY 4.0.
 - Клімат — [Copernicus Interactive Climate Atlas](https://atlas.climate.copernicus.eu/) (C3S / ECMWF: ERA5, CMIP6), CC BY 4.0.
 - Тип клімату — [Beck et al. (2023)](https://doi.org/10.1038/s41597-023-02549-6), *Scientific Data* 10, 724, CC BY 4.0.
 - Річки — реаналіз GloFAS v4 (Copernicus Emergency Management Service) через [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api).

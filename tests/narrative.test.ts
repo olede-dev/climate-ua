@@ -7,7 +7,6 @@ import {
   fill,
   inRegion,
   locativeUk,
-  regionStory,
   strong,
   summaryStory,
   type Rich,
@@ -53,7 +52,6 @@ const plain = (rich: Rich) =>
     .map((s) => s.text)
     .join('')
     .replaceAll('\u00a0', ' ')
-const bold = (rich: Rich) => rich.filter((s) => s.strong).map((s) => plain([s]))
 
 describe('fill', () => {
   it('keeps bold slots apart and merges plain text', () => {
@@ -86,36 +84,6 @@ describe('inRegion', () => {
   })
 })
 
-describe('regionStory', () => {
-  it('tells the norm, the observed year and the headline projection', () => {
-    const story = regionStory(input(2025))
-    expect(plain(story)).toBe(
-      'У 1991–2020 середня температура у Харківській області була 8,7 °C. ' +
-        'У 2025 році — 10,4 °C, на 1,7 °C вище за норму. ' +
-        'У 2041–2060 очікується 10,5 °C (від 10,1 до 11,4), на 1,8 °C вище за норму.',
-    )
-    expect(bold(story)).toEqual(['8,7 °C', '10,4 °C', '1,7 °C', '10,5 °C', '1,8 °C'])
-  })
-
-  it('on a future step, names that period and the last observed year', () => {
-    const story = plain(regionStory(input('2081-2100')))
-    expect(story).toContain('У 2025 році — 10,4 °C')
-    expect(story).toContain('У 2081–2100 очікується 11,5 °C, на 2,8 °C вище за норму.')
-  })
-
-  it('says so where a year or a period has no value', () => {
-    const story = plain(regionStory({ ...input(2024), headline: '2021-2040' }))
-    expect(story).toContain('За 2024 рік даних немає.')
-    expect(story).toContain('Прогнозу на 2021–2040 немає.')
-  })
-
-  it('words a colder year and a year at the norm', () => {
-    expect(plain(regionStory(input(2023)))).toContain('на 1,2 °C нижче за норму')
-    const atNorm = { ...input(2023), series: { ...series, norm: 7.52 } }
-    expect(plain(regionStory(atNorm))).toContain('— 7,5 °C, як у нормі.')
-  })
-})
-
 describe('summaryStory', () => {
   it('names the place in the observed sentence', () => {
     expect(plain(summaryStory(input(2025, uk.story.country)))).toMatch(
@@ -133,37 +101,6 @@ describe('summaryStory', () => {
     expect(plain(story)).toBe(
       'In 2025, the mean temperature in Ukraine was 10.4 °C, 1.7 °C above the norm. ' +
         'For 2041–2060, the projection is 10.5 °C (10.1 to 11.4), 1.8 °C above the norm.',
-    )
-  })
-})
-
-describe('a layer without projections', () => {
-  const rivers: RegionSeries = { norm: 36.7, history: [20, 58], future: {} }
-  const riversInput: StoryInput = {
-    file: {
-      ...file,
-      layer: 'rivers',
-      geometry: 'stations',
-      scenario: null,
-      norm: { from: 1997, to: 1998 },
-      history: { from: 1997, to: 1998 },
-      futurePeriods: [],
-    },
-    series: rivers,
-    step: 1998,
-    headline: null,
-    where: 'на річці Дніпро (Київ)',
-    layerCopy: uk.layers.rivers.story,
-    copy: uk.story,
-    format: valueFormat('uk', uk.layers.rivers.unit, 0),
-    decimals: 0,
-  }
-
-  it('says there is no forecast instead of a projection', () => {
-    expect(plain(regionStory(riversInput))).toBe(
-      'У 1997–1998 на річці Дніпро (Київ) було в середньому 37 днів маловоддя на рік. ' +
-        'У 1998 році — 58 днів, на 21 день більше, ніж у середньому. ' +
-        'Прогнозу для річок немає.',
     )
   })
 })

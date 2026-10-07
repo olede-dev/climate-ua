@@ -5,15 +5,24 @@ import { useLocale } from '../../composables/useLocale'
 import type { LayerConfig } from '../../config/layers'
 import type { Messages } from '../../i18n'
 import { plural, type ValueFormat } from '../../lib/format'
-import { regionStory, summaryStory, type StoryInput } from '../../lib/narrative'
+import { summaryStory, type StoryInput } from '../../lib/narrative'
 import { summaryRows } from '../../lib/summary'
 import type { RegionLabel } from '../../lib/regions'
 import type { TimeStep } from '../../lib/time'
 import { countryColor, WATER_SECTORS } from '../../lib/waterUse'
-import type { LayerFile, LayerId, WaterSector, WaterView } from '../../types'
+import type {
+  LayerFile,
+  LayerId,
+  RegionSeries,
+  WaterBand,
+  WaterScenario,
+  WaterSector,
+  WaterView,
+} from '../../types'
 import { RichText } from '../ui/RichText'
 import CountrySummary from './CountrySummary.vue'
 import RegionCard from './RegionCard.vue'
+import WaterFuture from './WaterFuture.vue'
 import WaterSectors from './WaterSectors.vue'
 
 const props = defineProps<{
@@ -26,8 +35,20 @@ const props = defineProps<{
   region: (RegionLabel & { id: string }) | null
   /** The water layer's view and sector; null on the other layers. */
   water?: { view: WaterView; sector: WaterSector } | null
+  /** The water projection's scenario, the country's model range and its observed gap. */
+  projection?: {
+    scenario: WaterScenario
+    band: WaterBand
+    observed: { series: RegionSeries; year: number }
+  } | null
+  /** The open basin's projection chart, in the future view. */
+  regionProjection?: InstanceType<typeof RegionCard>['$props']['projection']
 }>()
-const emit = defineEmits<{ close: []; sector: [WaterSector]; view: [WaterView] }>()
+const emit = defineEmits<{
+  close: []
+  sector: [WaterSector]
+  view: [WaterView]
+}>()
 
 const { locale, t } = useLocale()
 
@@ -77,11 +98,6 @@ const rows = computed(() =>
 const regionSeries = computed(() =>
   props.region ? props.file.regions[props.region.id] : undefined,
 )
-const card = computed(() =>
-  props.region && regionSeries.value
-    ? regionStory(story(props.region.where, regionSeries.value))
-    : null,
-)
 
 const futureNote = computed(() => {
   const models = props.file.models
@@ -109,18 +125,19 @@ function onKeydown(event: KeyboardEvent) {
   <aside class="flex flex-col" :aria-label="t.home.panel" @keydown="onKeydown">
     <div class="min-h-0 flex-1 overflow-y-auto p-4">
       <RegionCard
-        v-if="region && regionSeries && card"
+        v-if="region && regionSeries"
         :id="region.id"
         :key="region.id"
         :name="region.name"
         :subtitle="region.subtitle"
         :kakhovka="region.kakhovka"
-        :story="card"
         :file="file"
         :series="regionSeries"
         :config="config"
         :step="step"
         :format="format"
+        :projection="regionProjection"
+        :zero-note="water?.view === 'gap' ? t.waterUse.noGap : null"
         :chart-title="copy.chartTitle"
         @close="emit('close')"
       />
@@ -153,9 +170,17 @@ function onKeydown(event: KeyboardEvent) {
             />
           </WaterSectors>
         </template>
+        <WaterFuture
+          v-else-if="water?.view === 'future' && projection"
+          :file="file"
+          :step="step"
+          :format="format"
+          :scenario="projection.scenario"
+          :band="projection.band"
+          :observed="projection.observed"
+        />
         <CountrySummary
           v-else
-          :focus="water?.view === 'future' ? 'future' : 'observed'"
           :rows="rows"
           :file="file"
           :config="config"
@@ -207,7 +232,9 @@ function onKeydown(event: KeyboardEvent) {
             {{ t.panel.aboutData }}
           </summary>
           <p class="mt-2 leading-relaxed">
-            <template v-if="file.scenario">{{ t.scenarios[file.scenario] }} </template>
+            <template v-if="file.scenario === 'SSP2-4.5'"
+              >{{ t.scenarios[file.scenario] }}
+            </template>
             {{ futureNote }}
           </p>
         </details>

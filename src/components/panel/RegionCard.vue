@@ -1,24 +1,21 @@
 <script setup lang="ts">
-import { defineAsyncComponent, h, onMounted, useTemplateRef } from 'vue'
+import { computed, defineAsyncComponent, h, onMounted, useTemplateRef } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
 import type { LayerConfig } from '../../config/layers'
 import type { ValueFormat } from '../../lib/format'
-import type { Rich } from '../../lib/narrative'
 import type { TimeStep } from '../../lib/time'
-import type { LayerFile, RegionSeries, Sectors } from '../../types'
-import { RichText } from '../ui/RichText'
+import type { LayerFile, RegionSeries, Sectors, WaterBand } from '../../types'
 import ClimateAnalog from './ClimateAnalog.vue'
 import SectorBar from './SectorBar.vue'
 
-defineProps<{
+const props = defineProps<{
   id: string
   name: string
   /** Under the name: the oblasts a basin spans. */
   subtitle?: string | null
   /** Note that the data predate the loss of the Kakhovka Reservoir (SPEC §13.7). */
   kakhovka?: boolean
-  story: Rich
   file: LayerFile
   series: RegionSeries & { sectors?: Sectors }
   config: LayerConfig
@@ -26,10 +23,33 @@ defineProps<{
   format: ValueFormat
   /** What the chart measures; the legend title of the layer. */
   chartTitle: string
+  /** Shown instead of the chart when every value is zero, e.g. a basin with no water gap. */
+  zeroNote?: string | null
+  /** The chart of a projection: the observed record, then the models' yearly mean and range. */
+  projection?: {
+    file: LayerFile
+    series: RegionSeries
+    from: number
+    band: WaterBand
+  } | null
 }>()
 defineEmits<{ close: [] }>()
 
 const { t } = useLocale()
+
+/** Basins blanked for having no water data (`blankEmptyBasins`) show a note, not an empty chart. */
+const hasData = computed(
+  () =>
+    props.series.history.some((value) => value !== null) ||
+    Object.keys(props.series.future).length > 0,
+)
+
+const allZero = computed(
+  () =>
+    !!props.zeroNote &&
+    props.series.history.every((value) => value === null || value === 0) &&
+    Object.keys(props.series.future).length === 0,
+)
 
 // Chart.js loads only once a region is opened, keeping it out of the initial bundle.
 const RegionChart = defineAsyncComponent({
@@ -60,7 +80,22 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
         >
           {{ name }}
         </h2>
-        <p v-if="subtitle" class="mt-1 text-xs leading-snug text-ink-muted">{{ subtitle }}</p>
+        <p v-if="subtitle" class="mt-1 flex items-start gap-1 text-xs leading-snug text-ink-muted">
+          <svg
+            viewBox="0 0 24 24"
+            class="mt-px size-3.5 shrink-0"
+            aria-hidden="true"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" />
+            <path d="M9 4v14M15 6v14" />
+          </svg>
+          <span>{{ subtitle }}</span>
+        </p>
       </div>
       <button
         type="button"
@@ -81,13 +116,22 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       </button>
     </header>
 
-    <p class="text-[15px] leading-relaxed text-ink"><RichText :text="story" /></p>
+    <p v-if="!hasData" class="rounded-xl bg-fill px-4 py-6 text-center text-sm text-ink-muted">
+      {{ t.tooltip.noData }}
+    </p>
 
-    <figure class="space-y-2">
-      <figcaption class="text-xs leading-snug text-ink-muted">{{ chartTitle }}</figcaption>
+    <p v-else-if="allZero" class="rounded-xl bg-fill px-4 py-6 text-center text-sm text-ink-muted">
+      {{ zeroNote }}
+    </p>
+
+    <figure v-else class="space-y-2">
+      <figcaption class="text-sm font-medium leading-snug text-ink-muted">
+        {{ chartTitle }}
+      </figcaption>
       <RegionChart
-        :file="file"
-        :series="series"
+        :file="projection?.file ?? file"
+        :series="projection?.series ?? series"
+        :projection="projection"
         :config="config"
         :step="step"
         :format="format"
@@ -97,7 +141,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
 
     <ClimateAnalog v-if="config.geometry === 'oblasts'" :region-id="id" />
 
-    <SectorBar v-if="series.sectors" :sectors="series.sectors" :year="file.history.to" />
+    <SectorBar v-if="hasData && series.sectors" :sectors="series.sectors" :year="file.history.to" />
 
     <p v-if="kakhovka" class="text-[13px] leading-relaxed text-ink-muted">
       {{ t.basin.kakhovka }}

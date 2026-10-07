@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import { uk } from '../src/i18n/uk'
 import {
+  blankEmptyBasins,
+  hasWaterData,
   countryColor,
   niceCeil,
   waterUseCopy,
@@ -24,6 +26,20 @@ const file: WaterUseFile = {
       unit: 'км³',
       sectors: { total: sector, irrigation: sector, domestic: sector, industrial: sector },
     },
+  },
+  projection: {
+    from: 2020,
+    to: 2021,
+    unit: 'km³',
+    scenarios: Object.fromEntries(
+      (['SSP1-2.6', 'SSP3-7.0', 'SSP5-8.5'] as const).map((id) => [
+        id,
+        {
+          country: { mean: [5, 6], min: [4, 5], max: [6, 7] },
+          regions: { a: { mean: [1, 2], min: [0, 1], max: [2, 3] } },
+        },
+      ]),
+    ) as unknown as WaterUseFile['projection']['scenarios'],
   },
   source: 'test',
 }
@@ -76,5 +92,24 @@ describe('countryColor', () => {
     expect(countryColor(record, 10)).toBe('#2f9e5a')
     expect(countryColor(record, 30)).toBe('#e5383b')
     expect(countryColor(series([5, 5]), 5)).toBe('#2f9e5a')
+  })
+})
+
+describe('blankEmptyBasins', () => {
+  const series = (history: number[]): RegionSeries => ({ norm: 0, history, future: {} })
+
+  it('treats a series of only zeros as no data', () => {
+    expect(hasWaterData(series([0, 0]))).toBe(false)
+    expect(hasWaterData({ ...series([0]), future: { '2050': { median: 0.3 } } })).toBe(true)
+  })
+
+  it('blanks only the basins without data', () => {
+    const layer = waterUseLayer(file, 'gap', 'total')
+    const blanked = blankEmptyBasins({
+      ...layer,
+      regions: { a: series([0, 0]), b: series([0, 2]) },
+    })
+    expect(blanked.regions.a!.history).toEqual([null, null])
+    expect(blanked.regions.b!.history).toEqual([0, 2])
   })
 })

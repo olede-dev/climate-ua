@@ -37,20 +37,21 @@ export const en: Messages = {
         heading: 'The past',
         paragraphs: [
           'Temperature, extreme heat, frost and drought come from the ERA5 reanalysis, year by year since 1950. A region’s value is the mean over the grid cells (~25 km), weighted by how much of each cell lies in the region. The norm is 1991–2020.',
-          'Water comes from the PCR-GLOBWB 2 hydrological model of Utrecht University, 1980–2019, on HydroBASINS subbasins. Rivers come from the GloFAS v4 reanalysis, 1997–2025.',
+          'Water comes from the PCR-GLOBWB 2 hydrological model of Utrecht University as the World Water Map shows it: demand and the gap by year, 1980–2019, on 265 HydroBASINS level 7 subbasins. Rivers come from the GloFAS v4 reanalysis, 1997–2025.',
         ],
       },
       {
-        heading: 'The future: why periods',
+        heading: 'The future',
         paragraphs: [
-          'Climate models do not forecast the weather of a given year: 2047 in a model is just one possible year. So the future is shown as a 20-year mean (2021–2040, 2041–2060, 2081–2100), and for water as a 30-year mean around 2030, 2050 and 2080.',
-          'Climate layers show the median of 17–23 CMIP6 models (depending on the measure); the brackets give the range that 80% of the models fall in. Water shows the median of 5 WRI Aqueduct models, without a range.',
+          'Climate models do not forecast the weather of a given year: 2047 in a model is just one possible year. So the climate layers show the future as a 20-year mean (2021–2040, 2041–2060, 2081–2100): the median of 17–23 CMIP6 models (depending on the measure), with the range that 80% of the models fall in in brackets.',
+          'The World Water Map projects the water gap year by year, 2020–2050. The map shows the mean of the climate models; the card and the chart add their spread, from the lowest to the highest. Read a single projected year as a trend, not a forecast of that very year. There is no projection of demand or of the gap by sector.',
         ],
       },
       {
         heading: 'Scenarios',
         paragraphs: [
-          'Climate layers use SSP2-4.5: the world cuts emissions slowly. Water uses SSP3-7.0, which WRI calls “business as usual”: WRI Aqueduct has no SSP2-4.5. So water and climate projections should not be compared directly.',
+          'Climate layers use SSP2-4.5: the world cuts emissions slowly.',
+          'Water offers the three World Water Map scenarios: “Sustainable” (SSP1-2.6, the least warming), “Nationalist” (SSP3-7.0, a fragmented world) and “Fossil-powered” (SSP5-8.5, the most warming). SSP2-4.5 is not among them, so water and climate projections should not be compared directly.',
         ],
       },
       {
@@ -64,7 +65,7 @@ export const en: Messages = {
     measures: [
       {
         name: 'Water',
-        text: 'water stress: the share of available renewable water that people withdraw for irrigation, households and industry. WRI classes: under 10% is low, over 80% extremely high. The Utrecht data have no available water, so for the past the WRI baseline stress (1979–2019) changes with each year’s withdrawals; available water is the mean. All of Ukraine is the mean of the subbasins, weighted by their area.',
+        text: 'demand: how much water irrigation, households and industry need in a year; the gap: the part of the demand that renewable water from rivers and rain does not cover (demand minus withdrawal, as on the World Water Map). Both are in km³ for the part of each subbasin inside Ukraine; all of Ukraine is their sum. The map runs from dark green (little) to red (much), scaled on every subbasin and year.',
       },
       {
         name: 'Temperature',
@@ -89,7 +90,7 @@ export const en: Messages = {
     limits: [
       'All data are modelled. Conditions in a particular town or village may differ from the mean of its region or subbasin.',
       'Climate models have a resolution of about 100 km: a small region is covered by only 1–3 cells.',
-      'The Kakhovka Reservoir was destroyed in June 2023. The water data (to 2019) and the WRI projections do not reflect this; the cards of the lower Dnipro subbasins carry a note.',
+      'The Kakhovka Reservoir was destroyed in June 2023. The water data (to 2019) and the World Water Map projection do not reflect this; the cards of the lower Dnipro subbasins carry a note.',
       'There are no ground observations from the temporarily occupied territories, but every source is a gridded model, so the map covers all of Ukraine, Crimea included.',
     ],
     sourcesHeading: 'Sources',
@@ -100,9 +101,9 @@ export const en: Messages = {
         url: 'https://doi.org/10.24416/UU01-0Q6SU6',
       },
       {
-        name: 'WRI Aqueduct 4.0',
-        detail: 'World Resources Institute',
-        url: 'https://www.wri.org/aqueduct',
+        name: 'National Geographic Society, World Water Map',
+        detail: 'the World Water Map site’s data: subbasins, the gap and the projection to 2050',
+        url: 'https://worldwatermap.nationalgeographic.org/',
       },
       {
         name: 'Copernicus Interactive Climate Atlas',
@@ -122,7 +123,7 @@ export const en: Messages = {
       {
         name: 'geoBoundaries and Natural Earth',
         detail:
-          'region boundaries: © OpenStreetMap, ODbL; subbasins: HydroBASINS from WRI Aqueduct',
+          'region boundaries: © OpenStreetMap, ODbL; river names for the subbasins: Natural Earth',
         url: 'https://www.geoboundaries.org/',
       },
     ],
@@ -133,9 +134,6 @@ export const en: Messages = {
     loadError: 'The map data could not be loaded. Reload the page.',
     panel: 'About the map',
     layers: 'Map layer',
-    hotspots: 'High water use',
-    hotspotsHint:
-      'Show the subbasins where people withdraw more than {value} of the available water',
   },
   table: {
     oblasts: 'Oblast',
@@ -158,8 +156,6 @@ export const en: Messages = {
   },
   scenarios: {
     'SSP2-4.5': 'Projections follow scenario SSP2-4.5: the world cuts emissions slowly.',
-    'SSP3-7.0':
-      'Projections follow scenario SSP3-7.0, which WRI calls “business as usual”: things go on as they are.',
   },
   story: {
     country: 'in Ukraine',
@@ -174,6 +170,8 @@ export const en: Messages = {
     norm: 'norm',
     aria: '{title}: bars by year {from}–{to}, then projections by period up to {end}.',
     ariaHistory: '{title}: bars by year {from}–{to}.',
+    ariaYearly:
+      '{title}: bars by year {from}–{to}, then the models’ mean and range by year up to {end}.',
   },
   basin: {
     named: '{river} basin',
@@ -199,18 +197,40 @@ export const en: Messages = {
     note: 'Climate type after Beck et al. (2023), projected under scenario {scenario}; the class covering most of the region.',
   },
   waterUse: {
-    periodsLabel: 'Water stress projection',
-    layerDescription: 'Water gap and demand, water stress to 2080',
+    scenariosLabel: 'Scenario',
+    layerDescription: 'Water gap and demand, the gap projected to 2050',
     views: { gap: 'Water gap', demand: 'Water demand' },
+    noGap: 'No gap: rivers and rain cover the demand',
     viewsLabel: 'What to show',
     future: 'Future scenarios',
-    futureHint: 'Water stress up to 2080',
+    futureHint: 'Water gap up to 2050',
+    futureCard: {
+      lead: 'In {year}, the water gap in Ukraine will be',
+      past: 'In {year} it was {value}',
+      range: 'The models give {low} to {high}',
+    },
+    scenarios: {
+      'SSP1-2.6': {
+        name: 'Sustainable',
+        about:
+          'The world develops with less inequality, slower population growth and less harm to the environment; warming is lowest.',
+      },
+      'SSP3-7.0': {
+        name: 'Nationalist',
+        about:
+          'A fragmented, unequal world with conflict, fast population growth in developing countries and little care for the environment; warming is relatively high.',
+      },
+      'SSP5-8.5': {
+        name: 'Fossil-powered',
+        about: 'A world of high growth and trade, powered by fossil fuels; warming is highest.',
+      },
+    },
     back: 'Back to history',
     sectorsLabel: 'What the water is for',
     noForecast:
       'There are no projections of demand or the gap; the future is in “Future scenarios”.',
     intro: {
-      gap: 'The gap is the part of the demand that renewable water from rivers and rain does not cover: it comes from groundwater stores that do not refill.',
+      gap: 'The gap is the part of the demand that renewable water from rivers and rain does not cover.',
       demand:
         'Demand is how much water people need in a year, including what flows back into rivers.',
     },
@@ -239,11 +259,9 @@ export const en: Messages = {
     /** `{use}`: a sector's `use`. */
     gap: {
       legendTitle: 'Water gap {use}',
-      chartTitle: 'Water gap {use} by year, million m³',
+      chartTitle: 'Water gap {use} by year, km³',
       story: {
-        norm: 'In {norm}, the water gap {use} {where} averaged {value} a year.',
         observed: 'In {year}, the water gap {use} {where} was {value}, {delta}.',
-        observedShort: 'In {year}: {value}, {delta}.',
         future: '{period}: —.',
         above: 'more than the 1990–2019 average',
         below: 'less than the 1990–2019 average',
@@ -254,20 +272,18 @@ export const en: Messages = {
       legendTitle: 'Water demand {use}',
       chartTitle: 'Water demand {use} by year, km³',
       story: {
-        norm: 'In {norm}, water demand {use} {where} averaged {value} a year.',
         observed: 'In {year}, water demand {use} {where} was {value}, {delta}.',
-        observedShort: 'In {year}: {value}, {delta}.',
         future: '{period}: —.',
         above: 'more than the 1990–2019 average',
         below: 'less than the 1990–2019 average',
         same: 'the same as the 1990–2019 average',
       },
     },
-    units: { gap: 'million m³', demand: 'km³' },
+    units: { gap: 'km³', demand: 'km³' },
     low: 'Little',
     high: 'A lot',
     norm: '1990–2019 average',
-    note: 'The PCR-GLOBWB model (Utrecht University, World Water Map), 1980–2019. Volumes are for the part of each subbasin inside Ukraine. A sector’s gap is its share of the total gap, in proportion to its share of the demand.',
+    note: 'The PCR-GLOBWB model (Utrecht University, World Water Map): 1980–2019 and the water gap projected to 2050. Volumes are for the part of each subbasin inside Ukraine.',
   },
   layers: {
     water: {
@@ -282,16 +298,14 @@ export const en: Messages = {
       unit: '%',
       chartTitle: 'Share of the available water people withdraw, with projections to 2080',
       story: {
-        norm: 'In {norm}, people {where} withdrew {value} of the available water on average.',
         observed: 'In {year}, people {where} withdrew {value} of the available water, {delta}.',
-        observedShort: 'In {year}, it was {value}, {delta}.',
         future: 'For {period}, the projection is {value}{range}, {delta}.',
         above: 'more than the 1990–2019 average',
         below: 'less than the 1990–2019 average',
         same: 'in line with the 1990–2019 average',
       },
       futureNote:
-        'The future is a 30-year average around the year named (the median of 5 climate models in WRI Aqueduct), not a forecast for that year. The history comes from the PCR-GLOBWB model: withdrawals by year, available water as the 1979–2019 mean.',
+        'The PCR-GLOBWB model (Utrecht University, World Water Map): 1980–2019 and the gap projected to 2050, the mean of the climate models.',
       models: { one: '{n} climate model', other: '{n} climate models' },
     },
     temp: {
@@ -306,9 +320,7 @@ export const en: Messages = {
       unit: '°C',
       chartTitle: 'Annual mean temperature against the norm, with projections to 2100',
       story: {
-        norm: 'In {norm}, the mean temperature {where} was {value}.',
         observed: 'In {year}, the mean temperature {where} was {value}, {delta}.',
-        observedShort: 'In {year}, it was {value}, {delta}.',
         future: 'For {period}, the projection is {value}{range}, {delta}.',
         above: '{delta} above the norm',
         below: '{delta} below the norm',
@@ -330,9 +342,7 @@ export const en: Messages = {
       unit: { one: 'day', few: 'days', many: 'days', other: 'days' },
       chartTitle: 'Days of extreme heat (above 35 °C) by year, with projections to 2100',
       story: {
-        norm: 'In {norm}, there were {value} of extreme heat a year {where} on average.',
         observed: 'In {year}, there were {value} of extreme heat {where}, {delta}.',
-        observedShort: 'In {year}, it was {value}, {delta}.',
         future: 'For {period}, the projection is {value}{range}, {delta}.',
         above: '{delta} more than the norm',
         below: '{delta} fewer than the norm',
@@ -354,9 +364,7 @@ export const en: Messages = {
       unit: { one: 'frost day', few: 'frost days', many: 'frost days', other: 'frost days' },
       chartTitle: 'Frost days by year, with projections to 2100',
       story: {
-        norm: 'In {norm}, there were {value} a year {where} on average.',
         observed: 'In {year}, there were {value} {where}, {delta}.',
-        observedShort: 'In {year}, it was {value}, {delta}.',
         future: 'For {period}, the projection is {value}{range}, {delta}.',
         above: '{delta} more than the norm',
         below: '{delta} fewer than the norm',
@@ -378,9 +386,7 @@ export const en: Messages = {
       unit: { one: 'dry month', few: 'dry months', many: 'dry months', other: 'dry months' },
       chartTitle: 'Dry months by year, with projections to 2100',
       story: {
-        norm: 'In {norm}, there were {value} a year {where} on average.',
         observed: 'In {year}, there were {value} {where}, {delta}.',
-        observedShort: 'In {year}, it was {value}, {delta}.',
         future: 'For {period}, the projection is {value}{range}, {delta}.',
         above: '{delta} more than the norm',
         below: '{delta} fewer than the norm',
@@ -407,9 +413,7 @@ export const en: Messages = {
       },
       chartTitle: 'Low-flow days by year, 1997–2025',
       story: {
-        norm: 'In {norm}, there were {value} a year {where} on average.',
         observed: 'In {year}, there were {value} {where}, {delta}.',
-        observedShort: 'In {year}, it was {value}, {delta}.',
         future: 'For {period}, the projection is {value}{range}, {delta}.',
         above: '{delta} more than on average',
         below: '{delta} fewer than on average',

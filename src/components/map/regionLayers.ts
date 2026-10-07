@@ -9,10 +9,6 @@ export const REGION_FILL = 'region-fill'
 const REGION_HATCH = 'region-hatch'
 const REGION_LINE = 'region-line'
 const REGION_HIGHLIGHT = 'region-highlight'
-const REGION_HOT = 'region-hot'
-const HOTSPOT_SOURCE = 'hotspots'
-const HOTSPOT_DOT = 'hotspot-dot'
-export const HOTSPOT_PULSE = 'hotspot-pulse'
 const HATCH_IMAGE = 'future-hatch'
 export const STATION_SOURCE = 'stations'
 export const STATION_DOT = 'station-dot'
@@ -20,15 +16,11 @@ export const STATION_DOT = 'station-dot'
 const VALUE: ExpressionSpecification = ['feature-state', 'value']
 const HOVER: ExpressionSpecification = ['boolean', ['feature-state', 'hover'], false]
 const SELECTED: ExpressionSpecification = ['boolean', ['feature-state', 'selected'], false]
-const HOT: ExpressionSpecification = ['boolean', ['feature-state', 'hot'], false]
 
 /** Opaque enough that the basemap's own borders inside Ukraine do not show through. */
 const FILL_OPACITY = 0.9
 /** While a region is hovered, the rest dim (SPEC §7). */
 const DIMMED_OPACITY = 0.45
-/** With hotspots on, everything but the hotspots recedes (SPEC §8.4). */
-const NOT_HOT_OPACITY = 0.3
-const HOT_COLOR = '#ffffff'
 
 /** Thin diagonal strokes over the fill: the future is an estimate (SPEC §7). */
 function hatchImage(): ImageData {
@@ -88,52 +80,6 @@ export function addRegionLayers(map: MaplibreMap, data: RegionsFile, scale: Colo
       type: 'line',
       source: REGION_SOURCE,
       paint: { 'line-color': 'rgba(235, 238, 245, 0.32)', 'line-width': 0.6 },
-    },
-    beforeId,
-  )
-  map.addLayer(
-    {
-      id: REGION_HOT,
-      type: 'line',
-      source: REGION_SOURCE,
-      paint: {
-        'line-color': HOT_COLOR,
-        'line-width': ['case', HOT, 1.6, 0],
-        'line-opacity': ['case', HOT, 0.9, 0],
-      },
-    },
-    beforeId,
-  )
-  map.addSource(HOTSPOT_SOURCE, {
-    type: 'geojson',
-    data: { type: 'FeatureCollection', features: [] },
-  })
-  map.addLayer(
-    {
-      id: HOTSPOT_PULSE,
-      type: 'circle',
-      source: HOTSPOT_SOURCE,
-      paint: {
-        'circle-radius': 4,
-        'circle-color': 'transparent',
-        'circle-stroke-color': HOT_COLOR,
-        'circle-stroke-width': 1.5,
-        'circle-stroke-opacity': 0.8,
-      },
-    },
-    beforeId,
-  )
-  map.addLayer(
-    {
-      id: HOTSPOT_DOT,
-      type: 'circle',
-      source: HOTSPOT_SOURCE,
-      paint: {
-        'circle-radius': 3,
-        'circle-color': HOT_COLOR,
-        'circle-stroke-color': '#1a1a19',
-        'circle-stroke-width': 1,
-      },
     },
     beforeId,
   )
@@ -202,31 +148,12 @@ export function setFutureHatch(map: MaplibreMap, visible: boolean) {
     map.setLayoutProperty(REGION_HATCH, 'visibility', visible ? 'visible' : 'none')
 }
 
-/**
- * Fill opacity: a hovered region dims the rest; otherwise, with hotspots on, everything but
- * the hotspots recedes.
- */
-export function setFillOpacity(map: MaplibreMap, hovering: boolean, hotspots: boolean) {
+/** Fill opacity: a hovered region dims the rest. */
+export function setFillOpacity(map: MaplibreMap, hovering: boolean) {
   if (!map.getLayer(REGION_FILL)) return
-  const base: ExpressionSpecification | number = hotspots
-    ? ['case', HOT, FILL_OPACITY, NOT_HOT_OPACITY]
-    : FILL_OPACITY
   map.setPaintProperty(
     REGION_FILL,
     'fill-opacity',
-    hovering ? ['case', HOVER, FILL_OPACITY, DIMMED_OPACITY] : base,
+    hovering ? ['case', HOVER, FILL_OPACITY, DIMMED_OPACITY] : FILL_OPACITY,
   )
-}
-
-/** The hotspot markers; an empty collection hides them. */
-export function setHotspotPoints(map: MaplibreMap, points: FeatureCollection<Point>) {
-  const source = map.getSource(HOTSPOT_SOURCE)
-  if (source && 'setData' in source && typeof source.setData === 'function') source.setData(points)
-}
-
-/** One frame of the marker pulse: a ring that grows and fades, `phase` 0 to 1. */
-export function setHotspotPulse(map: MaplibreMap, phase: number) {
-  if (!map.getLayer(HOTSPOT_PULSE)) return
-  map.setPaintProperty(HOTSPOT_PULSE, 'circle-radius', 4 + phase * 10)
-  map.setPaintProperty(HOTSPOT_PULSE, 'circle-stroke-opacity', 0.8 * (1 - phase))
 }

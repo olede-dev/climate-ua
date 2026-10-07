@@ -1,12 +1,10 @@
-<script setup lang="ts">
-import type { WaterUseView } from '../../types'
-
-/** Water gap or demand, as tabs over the map (the World Water Map's switch). */
+<script setup lang="ts" generic="T extends string">
+/** Water gap or demand, or the scenarios, as tabs over the map (the World Water Map's switch). */
 defineProps<{
-  views: readonly { id: WaterUseView; label: string }[]
+  views: readonly { id: T; label: string }[]
   label: string
 }>()
-const model = defineModel<WaterUseView>({ required: true })
+const model = defineModel<T>({ required: true })
 </script>
 
 <template>

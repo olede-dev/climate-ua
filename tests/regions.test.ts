@@ -24,7 +24,7 @@ describe('basinLabel', () => {
     expect(basinLabel(basin(), NAMES, 'uk', MESSAGES.uk.basin)).toEqual({
       name: 'Басейн річки Десна',
       where: 'у басейні річки Десна',
-      subtitle: 'Чернігівська область · Сумська область',
+      subtitle: 'Чернігівська область; Сумська область.',
       kakhovka: false,
     })
     expect(basinLabel(basin(), NAMES_EN, 'en', MESSAGES.en.basin).name).toBe('Desna basin')

@@ -12,14 +12,14 @@ export type OblastsFile = FeatureCollection<Polygon | MultiPolygon, OblastProper
 
 /** `public/data/basins.geojson`, written by `pipeline/build_basins.py`. */
 export interface BasinProperties {
-  /** HydroBASINS level-6 PFAF_ID; the key of the water layer's regions. */
+  /** World Water Map basinid (HydroBASINS level 7); the key of the water layer's regions. */
   id: string
   /** The river with the longest course through the basin; null where none is mapped. */
   riverUk: string | null
   riverEn: string | null
   /** Oblast ids, the largest share of the basin first. */
   oblasts: string[]
-  /** [lon, lat] inside the basin, for the hotspot marker. */
+  /** [lon, lat] inside the basin, e.g. for a marker. */
   point: [number, number]
   /** The former Kakhovka Reservoir lay here (SPEC §13.7). */
   kakhovka: boolean
@@ -100,7 +100,7 @@ export interface LayerFile {
   geometry: 'oblasts' | 'basins' | 'stations'
   unit: string
   /** null: the layer has no projection (rivers). */
-  scenario: 'SSP2-4.5' | 'SSP3-7.0' | null
+  scenario: 'SSP2-4.5' | WaterScenario | null
   norm: { from: number; to: number }
   history: { from: number; to: number }
   futurePeriods: FuturePeriod[]
@@ -113,6 +113,8 @@ export interface LayerFile {
 }
 
 /** The views of the water layer (SPEC §4.1): demand and gap by year, or the stress projection. */
+/** The World Water Map's projection scenarios: sustainable, nationalist, fossil-powered. */
+export type WaterScenario = 'SSP1-2.6' | 'SSP3-7.0' | 'SSP5-8.5'
 export type WaterView = 'gap' | 'demand' | 'future'
 export type WaterUseView = Exclude<WaterView, 'future'>
 export type WaterSector = 'total' | 'irrigation' | 'domestic' | 'industrial'
@@ -124,7 +126,7 @@ export interface WaterUseFile {
   views: Record<
     WaterUseView,
     {
-      /** Volume in the part of each basin inside Ukraine: `km³` or `млн м³`. */
+      /** Volume in the part of each basin inside Ukraine, `km³`. */
       unit: string
       sectors: Record<
         WaterSector,
@@ -136,5 +138,24 @@ export interface WaterUseFile {
       >
     }
   >
+  /** The total water gap, yearly, per scenario: mean, min and max of the models. */
+  projection: {
+    from: number
+    to: number
+    unit: string
+    scenarios: Record<
+      WaterScenario,
+      {
+        country: WaterBand
+        regions: Record<string, WaterBand>
+      }
+    >
+  }
   source: string
+}
+
+export interface WaterBand {
+  mean: number[]
+  min: number[]
+  max: number[]
 }

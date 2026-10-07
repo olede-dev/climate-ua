@@ -29,7 +29,8 @@ const RIVERS_QUERY = {
  * One layer's data file; `staleTime: Infinity` comes from the client defaults. The rivers
  * layer is built from `rivers.json`, which `useRivers` shares.
  */
-export function useLayer(id: MaybeRefOrGetter<LayerId>) {
+/** A layer file by id; null loads nothing (the water layer reads `useWaterUse`). */
+export function useLayer(id: MaybeRefOrGetter<LayerId | null>) {
   const client = useQueryClient()
   const layer = computed(() => toValue(id))
   return useQuery({
@@ -37,7 +38,8 @@ export function useLayer(id: MaybeRefOrGetter<LayerId>) {
     queryFn: async () =>
       layer.value === 'rivers'
         ? riversLayer(await client.ensureQueryData(RIVERS_QUERY))
-        : fetchStatic<LayerFile>(layerConfig(layer.value).path),
+        : fetchStatic<LayerFile>(layerConfig(layer.value!).path),
+    enabled: computed(() => layer.value !== null),
   })
 }
 

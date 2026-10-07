@@ -7,7 +7,6 @@ from typing import Any
 
 import geopandas as gpd
 import numpy as np
-import pyogrio
 import xarray as xr
 from shapely.geometry import box
 
@@ -91,23 +90,21 @@ def _absorb_fragments(basins: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     return basins.drop(index=small)
 
 
-def ukraine_basins() -> gpd.GeoDataFrame:
-    """Aqueduct subbasins (HydroBASINS level 6) that reach Ukraine (SPEC §4.6).
+def ukraine_subbasins() -> gpd.GeoDataFrame:
+    """World Water Map basins (HydroBASINS level 7) that reach Ukraine: the map's regions.
 
-    Columns: `id` (PFAF_ID as text), `geometry` (the part in Ukraine, small fragments joined to
-    a neighbour), `full` (the whole basin, which its water figures describe) and the future
-    stress fields of `config.AQUEDUCT_FUTURE_FIELDS`.
+    Columns: `id` (the service's `basinid` as text), `geometry` (the part in Ukraine, small
+    fragments joined to a neighbour) and `full` (the whole basin). Run `fetch_wwm_basins.py` first.
     """
     outline = ukraine_outline()
-    fields = list(config.AQUEDUCT_FUTURE_FIELDS.values())
-    basins = pyogrio.read_dataframe(
-        config.AQUEDUCT_GDB, layer=config.AQUEDUCT_GDB_LAYER, bbox=outline.bounds, columns=["pfaf_id", *fields]
-    )
+    basins = gpd.read_file(config.WWM_BASINS_PATH)[["basinid", "geometry"]]
+    basins["geometry"] = basins.geometry.make_valid()
     basins = basins[basins.intersects(outline)].copy()
-    basins["id"] = basins["pfaf_id"].astype(int).astype(str)
+    basins["id"] = basins["basinid"].astype(int).astype(str)
     if basins["id"].duplicated().any():
-        raise ValueError("Aqueduct basins are not unique by PFAF_ID")
+        raise ValueError("World Water Map basins are not unique by basinid")
     basins["full"] = basins.geometry
     basins["geometry"] = basins.geometry.intersection(outline).make_valid()
+    basins = basins[~basins.geometry.is_empty]
     basins = _absorb_fragments(basins)
-    return basins[["id", "geometry", "full", *fields]].sort_values("id").reset_index(drop=True)
+    return basins[["id", "geometry", "full"]].sort_values("id").reset_index(drop=True)

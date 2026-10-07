@@ -21,8 +21,6 @@ import {
   REGION_SOURCE,
   setFillOpacity,
   setFutureHatch,
-  setHotspotPoints,
-  setHotspotPulse,
   setRegionData,
   setRegionScale,
   setStationData,
@@ -50,10 +48,6 @@ const props = defineProps<{
   /** Hatch the fill: the current step is a projection. */
   future: boolean
   selectedId: string | null
-  /** Ids of the hotspot regions, or null with hotspots off (SPEC §8.4). */
-  hot: string[] | null
-  /** Where the hotspot markers sit. */
-  hotPoints: FeatureCollection<Point>
   /** Pixels on the left covered by a panel; framing keeps Ukraine clear of it. */
   insetLeft?: number
 }>()
@@ -73,8 +67,6 @@ const PADDING = { top: 48, bottom: 96, left: 16, right: 56 }
 const EMPTY_STYLE: StyleSpecification = { version: 8, sources: {}, layers: [] }
 /** Colours slide between timeline steps (SPEC §7). */
 const TWEEN_MS = 300
-/** One beat of the hotspot markers. */
-const PULSE_MS = 1600
 /** Pixels around the pointer that still hit a marker. */
 const MARKER_HIT = 6
 /** Half the box a selected marker is framed in, degrees. */
@@ -95,9 +87,6 @@ let hoveredId: string | null = null
 /** Values as drawn right now, mid-tween included. */
 let shown: Record<string, number | null> = {}
 let tweenFrame = 0
-let pulseFrame = 0
-/** Regions marked `hot` in feature state right now. */
-let hotIds = new Set<string>()
 /** The current style has loaded; data layers can be added. */
 let styleReady = false
 
@@ -163,42 +152,9 @@ function setHovered(id: string | null) {
   if (hoveredId) map.setFeatureState({ source: valueSource(), id: hoveredId }, { hover: false })
   if (id) map.setFeatureState({ source: valueSource(), id }, { hover: true })
   // Regions dim around a hovered region; a hovered marker grows instead.
-  if (!props.markers && (id === null) !== (hoveredId === null))
-    setFillOpacity(map, id !== null, props.hot !== null)
+  if (!props.markers && (id === null) !== (hoveredId === null)) setFillOpacity(map, id !== null)
   map.getCanvas().style.cursor = id ? 'pointer' : ''
   hoveredId = id
-}
-
-function pulse() {
-  cancelAnimationFrame(pulseFrame)
-  if (!map) return
-  if (props.hot === null || props.hotPoints.features.length === 0 || reducedMotion.matches) {
-    setHotspotPulse(map, 0)
-    return
-  }
-  const frame = (now: number) => {
-    if (!map) return
-    setHotspotPulse(map, (now % PULSE_MS) / PULSE_MS)
-    pulseFrame = requestAnimationFrame(frame)
-  }
-  pulseFrame = requestAnimationFrame(frame)
-}
-
-/** Marks the hotspots in feature state, dims the rest and places the markers. */
-function applyHotspots() {
-  if (!map?.getSource(REGION_SOURCE)) return
-  const next = new Set(props.hot ?? [])
-  for (const id of hotIds) {
-    if (!next.has(id)) map.setFeatureState({ source: REGION_SOURCE, id }, { hot: false })
-  }
-  for (const id of next) map.setFeatureState({ source: REGION_SOURCE, id }, { hot: true })
-  hotIds = next
-  setFillOpacity(map, hoveredId !== null, props.hot !== null)
-  setHotspotPoints(
-    map,
-    props.hot === null ? { type: 'FeatureCollection', features: [] } : props.hotPoints,
-  )
-  pulse()
 }
 
 function padding(): PaddingOptions {
@@ -232,7 +188,7 @@ function frameSelection(animate: boolean) {
 }
 
 /**
- * Draws the current values, selection and hotspots from scratch: after the layers are built
+ * Draws the current values, selection from scratch: after the layers are built
  * and whenever the regions or the markers change, since nothing drawn before belongs to them.
  */
 function redraw() {
@@ -246,8 +202,6 @@ function redraw() {
   setSelected(props.selectedId, null)
   hoveredId = null
   map.getCanvas().style.cursor = ''
-  hotIds = new Set()
-  applyHotspots()
 }
 
 /** (Re)builds the data layers: on the first style and after every basemap swap. */
@@ -336,7 +290,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   cancelAnimationFrame(tweenFrame)
-  cancelAnimationFrame(pulseFrame)
   resizeObserver?.disconnect()
   map?.remove()
   map = undefined
@@ -364,7 +317,6 @@ watch(
   },
 )
 watch(() => props.values, tweenTo)
-watch(() => [props.hot, props.hotPoints], applyHotspots)
 watch(
   () => props.scale,
   (scale) => map && setRegionScale(map, scale),

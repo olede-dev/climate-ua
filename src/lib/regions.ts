@@ -47,7 +47,7 @@ export function basinLabel(
   return {
     name,
     where,
-    subtitle: oblasts.length > 0 ? oblasts.join(' · ') : null,
+    subtitle: oblasts.length > 0 ? `${oblasts.join('; ')}.` : null,
     kakhovka: basin.kakhovka,
   }
 }

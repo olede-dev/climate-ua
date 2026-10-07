@@ -1,9 +1,11 @@
 import { DEFAULT_LAYER, LAYER_IDS, layerConfig } from '../config/layers'
-import type { LayerId, WaterSector, WaterView } from '../types'
+import type { LayerId, WaterScenario, WaterSector, WaterView } from '../types'
 import { parseStep, type TimeStep } from './time'
-import { WATER_SECTORS } from './waterUse'
+import { WATER_SCENARIOS, WATER_SECTORS } from './waterUse'
 
 const WATER_VIEWS: readonly WaterView[] = ['gap', 'demand', 'future']
+/** The periods of the retired stress projection, still in shared links. */
+const LEGACY_WATER_PERIODS = ['2030', '2050', '2080']
 
 /** The part of the UI state that is shared through the URL (SPEC §8.7). */
 export interface UrlState {
@@ -11,19 +13,20 @@ export interface UrlState {
   /** null: the layer's latest observed year. */
   time: TimeStep | null
   region: string | null
-  hotspots: boolean
   /** The water layer's view and sector; kept while another layer is on. */
   waterView: WaterView
   waterSector: WaterSector
+  /** The projection scenario of the water layer's future view. */
+  waterScenario: WaterScenario
 }
 
 export const DEFAULT_URL_STATE: Readonly<UrlState> = {
   layer: DEFAULT_LAYER,
   time: null,
   region: null,
-  hotspots: false,
   waterView: 'gap',
   waterSector: 'total',
+  waterScenario: 'SSP1-2.6',
 }
 
 /** Query values as vue-router exposes them: repeated keys become arrays. */
@@ -45,25 +48,24 @@ export function parseUrlState(query: QueryInput): UrlState {
   const region = first(query.region)
   const rawView = first(query.view)
   const rawSector = first(query.use)
-  const waterPeriods = layerConfig('water').futurePeriods
-  // Links from before the views showed stress: a period or hotspots without a view open it.
+  // Links from before the views: a stress period or the retired `hot=1` without a view open the projection.
   const waterView =
     WATER_VIEWS.find((v) => v === rawView) ??
     (rawView === null &&
     layer === 'water' &&
-    (waterPeriods.some((p) => p === rawTime) || first(query.hot) === '1')
+    (LEGACY_WATER_PERIODS.some((p) => p === rawTime) || first(query.hot) === '1')
       ? 'future'
       : DEFAULT_URL_STATE.waterView)
-  // Only the stress projection has periods; demand and the gap are years only.
-  const periods =
-    layer === 'water' && waterView !== 'future' ? [] : layerConfig(layer).futurePeriods
+  // The water views are years only, the projection too.
+  const periods = layer === 'water' ? [] : layerConfig(layer).futurePeriods
   return {
     layer,
     time: rawTime === null ? null : parseStep(rawTime, periods),
     region: region !== null && /^[a-z0-9-]{1,40}$/.test(region) ? region : null,
-    hotspots: first(query.hot) === '1',
     waterView,
     waterSector: WATER_SECTORS.find((v) => v === rawSector) ?? DEFAULT_URL_STATE.waterSector,
+    waterScenario:
+      WATER_SCENARIOS.find((v) => v === first(query.sc)) ?? DEFAULT_URL_STATE.waterScenario,
   }
 }
 
@@ -73,8 +75,8 @@ export function toUrlQuery(state: UrlState): Record<string, string> {
   if (state.layer !== DEFAULT_URL_STATE.layer) query.layer = state.layer
   if (state.time !== null) query.t = String(state.time)
   if (state.region !== null) query.region = state.region
-  if (state.hotspots) query.hot = '1'
   if (state.waterView !== DEFAULT_URL_STATE.waterView) query.view = state.waterView
   if (state.waterSector !== DEFAULT_URL_STATE.waterSector) query.use = state.waterSector
+  if (state.waterScenario !== DEFAULT_URL_STATE.waterScenario) query.sc = state.waterScenario
   return query
 }

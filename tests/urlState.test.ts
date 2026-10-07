@@ -4,13 +4,13 @@ import { DEFAULT_URL_STATE, parseUrlState, toUrlQuery, type UrlState } from '../
 
 describe('parseUrlState', () => {
   it('reads every shared field', () => {
-    expect(parseUrlState({ layer: 'temp', t: '2041-2060', region: 'kharkiv', hot: '1' })).toEqual({
+    expect(parseUrlState({ layer: 'temp', t: '2041-2060', region: 'kharkiv' })).toEqual({
       layer: 'temp',
       time: '2041-2060',
       region: 'kharkiv',
-      hotspots: true,
       waterView: 'gap',
       waterSector: 'total',
+      waterScenario: 'SSP1-2.6',
     })
     expect(parseUrlState({ t: '1987' }).time).toBe(1987)
   })
@@ -21,9 +21,9 @@ describe('parseUrlState', () => {
     )
   })
 
-  it('opens the water layer by default and reads its periods', () => {
+  it('opens the water layer by default, years only', () => {
     expect(DEFAULT_URL_STATE.layer).toBe('water')
-    expect(parseUrlState({ t: '2050' }).time).toBe('2050')
+    expect(parseUrlState({ t: '2050' }).time).toBe(2050)
     expect(parseUrlState({ t: '2041-2060' }).time).toBeNull()
   })
 
@@ -47,18 +47,21 @@ describe('toUrlQuery', () => {
       layer: 'temp',
       time: '2081-2100',
       region: 'crimea',
-      hotspots: true,
       waterView: 'demand',
       waterSector: 'irrigation',
+      waterScenario: 'SSP5-8.5',
     }
     expect(parseUrlState(toUrlQuery(state))).toEqual(state)
   })
 
-  it('reads a water projection period only in the future view', () => {
-    expect(parseUrlState({ t: '2050', view: 'future' }).time).toBe('2050')
-    expect(parseUrlState({ t: '2050', view: 'gap' }).time).toBe(2050)
+  it('reads the water projection as years, with its scenario', () => {
+    expect(parseUrlState({ t: '2050', view: 'future', sc: 'SSP5-8.5' })).toMatchObject({
+      time: 2050,
+      waterScenario: 'SSP5-8.5',
+    })
+    expect(parseUrlState({ sc: 'SSP2-4.5' }).waterScenario).toBe('SSP1-2.6')
     // Links shared before the views keep opening the projection.
-    expect(parseUrlState({ t: '2050' })).toMatchObject({ time: '2050', waterView: 'future' })
+    expect(parseUrlState({ t: '2050' })).toMatchObject({ time: 2050, waterView: 'future' })
     expect(parseUrlState({ hot: '1' }).waterView).toBe('future')
     expect(parseUrlState({ view: 'nope', use: 'nope' })).toMatchObject({
       waterView: 'gap',

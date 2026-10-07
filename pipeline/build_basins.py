@@ -1,10 +1,11 @@
-"""Writes public/data/basins.geojson: Aqueduct subbasins clipped to Ukraine (SPEC §4.6).
+"""Writes public/data/basins.geojson: World Water Map subbasins (HydroBASINS level 7) clipped to
+Ukraine (SPEC §4.6).
 
-Properties: `id` (HydroBASINS PFAF_ID), `riverUk` / `riverEn` (the river with the longest course
+Properties: `id` (the service's basinid), `riverUk` / `riverEn` (the river with the longest course
 through the basin, or null; HydroBASINS has no names, SPEC §13.6), `oblasts` (ids of the
 oblasts that hold at least `BASIN_OBLAST_MIN_SHARE` of the basin, largest first), `point`
 (a [lon, lat] inside the basin, for the hotspot marker) and `kakhovka` (true where the former
-Kakhovka Reservoir was). Run `fetch_aqueduct.py` first.
+Kakhovka Reservoir was). Run `fetch_wwm_basins.py` first.
 """
 
 import json
@@ -14,11 +15,11 @@ import pandas as pd
 import shapely
 
 import config
-from common import download, land_regions, ukraine_basins, write_json
+from common import download, land_regions, ukraine_subbasins, write_json
 
 #: ≈10 m: more digits only add bytes.
 COORD_DECIMALS = 4
-MAX_BYTES = 500 * 1024
+MAX_BYTES = 700 * 1024
 
 
 def rivers() -> gpd.GeoDataFrame:
@@ -53,7 +54,7 @@ def kakhovka() -> shapely.Geometry:
 
 
 def main() -> None:
-    basins = ukraine_basins()
+    basins = ukraine_subbasins()
     shapes = basins.geometry.to_crs(config.EQUAL_AREA_CRS)
     oblasts = land_regions().to_crs(config.EQUAL_AREA_CRS)
     lines = rivers()

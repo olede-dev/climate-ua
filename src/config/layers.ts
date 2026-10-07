@@ -1,5 +1,5 @@
 import type { ColorScale } from '../lib/scale'
-import type { FuturePeriod, LayerFile, LayerId, WaterUseView } from '../types'
+import type { FuturePeriod, LayerFile, LayerId } from '../types'
 
 export interface LayerConfig {
   id: LayerId
@@ -18,27 +18,24 @@ export interface LayerConfig {
   headlinePeriod: FuturePeriod | null
   /** Fixed for the whole timeline, so 1960 and 2080 compare (SPEC §6). */
   scale: ColorScale
-  /** Values above this are hotspots (SPEC §8.4); layers without a hotspot view leave it out. */
-  hotspotAbove?: number
 }
 
 const CLIMATE_PERIODS: readonly FuturePeriod[] = ['2021-2040', '2041-2060', '2081-2100']
-const WATER_PERIODS: readonly FuturePeriod[] = ['2030', '2050', '2080']
 
 /**
- * Traffic-light ramp, green to red, at WRI's class bounds: < 10 % low to > 80 % extremely high
- * (SPEC §5.3). Lightness also changes along it (dark green, bright yellow, mid red), so the
- * classes stay apart for red–green colour blindness and off the dark basemap.
+ * The water layer's swatch in the layer list: its views set their own stops from the data
+ * (`waterUseScale`), on this ramp.
  */
 const WATER_SCALE: ColorScale = {
   stops: [
-    [0, '#2f9e5a'],
-    [10, '#9ccc4a'],
-    [20, '#f5d63d'],
-    [40, '#f58a2c'],
-    [80, '#e5383b'],
+    [0, '#1d3b28'],
+    [1, '#2f9e5a'],
+    [2, '#f5d63d'],
+    [3, '#f58a2c'],
+    [4, '#e5383b'],
   ],
-  noData: '#26262a',
+  // Grey, not the dark basemap tone: a basin without data must not read as an empty one.
+  noData: '#6e6e73',
 }
 
 /**
@@ -131,14 +128,12 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
   water: {
     id: 'water',
     geometry: 'basins',
-    path: 'data/layers/water.json',
-    futurePeriods: WATER_PERIODS,
+    path: 'data/water-use.json',
+    futurePeriods: [],
     display: 'value',
-    // One decimal: many basins withdraw under 1 %, which a whole number would show as 0.
-    decimals: 1,
-    headlinePeriod: '2050',
+    decimals: 2,
+    headlinePeriod: null,
     scale: WATER_SCALE,
-    hotspotAbove: 40,
   },
   temp: {
     id: 'temp',
@@ -208,15 +203,15 @@ export function layerConfig(id: LayerId): LayerConfig {
  * The water layer's demand and gap views (SPEC §4.1): years only, no projection. The scale is
  * set from the data, per sector (`waterUseScale`).
  */
-export function waterUseConfig(view: WaterUseView, scale: ColorScale): LayerConfig {
+export function waterUseConfig(scale: ColorScale): LayerConfig {
   return {
     id: 'water',
     geometry: 'basins',
     path: 'data/water-use.json',
     futurePeriods: [],
     display: 'value',
-    // Demand in km³: most basins need a fraction of one. The gap in million m³.
-    decimals: view === 'demand' ? 2 : 1,
+    // Both in km³: most basins need or lack a fraction of one.
+    decimals: 2,
     headlinePeriod: null,
     scale,
   }

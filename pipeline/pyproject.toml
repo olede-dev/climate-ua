@@ -1,7 +1,7 @@
 [project]
 name = "climate-ua-pipeline"
 version = "0.0.0"
-description = "Builds the static data files of climate-ua (public/data) from C3S, Aqueduct and other sources."
+description = "Builds the static data files of climate-ua (public/data) from C3S, the World Water Map and other sources."
 requires-python = ">=3.12"
 dependencies = [
   "cdsapi",

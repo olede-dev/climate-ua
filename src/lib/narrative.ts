@@ -75,12 +75,8 @@ export function inRegion(name: string, locale: Locale): string {
 
 /** Per-layer sentences; slots are listed with each template. */
 export interface LayerStoryCopy {
-  /** `{norm}` period, `{where}`, `{value}`. */
-  norm: string
   /** `{year}`, `{where}`, `{value}`, `{delta}`. */
   observed: string
-  /** After `norm`, so the place is already named: `{year}`, `{value}`, `{delta}`. */
-  observedShort: string
   /** `{period}`, `{value}`, `{range}`, `{delta}`. */
   future: string
   /** `{delta}`: the difference from the norm, unsigned. */
@@ -132,11 +128,11 @@ function observedYear(input: StoryInput): number {
   return isFuture(input.step) ? input.file.history.to : input.step
 }
 
-function observedSentence(input: StoryInput, short: boolean): Rich {
+function observedSentence(input: StoryInput): Rich {
   const year = observedYear(input)
   const value = valueAt(input.series, input.file.history, year)
   if (!value) return fill(input.copy.missingYear, { year: String(year) })
-  return fill(short ? input.layerCopy.observedShort : input.layerCopy.observed, {
+  return fill(input.layerCopy.observed, {
     year: String(year),
     where: input.where,
     value: strong(input.format(value.median)),
@@ -166,19 +162,5 @@ function futureSentence(input: StoryInput): Rich {
 
 /** The headline for the whole country: what the observed year was, what the projection is. */
 export function summaryStory(input: StoryInput): Rich {
-  return joinSentences([observedSentence(input, false), futureSentence(input)])
-}
-
-/** A region's «було → стало → буде» (SPEC §8.5): the norm, an observed year, a projection. */
-export function regionStory(input: StoryInput): Rich {
-  const { norm } = input.file
-  return joinSentences([
-    fill(input.layerCopy.norm, {
-      norm: formatPeriod(`${norm.from}-${norm.to}`),
-      where: input.where,
-      value: strong(input.format(input.series.norm)),
-    }),
-    observedSentence(input, true),
-    futureSentence(input),
-  ])
+  return joinSentences([observedSentence(input), futureSentence(input)])
 }

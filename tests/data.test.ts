@@ -59,11 +59,11 @@ describe('oblasts.geojson', () => {
 })
 
 describe('basins.geojson', () => {
-  it('has unique HydroBASINS ids, each in known oblasts, with a marker inside Ukraine', () => {
+  it('has unique World Water Map basin ids, each in known oblasts, with a marker inside Ukraine', () => {
     expect(basins.features.length).toBeGreaterThan(50)
     expect(new Set(basinIds).size).toBe(basinIds.length)
     for (const { properties } of basins.features) {
-      expect(properties.id, properties.id).toMatch(/^\d{6}$/)
+      expect(properties.id, properties.id).toMatch(/^\d+$/)
       expect(properties.oblasts.length, properties.id).toBeGreaterThan(0)
       for (const id of properties.oblasts) expect(oblastIds, properties.id).toContain(id)
       expect(properties.riverUk === null, properties.id).toBe(properties.riverEn === null)

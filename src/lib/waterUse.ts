@@ -3,11 +3,15 @@ import type {
   LayerFile,
   LayerId,
   RegionSeries,
+  WaterScenario,
   WaterSector,
   WaterUseFile,
   WaterUseView,
 } from '../types'
 import { colorAt, type ColorScale } from './scale'
+
+/** Grey, so a basin without data does not read as the ramp's dark «little». */
+export const WATER_NO_DATA = '#6e6e73'
 
 export const WATER_SECTORS: readonly WaterSector[] = [
   'total',
@@ -16,6 +20,7 @@ export const WATER_SECTORS: readonly WaterSector[] = [
   'industrial',
 ]
 export const WATER_USE_VIEWS: readonly WaterUseView[] = ['gap', 'demand']
+export const WATER_SCENARIOS: readonly WaterScenario[] = ['SSP1-2.6', 'SSP3-7.0', 'SSP5-8.5']
 
 /** One view and sector of `water-use.json` as a layer: history only, no projection. */
 export function waterUseLayer(
@@ -37,6 +42,59 @@ export function waterUseLayer(
     regions,
     source: file.source,
   }
+}
+
+/**
+ * The projected total gap of one scenario as a layer of years: the models' mean by year from
+ * `projection.from`, against the observed 1990–2019 norm. Demand and the sectors have none.
+ */
+export function waterProjectionLayer(file: WaterUseFile, scenario: WaterScenario): LayerFile {
+  const { from, to, unit, scenarios } = file.projection
+  const observed = file.views.gap.sectors.total
+  const { country, regions } = scenarios[scenario]
+  const series = (mean: number[], norm: number): RegionSeries => ({
+    norm,
+    history: mean,
+    future: {},
+  })
+  return {
+    layer: 'water',
+    geometry: 'basins',
+    unit,
+    scenario,
+    norm: file.norm,
+    history: { from, to },
+    futurePeriods: [],
+    country: series(country.mean, observed.country.norm),
+    regions: Object.fromEntries(
+      Object.entries(regions).map(([id, band]) => [
+        id,
+        series(band.mean, observed.regions[id]?.norm ?? 0),
+      ]),
+    ),
+    source: file.source,
+  }
+}
+
+/** Whether a basin has any water in the file: a series of only zeros means the source has none. */
+export function hasWaterData(series: RegionSeries): boolean {
+  return (
+    series.history.some((value) => value !== null && value !== 0) ||
+    Object.values(series.future).some((value) => value !== undefined && value.median !== 0)
+  )
+}
+
+/** The layer with every basin that has no water data blanked, so it draws and reads as no data. */
+export function blankEmptyBasins(layer: LayerFile): LayerFile {
+  const regions = Object.fromEntries(
+    Object.entries(layer.regions).map(([id, series]) => [
+      id,
+      hasWaterData(series)
+        ? series
+        : { ...series, history: series.history.map(() => null), future: {} },
+    ]),
+  )
+  return { ...layer, regions }
 }
 
 /**
@@ -79,7 +137,7 @@ export function waterUseScale(layer: LayerFile): ColorScale {
   const stops = bounds.map(
     (value, i) => [value, RAMP[Math.round((i / last) * (RAMP.length - 1))]!] as const,
   )
-  return { stops, noData: '#26262a' }
+  return { stops, noData: WATER_NO_DATA }
 }
 
 /** What a layer's sentences, legend and chart need, as `Messages['layers']` holds it. */
@@ -122,7 +180,7 @@ export function countryColor(series: RegionSeries, value: number): string {
     stops: colors.map(
       (color, i) => [min + ((max - min) * i) / (colors.length - 1), color] as const,
     ),
-    noData: '#26262a',
+    noData: WATER_NO_DATA,
   }
   return max > min ? colorAt(scale, value) : colors[0]!
 }

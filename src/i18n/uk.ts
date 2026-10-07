@@ -133,6 +133,8 @@ export const uk = {
     loadError: 'Не вдалося завантажити дані карти. Оновіть сторінку.',
     panel: 'Пояснення до карти',
     layers: 'Шар карти',
+    hideLayers: 'Сховати шари',
+    showLayers: 'Показати шари',
   },
   table: {
     oblasts: 'Область',

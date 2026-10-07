@@ -32,5 +32,6 @@ const buttonClass =
 
     <LanguageMenu :button-class="buttonClass" />
     <ThemeMenu :button-class="buttonClass" />
+    <slot />
   </header>
 </template>

@@ -161,15 +161,26 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 
     <div class="flex min-w-0 flex-1 flex-col gap-1.5">
       <div class="flex items-baseline justify-between gap-2">
-        <p class="flex min-w-0 items-center gap-1 truncate text-sm text-ink" aria-hidden="true">
+        <p class="flex min-w-0 items-center gap-1.5 truncate text-sm text-ink" aria-hidden="true">
           <button
             type="button"
             tabindex="-1"
-            class="flex size-6 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-fill-strong text-ink transition-colors hover:bg-accent hover:text-white disabled:opacity-30 disabled:hover:bg-fill-strong disabled:hover:text-ink"
             :disabled="prev === null"
             @click="moveTo(prev)"
           >
-            ‹
+            <svg
+              viewBox="0 0 16 16"
+              class="size-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M10 3.5 5.5 8l4.5 4.5" />
+            </svg>
           </button>
           <span class="min-w-[3.5rem] text-center text-base font-semibold tabular-nums">{{
             label
@@ -177,11 +188,22 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
           <button
             type="button"
             tabindex="-1"
-            class="flex size-6 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-fill-strong text-ink transition-colors hover:bg-accent hover:text-white disabled:opacity-30 disabled:hover:bg-fill-strong disabled:hover:text-ink"
             :disabled="next === null"
             @click="moveTo(next)"
           >
-            ›
+            <svg
+              viewBox="0 0 16 16"
+              class="size-4"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.25"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M6 3.5 10.5 8 6 12.5" />
+            </svg>
           </button>
           <span v-if="future" class="text-ink-muted">
             · {{ t.timeline.forecast }} ({{ scenario }})</span

@@ -13,7 +13,11 @@ const queryClient = new QueryClient({
       console.error(`Query ${JSON.stringify(query.queryKey)} failed`, error),
   }),
   // Every data file is static and versioned with the site: once loaded, it never goes stale.
-  defaultOptions: { queries: { staleTime: Infinity, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    // Results are large static files (GeoJSON, water-use.json): deep reactivity would wrap every
+    // number and coordinate in a proxy and slow each read. Nothing mutates them.
+    queries: { staleTime: Infinity, refetchOnWindowFocus: false, shallow: true },
+  },
 })
 
 createApp(App).use(createPinia()).use(router).use(VueQueryPlugin, { queryClient }).mount('#app')

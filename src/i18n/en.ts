@@ -134,6 +134,8 @@ export const en: Messages = {
     loadError: 'The map data could not be loaded. Reload the page.',
     panel: 'About the map',
     layers: 'Map layer',
+    hideLayers: 'Hide layers',
+    showLayers: 'Show layers',
   },
   table: {
     oblasts: 'Oblast',

@@ -9,7 +9,7 @@ import { summaryStory, type StoryInput } from '../../lib/narrative'
 import { summaryRows } from '../../lib/summary'
 import type { RegionLabel } from '../../lib/regions'
 import type { TimeStep } from '../../lib/time'
-import { countryColor, WATER_SECTORS } from '../../lib/waterUse'
+import { countryColor, WATER_SCENARIOS, WATER_SECTORS, WATER_USE_VIEWS } from '../../lib/waterUse'
 import type {
   LayerFile,
   LayerId,
@@ -19,6 +19,7 @@ import type {
   WaterSector,
   WaterView,
 } from '../../types'
+import WaterTabs from '../map/WaterTabs.vue'
 import { RichText } from '../ui/RichText'
 import CountrySummary from './CountrySummary.vue'
 import RegionCard from './RegionCard.vue'
@@ -48,6 +49,7 @@ const emit = defineEmits<{
   close: []
   sector: [WaterSector]
   view: [WaterView]
+  scenario: [WaterScenario]
 }>()
 
 const { locale, t } = useLocale()
@@ -68,6 +70,31 @@ function story(where: string, series: StoryInput['series']): StoryInput {
     decimals: props.config.decimals,
   }
 }
+
+const waterViews = computed(() =>
+  WATER_USE_VIEWS.map((id) => ({ id, label: t.value.waterUse.views[id] })),
+)
+
+/** Each scenario's mark: a leaf for the sustainable path, a flag for the national one, a flame
+ * for the fossil one; green to red as the warming grows. */
+const SCENARIO_MARKS: Record<WaterScenario, { icon: string; tone: string }> = {
+  'SSP1-2.6': {
+    icon: 'M3 13c0-6 4-10 10-10 0 6-4 10-10 10zM3 13l5-5',
+    tone: 'text-emerald-600 dark:text-emerald-400',
+  },
+  'SSP3-7.0': { icon: 'M4 14V2.5M4 3h8l-1.5 3L12 9H4', tone: 'text-amber-600 dark:text-amber-400' },
+  'SSP5-8.5': {
+    icon: 'M8 14.5c-2.8 0-4.5-1.8-4.5-4.3C3.5 7 7 5.5 7 1.5c2.5 1.5 5.5 4.5 5.5 8.7 0 2.5-1.7 4.3-4.5 4.3z',
+    tone: 'text-red-600 dark:text-red-400',
+  },
+}
+const scenarioViews = computed(() =>
+  WATER_SCENARIOS.map((id) => ({
+    id,
+    label: t.value.waterUse.scenarios[id].name,
+    ...SCENARIO_MARKS[id],
+  })),
+)
 
 const waterHistory = computed(() => !!props.water && props.water.view !== 'future')
 /** The observed year's country value, coloured by where it sits in the country's own record. */
@@ -150,8 +177,23 @@ function onKeydown(event: KeyboardEvent) {
         >
           ← {{ t.waterUse.back }}
         </button>
+        <WaterTabs
+          v-if="water?.view === 'future' && projection"
+          :model-value="projection.scenario"
+          stacked
+          :views="scenarioViews"
+          :label="t.waterUse.scenariosLabel"
+          @update:model-value="emit('scenario', $event)"
+        />
         <p class="sr-only"><RichText :text="summary" /></p>
         <template v-if="water && water.view !== 'future'">
+          <WaterTabs
+            :model-value="water.view"
+            block
+            :views="waterViews"
+            :label="t.waterUse.viewsLabel"
+            @update:model-value="emit('view', $event)"
+          />
           <p class="text-[13px] leading-relaxed text-ink">{{ t.waterUse.intro[water.view] }}</p>
           <WaterSectors
             :model-value="water.sector"

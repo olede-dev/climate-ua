@@ -9,7 +9,6 @@ import MapLegend from '../components/map/MapLegend.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
 import RegionTable, { type RegionRow } from '../components/map/RegionTable.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
-import WaterTabs from '../components/map/WaterTabs.vue'
 import LayerList from '../components/panel/LayerList.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
 import { LAYER_IDS, layerConfig, waterUseConfig } from '../config/layers'
@@ -24,8 +23,6 @@ import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, valueAt, type StepValue } from '../lib/series'
 import { isFuture, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
 import {
-  WATER_SCENARIOS,
-  WATER_USE_VIEWS,
   blankEmptyBasins,
   waterProjectionLayer,
   waterUseCopy,
@@ -40,8 +37,7 @@ const { locale, t } = useLocale()
 const ui = useUiStore()
 const basemap = ref<BasemapKind>('openfreemap')
 
-/** The water layer's demand or gap by year; its future view is the projected gap by year. */
-const waterHistory = computed(() => ui.layer === 'water' && ui.waterView !== 'future')
+/** The water layer's future view: the projected gap by year. */
 const waterFuture = computed(() => ui.layer === 'water' && ui.waterView === 'future')
 const waterUseQuery = useWaterUse(() => ui.layer === 'water')
 // The water layer comes from water-use.json alone.
@@ -55,8 +51,10 @@ const layer = computed<LayerFile | undefined>(() => {
   if (!file) return undefined
   if (ui.waterView === 'future') return waterProjectionLayer(file, ui.waterScenario)
   const history = waterUseLayer(file, ui.waterView, ui.waterSector)
-  // A zero gap is a real value (renewable water covers the demand), not missing data.
-  return ui.waterView === 'gap' ? history : blankEmptyBasins(history)
+  // A zero gap is a real value (renewable water covers the demand), not missing data; so is
+  // zero irrigation, as in the wet west where fields are not watered.
+  const zeroIsReal = ui.waterView === 'gap' || ui.waterSector === 'irrigation'
+  return zeroIsReal ? history : blankEmptyBasins(history)
 })
 const config = computed(() =>
   ui.layer === 'water' && layer.value
@@ -154,16 +152,13 @@ const regionProjection = computed(() => {
   const series = observed.regions[id]
   return band && series ? { file: observed, series, from: file.projection.from, band } : null
 })
-const scenarioChoices = computed(() =>
-  WATER_SCENARIOS.map((id) => ({ id, label: t.value.waterUse.scenarios[id].name })),
-)
-const waterViews = computed(() =>
-  WATER_USE_VIEWS.map((id) => ({ id, label: t.value.waterUse.views[id] })),
-)
 
-/** The future view opens on this year; history returns to the latest observed year. */
+/** The future view opens on this year; history returns to the latest observed year. Gap and
+ * demand share a timeline, so switching between them keeps the year. */
 function setWaterView(view: WaterView) {
+  const crossing = (view === 'future') !== (ui.waterView === 'future')
   ui.waterView = view
+  if (!crossing) return
   ui.playing = false
   ui.time = view === 'future' ? new Date().getFullYear() : null
 }
@@ -181,8 +176,6 @@ const layerChoices = computed(() =>
     name: t.value.layers[id].name,
     description:
       id === 'water' ? t.value.waterUse.layerDescription : t.value.layers[id].legendTitle,
-    // The layer on screen shows its current scale: the water views' own ramp.
-    gradient: cssGradient(id === ui.layer ? config.value.scale : layerConfig(id).scale),
   })),
 )
 const gradient = computed(() => cssGradient(config.value.scale))
@@ -266,6 +259,39 @@ const isWide = useMediaQuery('(min-width: 48rem)')
 /** The panel's width (`w-[22rem]`) and the gutter beside it. */
 const PANEL_INSET = 352 + 12
 
+/** Tailwind's `lg`: the layers are a column beside the map that can be folded away. */
+const isDesktop = useMediaQuery('(min-width: 64rem)')
+const LAYERS_KEY = 'climate-ua:layers-collapsed'
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(LAYERS_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+const layersCollapsed = ref(readCollapsed())
+watch(layersCollapsed, (collapsed) => {
+  try {
+    localStorage.setItem(LAYERS_KEY, collapsed ? '1' : '0')
+  } catch {
+    // Storage is a convenience; the toggle still works without it.
+  }
+})
+const layersHidden = computed(() => isDesktop.value && layersCollapsed.value)
+
+/** On narrow screens the layers live in a drawer from the right, opened from the header. */
+const layersOpen = ref(false)
+watch(isWide, (wide) => {
+  if (wide) layersOpen.value = false
+})
+watch(
+  () => ui.layer,
+  () => (layersOpen.value = false),
+)
+function onDrawerKey(event: KeyboardEvent) {
+  if (event.key === 'Escape') layersOpen.value = false
+}
+
 /** The panel under the map on narrow screens. */
 const sheet = useTemplateRef<InstanceType<typeof SidePanel>>('sheet')
 // A region picked on the map opens its card under it, out of sight on a phone: bring it up. A
@@ -282,6 +308,8 @@ watch(
     })
   },
 )
+
+const vFocus = { mounted: (el: HTMLElement) => el.focus() }
 
 const hover = ref<RegionHover | null>(null)
 const tooltip = computed(() => {
@@ -319,7 +347,66 @@ const tooltip = computed(() => {
 <template>
   <!-- Every block is a rounded card on the canvas, separated by one gutter (gap and padding). -->
   <div class="flex min-h-dvh flex-col gap-2 bg-canvas p-2 sm:gap-3 sm:p-3 md:h-dvh">
-    <AppHeader />
+    <AppHeader>
+      <button
+        v-if="!isWide"
+        type="button"
+        class="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:bg-fill focus-ring"
+        :aria-expanded="layersOpen"
+        aria-controls="layers-drawer"
+        :aria-label="t.home.showLayers"
+        :title="t.home.showLayers"
+        @click="layersOpen = true"
+      >
+        <svg
+          viewBox="0 0 16 16"
+          class="size-4"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          aria-hidden="true"
+        >
+          <path d="M2.5 4h11M2.5 8h11M2.5 12h11" stroke-linecap="round" />
+        </svg>
+      </button>
+    </AppHeader>
+    <!-- The layers drawer on narrow screens. -->
+    <Teleport to="body">
+      <div v-if="!isWide && layersOpen" class="fixed inset-0 z-40" @keydown="onDrawerKey">
+        <div class="absolute inset-0 bg-black/40" aria-hidden="true" @click="layersOpen = false" />
+        <aside
+          id="layers-drawer"
+          role="dialog"
+          aria-modal="true"
+          class="absolute top-2 right-2 bottom-2 w-[min(20rem,calc(100vw-3rem))] overflow-y-auto rounded-2xl bg-surface p-3 shadow-float"
+          :aria-label="t.home.layers"
+        >
+          <LayerList v-model="ui.layer" :layers="layerChoices" :label="t.home.layers">
+            <template #action>
+              <button
+                v-focus
+                type="button"
+                class="-my-1.5 flex size-7 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                :aria-label="t.home.hideLayers"
+                :title="t.home.hideLayers"
+                @click="layersOpen = false"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  class="size-4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <path d="M4 4l8 8M12 4l-8 8" stroke-linecap="round" />
+                </svg>
+              </button>
+            </template>
+          </LayerList>
+        </aside>
+      </div>
+    </Teleport>
     <main class="flex flex-1 flex-col gap-2 sm:gap-3 md:min-h-0 lg:flex-row">
       <section
         class="relative isolate h-[62dvh] min-w-0 shrink-0 overflow-hidden rounded-2xl shadow-card md:h-auto md:flex-1"
@@ -365,21 +452,6 @@ const tooltip = computed(() => {
             :gradient="gradient"
             :position="tooltip.position"
           />
-          <!-- Gap or demand over the map, as on the World Water Map. -->
-          <WaterTabs
-            v-if="waterHistory"
-            v-model="ui.waterView"
-            class="absolute top-3 left-1/2 z-10 -translate-x-1/2 md:left-[calc(50%+11rem)]"
-            :views="waterViews"
-            :label="t.waterUse.viewsLabel"
-          />
-          <WaterTabs
-            v-else-if="waterFuture"
-            v-model="ui.waterScenario"
-            class="absolute top-3 left-1/2 z-10 -translate-x-1/2 md:left-[calc(50%+11rem)]"
-            :views="scenarioChoices"
-            :label="t.waterUse.scenariosLabel"
-          />
           <!-- The panel on the left above the timeline, which spans the map (SPEC §8.1). -->
           <div class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3">
             <div class="flex min-h-0 flex-1 items-end justify-between gap-3">
@@ -398,6 +470,7 @@ const tooltip = computed(() => {
                 @close="ui.regionId = null"
                 @sector="ui.waterSector = $event"
                 @view="setWaterView"
+                @scenario="ui.waterScenario = $event"
               />
               <!-- The legend in the corner above the timeline (SPEC §7). -->
               <MapLegend
@@ -425,10 +498,43 @@ const tooltip = computed(() => {
       <!-- The layers in a card of their own: a column right of the map on wide screens;
            under the map on narrower ones. -->
       <aside
-        class="shrink-0 rounded-2xl bg-surface p-3 shadow-card lg:w-64 lg:overflow-y-auto xl:w-72"
+        v-if="isWide"
+        class="shrink-0 rounded-2xl bg-surface shadow-card"
+        :class="layersHidden ? 'p-2 lg:overflow-y-auto' : 'p-3 lg:w-64 lg:overflow-y-auto xl:w-72'"
         :aria-label="t.home.layers"
       >
-        <LayerList v-model="ui.layer" :layers="layerChoices" :label="t.home.layers" />
+        <LayerList
+          v-model="ui.layer"
+          :layers="layerChoices"
+          :label="t.home.layers"
+          :compact="layersHidden"
+        >
+          <template v-if="isDesktop" #action>
+            <button
+              type="button"
+              class="-my-1.5 flex size-7 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+              :aria-expanded="!layersHidden"
+              :aria-label="layersHidden ? t.home.showLayers : t.home.hideLayers"
+              :title="layersHidden ? t.home.showLayers : t.home.hideLayers"
+              @click="layersCollapsed = !layersCollapsed"
+            >
+              <svg
+                viewBox="0 0 16 16"
+                class="size-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                aria-hidden="true"
+              >
+                <path
+                  :d="layersHidden ? 'M2.5 4h11M2.5 8h11M2.5 12h11' : 'M4 4l8 8M12 4l-8 8'"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </template>
+        </LayerList>
       </aside>
       <SidePanel
         v-if="!isWide && layer && step !== null"
@@ -446,6 +552,7 @@ const tooltip = computed(() => {
         @close="ui.regionId = null"
         @sector="ui.waterSector = $event"
         @view="setWaterView"
+        @scenario="ui.waterScenario = $event"
       />
     </main>
     <AppFooter :basemap="basemap" />

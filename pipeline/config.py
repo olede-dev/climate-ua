@@ -199,7 +199,7 @@ BASINS_PATH = PUBLIC_DATA / "basins.geojson"
 #: An oblast is listed for a basin when it holds at least this share of the basin's area in Ukraine.
 BASIN_OBLAST_MIN_SHARE = 0.05
 
-#: Natural Earth rivers for basin names (SPEC §13.6), the same sources rivers-ua draws.
+#: Natural Earth rivers for basin names (SPEC §13.6).
 NATURAL_EARTH_RIVERS_URLS = [
     "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_rivers_lake_centerlines.geojson",
     "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_rivers_europe.geojson",
@@ -268,8 +268,39 @@ KOPPEN_PATH = PUBLIC_DATA / "koppen.json"
 
 # --- Rivers (SPEC §4.5) --------------------------------------------------------------------
 
-RIVERS_UA = PIPELINE_DIR.parent.parent / "rivers-ua"
-RIVERS_CLIMATE = RIVERS_UA / "public" / "data" / "climate.json"
-RIVERS_STATIONS = RIVERS_UA / "src" / "config" / "stations.generated.json"
-RIVERS_SEEDS = RIVERS_UA / "src" / "config" / "station-seeds.ts"
+@dataclass(frozen=True)
+class RiverStation:
+    id: str
+    river: str
+    place: str
+    river_en: str
+    place_en: str
+    #: GloFAS cell (lat, lon) whose mean discharge matches the gauged river, not the town centre.
+    cell: tuple[float, float]
+    #: Where the map draws the station: on the OpenStreetMap river line next to the cell.
+    marker: tuple[float, float]
+
+
+RIVER_STATIONS = [
+    RiverStation("dnipro-kyiv", "Дніпро", "Київ", "Dnipro", "Kyiv", cell=(50.4, 30.52), marker=(50.3877, 30.5868)),
+    RiverStation("desna-chernihiv", "Десна", "Чернігів", "Desna", "Chernihiv", cell=(51.47, 31.26), marker=(51.4512, 31.2818)),
+    RiverStation("desna-novhorod-siverskyi", "Десна", "Новгород-Сіверський", "Desna", "Novhorod-Siverskyi", cell=(51.95, 33.27), marker=(51.9418, 33.276)),
+    RiverStation("prypiat-chornobyl", "Прип’ять", "Чорнобиль", "Prypiat", "Chornobyl", cell=(51.23, 30.28), marker=(51.2495, 30.2906)),
+    RiverStation("dnister-zalishchyky", "Дністер", "Заліщики", "Dniester", "Zalishchyky", cell=(48.64, 25.78), marker=(48.6406, 25.7469)),
+    RiverStation("prut-chernivtsi", "Прут", "Чернівці", "Prut", "Chernivtsi", cell=(48.26, 25.98), marker=(48.276, 26.0118)),
+    RiverStation("tysa-vylok", "Тиса", "Вилок", "Tisza", "Vylok", cell=(48.1, 22.78), marker=(48.1095, 22.7734)),
+    RiverStation("danube-izmail", "Дунай", "Ізмаїл", "Danube", "Izmail", cell=(45.34, 28.89), marker=(45.3159, 28.8726)),
+    RiverStation("pivdennyi-buh-pervomaisk", "Південний Буг", "Первомайськ", "Southern Bug", "Pervomaisk", cell=(48.04, 30.85), marker=(48.0438, 30.8414)),
+    RiverStation("siverskyi-donets-izium", "Сіверський Донець", "Ізюм", "Siverskyi Donets", "Izium", cell=(49.16, 37.26), marker=(49.1595, 37.2641)),
+]
+
+#: Open-Meteo Flood API: GloFAS v4 reanalysis, daily discharge from 1997 (earlier days are null).
+FLOOD_API_URL = "https://flood-api.open-meteo.com/v1/flood"
+RIVERS_YEARS = (1997, 2025)
+#: Day-of-year norm: 1997–2020, the WMO normal 1991–2020 shortened to the reanalysis start.
+RIVERS_NORM = (1997, 2020)
+#: Values from d−3…d+3 feed the norm for day d.
+RIVERS_NORM_HALF_WINDOW = 3
+RIVERS_DIR = RAW_DIR / "rivers"
+RIVERS_SOURCE = "GloFAS v4 reanalysis via Open-Meteo"
 RIVERS_PATH = PUBLIC_DATA / "rivers.json"

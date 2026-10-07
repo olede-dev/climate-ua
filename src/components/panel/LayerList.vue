@@ -2,8 +2,7 @@
 import type { LayerId } from '../../types'
 
 /**
- * The map layers as a list beside the map, like the station list of rivers-ua: one radio per
- * layer with what it shows and its colour scale; arrows move between them.
+ * The map layers as a list beside the map: one radio per layer with what it shows and its colour scale; arrows move between them.
  */
 defineProps<{
   layers: { id: LayerId; name: string; description: string; gradient: string }[]

@@ -111,7 +111,7 @@ const DROUGHT_SCALE: ColorScale = {
 }
 
 /**
- * Low-flow days a year, in the classes of rivers-ua (none, 1–14, 15–44, 45–89, 90 and more).
+ * Low-flow days a year, in five classes (none, 1–14, 15–44, 45–89, 90 and more).
  * One violet hue, a colour no other layer uses, at hue 300° in OKLCH with even lightness steps
  * from L 0.465 to 0.87, checked with the `dataviz` validator (`--ordinal --mode dark`). By
  * definition a station averages about 37 such days, the middle class.

@@ -334,8 +334,8 @@ const tooltip = computed(() => {
           </div>
         </ClimateMap>
       </section>
-      <!-- The layers in a card of their own: a column right of the map on wide screens, like the
-           station list of rivers-ua; under the map on narrower ones. -->
+      <!-- The layers in a card of their own: a column right of the map on wide screens;
+           under the map on narrower ones. -->
       <aside
         class="shrink-0 rounded-2xl bg-surface p-3 shadow-card lg:w-64 lg:overflow-y-auto xl:w-72"
         :aria-label="t.home.layers"

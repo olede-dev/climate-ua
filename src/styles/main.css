@@ -4,8 +4,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 /*
- * Design tokens (inherited from rivers-ua). Components use these names, not raw
- * palette colours, so one place switches the light and dark appearance. Data colours (layer
+ * Design tokens. Components use these names, not raw palette colours, so one place switches the light and dark appearance. Data colours (layer
  * scales, chart series) are separate and stay in their own config.
  */
 :root {

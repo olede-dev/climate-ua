@@ -27,7 +27,7 @@ export interface BasinProperties {
 
 export type BasinsFile = FeatureCollection<Polygon | MultiPolygon, BasinProperties>
 
-/** `public/data/rivers.json`, written by `pipeline/import_rivers.py` (SPEC §4.5). */
+/** `public/data/rivers.json`, written by `pipeline/build_rivers.py` (SPEC §4.5). */
 export interface RiversFile {
   years: { from: number; to: number }
   stations: {

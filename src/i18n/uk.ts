@@ -115,9 +115,9 @@ export const uk = {
         url: 'https://doi.org/10.1038/s41597-023-02549-6',
       },
       {
-        name: 'GloFAS v4 через rivers-ua',
-        detail: 'Copernicus Emergency Management Service',
-        url: 'https://github.com/olede-dev/rivers-ua',
+        name: 'GloFAS v4',
+        detail: 'Copernicus Emergency Management Service, реаналіз через Open-Meteo',
+        url: 'https://open-meteo.com/en/docs/flood-api',
       },
       {
         name: 'geoBoundaries і Natural Earth',

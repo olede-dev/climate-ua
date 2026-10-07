@@ -7,6 +7,7 @@ import AppHeader from '../components/layout/AppHeader.vue'
 import type { BasemapKind } from '../components/map/basemap'
 import ClimateMap, { type RegionHover } from '../components/map/ClimateMap.vue'
 import HotspotToggle from '../components/map/HotspotToggle.vue'
+import MapLegend from '../components/map/MapLegend.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
 import RegionTable, { type RegionRow } from '../components/map/RegionTable.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
@@ -116,6 +117,22 @@ const layerChoices = computed(() =>
   })),
 )
 const gradient = computed(() => cssGradient(config.value.scale))
+
+/** The legend's ends, with units. */
+const legend = computed(() => {
+  const { stops, stepped } = config.value.scale
+  // Whole-number ends read as round marks: «30 днів», not «30,0 дня».
+  const end = (value: number) =>
+    valueFormatter.value(value, {
+      signed: signed.value,
+      decimals: Number.isInteger(value) ? 0 : undefined,
+    })
+  return {
+    min: end(stops[0]![0]),
+    // The top class of a stepped scale is open-ended.
+    max: `${stepped ? '≥ ' : ''}${end(stops[stops.length - 1]![0])}`,
+  }
+})
 
 const stepLabel = computed(() => {
   if (step.value === null) return ''
@@ -312,9 +329,10 @@ const tooltip = computed(() => {
           />
           <!-- The panel on the left above the timeline, which spans the map (SPEC §8.1). -->
           <div class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3">
-            <div v-if="isWide && layer && step !== null" class="flex min-h-0 flex-1 items-start">
+            <div class="flex min-h-0 flex-1 items-end justify-between gap-3">
               <SidePanel
-                class="glass pointer-events-auto max-h-full w-[22rem] rounded-2xl shadow-float"
+                v-if="isWide && layer && step !== null"
+                class="glass pointer-events-auto max-h-full w-[22rem] self-start rounded-2xl shadow-float"
                 :file="layer"
                 :config="config"
                 :copy="copy"
@@ -322,6 +340,18 @@ const tooltip = computed(() => {
                 :format="valueFormatter"
                 :region="selected"
                 @close="ui.regionId = null"
+              />
+              <!-- The legend in the corner above the timeline (SPEC §7). -->
+              <MapLegend
+                v-if="layer"
+                class="pointer-events-auto ml-auto"
+                :title="copy.legendTitle"
+                :gradient="gradient"
+                :low="copy.low"
+                :high="copy.high"
+                :min="legend.min"
+                :max="legend.max"
+                :middle="config.display === 'anomaly' ? copy.norm : undefined"
               />
             </div>
             <TimeSlider

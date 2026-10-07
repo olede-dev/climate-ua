@@ -28,7 +28,7 @@ const FILL_OPACITY = 0.9
 const DIMMED_OPACITY = 0.45
 /** With hotspots on, everything but the hotspots recedes (SPEC §8.4). */
 const NOT_HOT_OPACITY = 0.3
-const HOT_COLOR = '#ffe3ef'
+const HOT_COLOR = '#ffffff'
 
 /** Thin diagonal strokes over the fill: the future is an estimate (SPEC §7). */
 function hatchImage(): ImageData {

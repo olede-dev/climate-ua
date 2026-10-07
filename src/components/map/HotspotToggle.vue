@@ -1,5 +1,5 @@
 <script setup lang="ts">
-/** Switch for the water hotspots (SPEC §8.1), beside the zoom buttons. */
+/** Switch for the high water withdrawal (SPEC §8.1), beside the zoom buttons. */
 defineProps<{
   label: string
   /** What the switch shows, for its tooltip. */
@@ -20,12 +20,12 @@ const model = defineModel<boolean>({ required: true })
   >
     <span
       class="relative inline-flex size-3 items-center justify-center rounded-full"
-      :class="model ? 'bg-[#ff99c9]' : 'border border-current'"
+      :class="model ? 'bg-[#e5383b]' : 'border border-current'"
       aria-hidden="true"
     >
       <span
         v-if="model"
-        class="absolute size-3 motion-safe:animate-ping rounded-full bg-[#ff99c9]/60"
+        class="absolute size-3 motion-safe:animate-ping rounded-full bg-[#e5383b]/60"
       ></span>
     </span>
     {{ label }}

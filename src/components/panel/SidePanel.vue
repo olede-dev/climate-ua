@@ -6,12 +6,12 @@ import type { LayerConfig } from '../../config/layers'
 import type { Messages } from '../../i18n'
 import { plural, type ValueFormat } from '../../lib/format'
 import { regionStory, summaryStory, type StoryInput } from '../../lib/narrative'
+import { summaryRows } from '../../lib/summary'
 import type { RegionLabel } from '../../lib/regions'
-import { cssGradient } from '../../lib/scale'
 import { isFuture, type TimeStep } from '../../lib/time'
 import type { LayerFile, LayerId } from '../../types'
 import { RichText } from '../ui/RichText'
-import LayerLegend from './LayerLegend.vue'
+import CountrySummary from './CountrySummary.vue'
 import RegionCard from './RegionCard.vue'
 
 const props = defineProps<{
@@ -48,6 +48,15 @@ const countryWhere = computed(() =>
     : t.value.story.country,
 )
 const summary = computed(() => summaryStory(story(countryWhere.value, props.file.country)))
+const rows = computed(() =>
+  summaryRows(
+    props.file,
+    props.file.country,
+    props.step,
+    props.config.headlinePeriod,
+    props.config.display,
+  ),
+)
 const regionSeries = computed(() =>
   props.region ? props.file.regions[props.region.id] : undefined,
 )
@@ -68,20 +77,6 @@ const futureNote = computed(() => {
   if (models === undefined) return props.copy.futureNote
   const counted = plural(models, locale.value, props.copy.models).replace('{n}', String(models))
   return props.copy.futureNote.replace('{models}', counted)
-})
-
-const legend = computed(() => {
-  const stops = props.config.scale.stops
-  const signed = props.config.display === 'anomaly'
-  // Whole-number ends read as round marks: «30 днів», not «30,0 дня».
-  const end = (value: number) =>
-    props.format(value, { signed, decimals: Number.isInteger(value) ? 0 : undefined })
-  return {
-    gradient: cssGradient(props.config.scale),
-    min: end(stops[0]![0]),
-    // The top class of a stepped scale is open-ended.
-    max: `${props.config.scale.stepped ? '≥ ' : ''}${end(stops[stops.length - 1]![0])}`,
-  }
 })
 
 const pickHint = computed(
@@ -119,25 +114,23 @@ function onKeydown(event: KeyboardEvent) {
       />
       <div v-else class="space-y-3">
         <h2 class="text-xs font-medium text-ink-muted tabular-nums">{{ when }}</h2>
-        <p class="text-lg leading-snug text-ink sm:text-xl"><RichText :text="summary" /></p>
-        <p class="text-[13px] leading-relaxed text-ink-muted">
-          <template v-if="file.scenario">{{ t.scenarios[file.scenario] }} </template>
-          {{ futureNote }}
-        </p>
-        <p class="text-[13px] leading-relaxed text-ink-muted">
-          {{ pickHint }}
-        </p>
+        <p class="sr-only"><RichText :text="summary" /></p>
+        <CountrySummary :rows="rows" :file="file" :config="config" :copy="copy" :format="format" />
+        <p class="text-xs leading-relaxed text-ink-muted">{{ pickHint }}</p>
+        <!-- The scenario and the method, out of the way until asked for. -->
+        <details class="group text-xs text-ink-muted">
+          <summary
+            class="cursor-pointer list-none rounded font-medium text-ink-muted hover:text-ink focus-ring"
+          >
+            <span class="inline-block transition-transform group-open:rotate-90">›</span>
+            {{ t.panel.aboutData }}
+          </summary>
+          <p class="mt-2 leading-relaxed">
+            <template v-if="file.scenario">{{ t.scenarios[file.scenario] }} </template>
+            {{ futureNote }}
+          </p>
+        </details>
       </div>
     </div>
-    <LayerLegend
-      class="shrink-0 border-t border-line px-4 py-3"
-      :title="copy.legendTitle"
-      :gradient="legend.gradient"
-      :low="copy.low"
-      :high="copy.high"
-      :min="legend.min"
-      :max="legend.max"
-      :middle="config.display === 'anomaly' ? copy.norm : undefined"
-    />
   </aside>
 </template>

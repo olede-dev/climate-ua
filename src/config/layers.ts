@@ -26,18 +26,17 @@ const CLIMATE_PERIODS: readonly FuturePeriod[] = ['2021-2040', '2041-2060', '208
 const WATER_PERIODS: readonly FuturePeriod[] = ['2030', '2050', '2080']
 
 /**
- * One crimson hue (SPEC §6), dim to bright: stops at WRI's class bounds, < 10 % low to > 80 %
- * extremely high (SPEC §5.3). Built in OKLCH at hue 355° with even lightness steps and checked
- * with the `dataviz` validator (`--ordinal --mode dark`): the low end stays 2:1 off the dark
- * basemap, so the many low-stress basins do not vanish into it.
+ * Traffic-light ramp, green to red, at WRI's class bounds: < 10 % low to > 80 % extremely high
+ * (SPEC §5.3). Lightness also changes along it (dark green, bright yellow, mid red), so the
+ * classes stay apart for red–green colour blindness and off the dark basemap.
  */
 const WATER_SCALE: ColorScale = {
   stops: [
-    [0, '#783c55'],
-    [10, '#a34770'],
-    [20, '#d1528b'],
-    [40, '#f866a7'],
-    [80, '#ff99c9'],
+    [0, '#2f9e5a'],
+    [10, '#9ccc4a'],
+    [20, '#f5d63d'],
+    [40, '#f58a2c'],
+    [80, '#e5383b'],
   ],
   noData: '#26262a',
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
 import { formatPeriod } from '../../lib/format'
@@ -100,11 +100,40 @@ function pick(event: PointerEvent) {
 function onPointerDown(event: PointerEvent) {
   if (event.button !== 0) return
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  dragging.value = true
   pick(event)
 }
 
 function onPointerMove(event: PointerEvent) {
+  onHover(event)
   if ((event.currentTarget as HTMLElement).hasPointerCapture(event.pointerId)) pick(event)
+}
+
+/** Where the pointer hovers over the track, 0 to 1; null when it is elsewhere. */
+const hoverAt = ref<number | null>(null)
+const dragging = ref(false)
+const stepName = (target: TimeStep) => (isFuture(target) ? formatPeriod(target) : String(target))
+/** The step under the pointer, named above the track before a click. */
+const preview = computed(() => {
+  if (hoverAt.value === null || dragging.value) return null
+  const target = stepAtPosition(props.axis, hoverAt.value)
+  return { label: stepName(target), at: stepPosition(props.axis, target) }
+})
+/** A tick every decade of the observed years. */
+const decades = computed(() => {
+  const out: { year: number; at: number }[] = []
+  for (let year = Math.ceil(props.axis.from / 10) * 10; year <= props.axis.to; year += 10) {
+    out.push({ year, at: stepPosition(props.axis, year) })
+  }
+  return out
+})
+const prev = computed(() => prevStep(props.axis, step.value))
+const next = computed(() => nextStep(props.axis, step.value))
+
+function onHover(event: PointerEvent) {
+  const rect = track.value?.getBoundingClientRect()
+  if (!rect || rect.width === 0 || event.pointerType === 'touch') return
+  hoverAt.value = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
 }
 
 const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
@@ -132,8 +161,28 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 
     <div class="flex min-w-0 flex-1 flex-col gap-1.5">
       <div class="flex items-baseline justify-between gap-2">
-        <p class="truncate text-sm text-ink" aria-hidden="true">
-          <span class="text-base font-semibold tabular-nums">{{ label }}</span>
+        <p class="flex min-w-0 items-center gap-1 truncate text-sm text-ink" aria-hidden="true">
+          <button
+            type="button"
+            tabindex="-1"
+            class="flex size-6 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            :disabled="prev === null"
+            @click="moveTo(prev)"
+          >
+            ‹
+          </button>
+          <span class="min-w-[3.5rem] text-center text-base font-semibold tabular-nums">{{
+            label
+          }}</span>
+          <button
+            type="button"
+            tabindex="-1"
+            class="flex size-6 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink disabled:opacity-30 disabled:hover:bg-transparent"
+            :disabled="next === null"
+            @click="moveTo(next)"
+          >
+            ›
+          </button>
           <span v-if="future" class="text-ink-muted">
             · {{ t.timeline.forecast }} ({{ scenario }})</span
           >
@@ -162,6 +211,9 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
         @keydown="onKeydown"
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
+        @pointerup="dragging = false"
+        @pointercancel="dragging = false"
+        @pointerleave="hoverAt = null"
       >
         <span
           class="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-fill-strong"
@@ -181,19 +233,54 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
             width: `calc(${percent(slot.end - slot.start)} - 4px)`,
           }"
         ></span>
+        <!-- A tick every decade, so a year can be found by eye. -->
         <span
-          class="pointer-events-none absolute top-1/2 size-4 -translate-1/2 rounded-full border-2 border-white bg-accent shadow-card transition-[left] duration-150 ease-out motion-reduce:transition-none"
+          v-for="tick in decades"
+          :key="tick.year"
+          class="pointer-events-none absolute top-1/2 h-2.5 w-px -translate-1/2 bg-ink/30"
+          :style="{ left: percent(tick.at) }"
+        ></span>
+        <!-- The step a click would pick. -->
+        <template v-if="preview">
+          <span
+            class="pointer-events-none absolute top-1/2 size-2.5 -translate-1/2 rounded-full bg-ink/50"
+            :style="{ left: percent(preview.at) }"
+          ></span>
+          <span
+            class="pointer-events-none absolute bottom-full mb-1 -translate-x-1/2 rounded-md bg-ink px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-canvas tabular-nums"
+            :style="{ left: percent(preview.at) }"
+            >{{ preview.label }}</span
+          >
+        </template>
+        <span
+          class="pointer-events-none absolute top-1/2 size-4 -translate-1/2 rounded-full border-2 border-white bg-accent shadow-card transition-[left,transform] duration-150 ease-out motion-reduce:transition-none"
+          :class="{ 'scale-125': dragging }"
           :style="{ left: percent(thumb) }"
         ></span>
+        <span
+          v-if="dragging"
+          class="pointer-events-none absolute bottom-full mb-1.5 -translate-x-1/2 rounded-md bg-accent px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-white tabular-nums"
+          :style="{ left: percent(thumb) }"
+          >{{ label }}</span
+        >
       </div>
 
       <div
         class="relative hidden h-3.5 text-[10px] leading-none text-ink-muted tabular-nums sm:block"
       >
-        <span class="absolute left-0">{{ axis.from }}</span>
-        <span class="absolute -translate-x-full" :style="{ left: percent(historyEnd) }">{{
-          axis.to
-        }}</span>
+        <span
+          v-for="tick in decades"
+          :key="tick.year"
+          class="absolute -translate-x-1/2"
+          :style="{ left: percent(tick.at) }"
+          >{{ tick.year }}</span
+        >
+        <span
+          v-if="axis.to % 10 >= 4"
+          class="absolute -translate-x-full"
+          :style="{ left: percent(historyEnd) }"
+          >{{ axis.to }}</span
+        >
         <span
           v-for="slot in slots"
           :key="slot.period"

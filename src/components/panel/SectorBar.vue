@@ -14,14 +14,14 @@ const props = defineProps<{
 const { locale, t } = useLocale()
 
 /**
- * Three shades of the water hue, distinct in lightness so the segments read apart without
- * colour, checked with the `dataviz` validator on both themes (`--ordinal`); each is also
- * named with its share below the bar (SPEC §8.5).
+ * Three colours of the water scale, distinct in lightness (bright yellow, mid orange, dark
+ * green) so the segments read apart without colour; each is also named with its share below
+ * the bar (SPEC §8.5).
  */
 const ORDER = [
-  ['irrigation', '#f866a7'],
-  ['domestic', '#c4457f'],
-  ['industrial', '#8f3c62'],
+  ['irrigation', '#f58a2c'],
+  ['domestic', '#f5d63d'],
+  ['industrial', '#2f9e5a'],
 ] as const
 
 const parts = computed(() =>

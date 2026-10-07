@@ -133,7 +133,7 @@ export const en: Messages = {
     loadError: 'The map data could not be loaded. Reload the page.',
     panel: 'About the map',
     layers: 'Map layer',
-    hotspots: 'Hotspots',
+    hotspots: 'High water use',
     hotspotsHint:
       'Show the subbasins where people withdraw more than {value} of the available water',
   },
@@ -145,6 +145,12 @@ export const en: Messages = {
     hint: 'Pick a region to open its card.',
   },
   panel: {
+    usual: 'Usually',
+    now: 'selected year',
+    /** `{delta}`. */
+    moreThanUsual: '{delta} more than usual',
+    lessThanUsual: '{delta} less than usual',
+    aboutData: 'About the projection and data',
     country: 'Ukraine',
     pickRegion: 'Click a region to see its history and projection.',
     pickBasin: 'Click a subbasin to see its history and projection.',

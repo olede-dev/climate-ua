@@ -151,9 +151,7 @@ export const en: Messages = {
     moreThanUsual: '{delta} more than usual',
     lessThanUsual: '{delta} less than usual',
     aboutData: 'About the projection and data',
-    country: 'Ukraine',
     pickRegion: 'Click a region to see its history and projection.',
-    pickBasin: 'Click a subbasin to see its history and projection.',
     pickStation: 'Click a point on a river to see its history.',
     close: 'Close the region card',
     loading: 'Loading the chart',
@@ -199,6 +197,77 @@ export const en: Messages = {
     future: 'In {period}: {name} ({code}).',
     same: 'In {period} the Köppen climate type stays the same.',
     note: 'Climate type after Beck et al. (2023), projected under scenario {scenario}; the class covering most of the region.',
+  },
+  waterUse: {
+    periodsLabel: 'Water stress projection',
+    layerDescription: 'Water gap and demand, water stress to 2080',
+    views: { gap: 'Water gap', demand: 'Water demand' },
+    viewsLabel: 'What to show',
+    future: 'Future scenarios',
+    futureHint: 'Water stress up to 2080',
+    back: 'Back to history',
+    sectorsLabel: 'What the water is for',
+    noForecast:
+      'There are no projections of demand or the gap; the future is in “Future scenarios”.',
+    intro: {
+      gap: 'The gap is the part of the demand that renewable water from rivers and rain does not cover: it comes from groundwater stores that do not refill.',
+      demand:
+        'Demand is how much water people need in a year, including what flows back into rivers.',
+    },
+    sectors: {
+      total: {
+        name: 'Total',
+        use: 'for all uses',
+        about: 'Irrigation, households and industry together.',
+      },
+      irrigation: {
+        name: 'Irrigation',
+        use: 'for irrigation',
+        about: 'Fields in southern Ukraine are watered mostly from the Dnipro through canals.',
+      },
+      domestic: {
+        name: 'Domestic',
+        use: 'for households',
+        about: 'Water at home: drinking, washing, laundry and watering gardens.',
+      },
+      industrial: {
+        name: 'Industrial',
+        use: 'for industry',
+        about: 'Cooling power plants, steel, chemicals and mining.',
+      },
+    },
+    /** `{use}`: a sector's `use`. */
+    gap: {
+      legendTitle: 'Water gap {use}',
+      chartTitle: 'Water gap {use} by year, million m³',
+      story: {
+        norm: 'In {norm}, the water gap {use} {where} averaged {value} a year.',
+        observed: 'In {year}, the water gap {use} {where} was {value}, {delta}.',
+        observedShort: 'In {year}: {value}, {delta}.',
+        future: '{period}: —.',
+        above: 'more than the 1990–2019 average',
+        below: 'less than the 1990–2019 average',
+        same: 'the same as the 1990–2019 average',
+      },
+    },
+    demand: {
+      legendTitle: 'Water demand {use}',
+      chartTitle: 'Water demand {use} by year, km³',
+      story: {
+        norm: 'In {norm}, water demand {use} {where} averaged {value} a year.',
+        observed: 'In {year}, water demand {use} {where} was {value}, {delta}.',
+        observedShort: 'In {year}: {value}, {delta}.',
+        future: '{period}: —.',
+        above: 'more than the 1990–2019 average',
+        below: 'less than the 1990–2019 average',
+        same: 'the same as the 1990–2019 average',
+      },
+    },
+    units: { gap: 'million m³', demand: 'km³' },
+    low: 'Little',
+    high: 'A lot',
+    norm: '1990–2019 average',
+    note: 'The PCR-GLOBWB model (Utrecht University, World Water Map), 1980–2019. Volumes are for the part of each subbasin inside Ukraine. A sector’s gap is its share of the total gap, in proportion to its share of the demand.',
   },
   layers: {
     water: {

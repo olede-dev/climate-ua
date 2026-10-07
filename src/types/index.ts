@@ -111,3 +111,30 @@ export interface LayerFile {
   regions: Record<string, RegionSeries & { sectors?: Sectors }>
   source: string
 }
+
+/** The views of the water layer (SPEC §4.1): demand and gap by year, or the stress projection. */
+export type WaterView = 'gap' | 'demand' | 'future'
+export type WaterUseView = Exclude<WaterView, 'future'>
+export type WaterSector = 'total' | 'irrigation' | 'domestic' | 'industrial'
+
+/** `public/data/water-use.json`, written by `pipeline/build_water_use.py`. */
+export interface WaterUseFile {
+  history: { from: number; to: number }
+  norm: { from: number; to: number }
+  views: Record<
+    WaterUseView,
+    {
+      /** Volume in the part of each basin inside Ukraine: `km³` or `млн м³`. */
+      unit: string
+      sectors: Record<
+        WaterSector,
+        {
+          /** The sum of the basins. */
+          country: RegionSeries
+          regions: Record<string, RegionSeries>
+        }
+      >
+    }
+  >
+  source: string
+}

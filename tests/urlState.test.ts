@@ -9,6 +9,8 @@ describe('parseUrlState', () => {
       time: '2041-2060',
       region: 'kharkiv',
       hotspots: true,
+      waterView: 'gap',
+      waterSector: 'total',
     })
     expect(parseUrlState({ t: '1987' }).time).toBe(1987)
   })
@@ -41,7 +43,26 @@ describe('toUrlQuery', () => {
   })
 
   it('round-trips a non-default state', () => {
-    const state: UrlState = { layer: 'temp', time: '2081-2100', region: 'crimea', hotspots: true }
+    const state: UrlState = {
+      layer: 'temp',
+      time: '2081-2100',
+      region: 'crimea',
+      hotspots: true,
+      waterView: 'demand',
+      waterSector: 'irrigation',
+    }
     expect(parseUrlState(toUrlQuery(state))).toEqual(state)
+  })
+
+  it('reads a water projection period only in the future view', () => {
+    expect(parseUrlState({ t: '2050', view: 'future' }).time).toBe('2050')
+    expect(parseUrlState({ t: '2050', view: 'gap' }).time).toBe(2050)
+    // Links shared before the views keep opening the projection.
+    expect(parseUrlState({ t: '2050' })).toMatchObject({ time: '2050', waterView: 'future' })
+    expect(parseUrlState({ hot: '1' }).waterView).toBe('future')
+    expect(parseUrlState({ view: 'nope', use: 'nope' })).toMatchObject({
+      waterView: 'gap',
+      waterSector: 'total',
+    })
   })
 })

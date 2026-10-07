@@ -1,5 +1,5 @@
 import type { ColorScale } from '../lib/scale'
-import type { FuturePeriod, LayerFile, LayerId } from '../types'
+import type { FuturePeriod, LayerFile, LayerId, WaterUseView } from '../types'
 
 export interface LayerConfig {
   id: LayerId
@@ -202,4 +202,22 @@ export const DEFAULT_LAYER: LayerId = 'water'
 
 export function layerConfig(id: LayerId): LayerConfig {
   return LAYERS[id] ?? LAYERS[DEFAULT_LAYER]!
+}
+
+/**
+ * The water layer's demand and gap views (SPEC §4.1): years only, no projection. The scale is
+ * set from the data, per sector (`waterUseScale`).
+ */
+export function waterUseConfig(view: WaterUseView, scale: ColorScale): LayerConfig {
+  return {
+    id: 'water',
+    geometry: 'basins',
+    path: 'data/water-use.json',
+    futurePeriods: [],
+    display: 'value',
+    // Demand in km³: most basins need a fraction of one. The gap in million m³.
+    decimals: view === 'demand' ? 2 : 1,
+    headlinePeriod: null,
+    scale,
+  }
 }

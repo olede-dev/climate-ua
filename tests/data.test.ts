@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
 import { koppenText } from '../src/config/koppen'
-import type { BasinsFile, KoppenFile, LayerFile, OblastsFile, RiversFile } from '../src/types'
+import type {
+  BasinsFile,
+  KoppenFile,
+  LayerFile,
+  OblastsFile,
+  RiversFile,
+  WaterUseFile,
+} from '../src/types'
 
 // The pipeline output under public/data, checked as committed (SPEC §9).
 const layers = import.meta.glob<LayerFile>('../public/data/layers/*.json', {
@@ -21,6 +28,12 @@ const [rivers] = Object.values(
 )
 const [koppen] = Object.values(
   import.meta.glob<KoppenFile>('../public/data/koppen.json', { eager: true, import: 'default' }),
+)
+const [waterUse] = Object.values(
+  import.meta.glob<WaterUseFile>('../public/data/water-use.json', {
+    eager: true,
+    import: 'default',
+  }),
 )
 const oblasts = JSON.parse(oblastsText ?? '{"features":[]}') as OblastsFile
 const oblastIds = oblasts.features.map((f) => f.properties.id).sort()
@@ -136,5 +149,31 @@ describe('koppen.json', () => {
         expect(koppenText(code, 'en'), code).not.toBeNull()
       }
     }
+  })
+})
+
+describe('water-use.json', () => {
+  const years = waterUse!.history.to - waterUse!.history.from + 1
+
+  it.each(['gap', 'demand'] as const)('%s: every basin and sector, a value a year', (view) => {
+    for (const [name, sector] of Object.entries(waterUse!.views[view].sectors)) {
+      expect(Object.keys(sector.regions).sort(), name).toEqual(basinIds)
+      for (const series of [sector.country, ...Object.values(sector.regions)]) {
+        expect(series.history, name).toHaveLength(years)
+        for (const value of series.history) expect(value, name).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+
+  it('splits the gap into sectors that add up to the total, within 1 %', () => {
+    const { total, irrigation, domestic, industrial } = waterUse!.views.gap.sectors
+    total.country.history.forEach((value, i) => {
+      const sum =
+        irrigation.country.history[i]! +
+        domestic.country.history[i]! +
+        industrial.country.history[i]!
+      // The package's own files differ by a fraction of a percent.
+      expect(Math.abs(sum - value!)).toBeLessThanOrEqual(0.01 * value! + 0.1)
+    })
   })
 })

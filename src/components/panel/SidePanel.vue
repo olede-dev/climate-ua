@@ -8,11 +8,13 @@ import { plural, type ValueFormat } from '../../lib/format'
 import { regionStory, summaryStory, type StoryInput } from '../../lib/narrative'
 import { summaryRows } from '../../lib/summary'
 import type { RegionLabel } from '../../lib/regions'
-import { isFuture, type TimeStep } from '../../lib/time'
-import type { LayerFile, LayerId } from '../../types'
+import type { TimeStep } from '../../lib/time'
+import { countryColor, WATER_SECTORS } from '../../lib/waterUse'
+import type { LayerFile, LayerId, WaterSector, WaterView } from '../../types'
 import { RichText } from '../ui/RichText'
 import CountrySummary from './CountrySummary.vue'
 import RegionCard from './RegionCard.vue'
+import WaterSectors from './WaterSectors.vue'
 
 const props = defineProps<{
   file: LayerFile
@@ -22,8 +24,10 @@ const props = defineProps<{
   format: ValueFormat
   /** The open region; null shows the summary for all of Ukraine (SPEC §8.2). */
   region: (RegionLabel & { id: string }) | null
+  /** The water layer's view and sector; null on the other layers. */
+  water?: { view: WaterView; sector: WaterSector } | null
 }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; sector: [WaterSector]; view: [WaterView] }>()
 
 const { locale, t } = useLocale()
 
@@ -35,11 +39,24 @@ function story(where: string, series: StoryInput['series']): StoryInput {
     headline: props.config.headlinePeriod,
     where,
     layerCopy: props.copy.story,
-    copy: t.value.story,
+    // Demand and the gap have no projection; the stress view has.
+    copy: waterHistory.value
+      ? { ...t.value.story, noForecast: t.value.waterUse.noForecast }
+      : t.value.story,
     format: props.format,
     decimals: props.config.decimals,
   }
 }
+
+const waterHistory = computed(() => !!props.water && props.water.view !== 'future')
+/** The observed year's country value, coloured by where it sits in the country's own record. */
+const countryValueColor = computed(() => {
+  const value = rows.value.find((row) => row.kind === 'observed')?.value
+  return waterHistory.value && value != null ? countryColor(props.file.country, value) : null
+})
+const sectorItems = computed(() =>
+  WATER_SECTORS.map((id) => ({ id, ...t.value.waterUse.sectors[id] })),
+)
 
 /** «в Україні»; for the stations, how many the figure averages. */
 const countryWhere = computed(() =>
@@ -66,12 +83,6 @@ const card = computed(() =>
     : null,
 )
 
-/** Which year or period the summary is about, above it. */
-const when = computed(() => {
-  const year = isFuture(props.step) ? props.file.history.to : props.step
-  return `${t.value.panel.country} · ${year}`
-})
-
 const futureNote = computed(() => {
   const models = props.file.models
   if (models === undefined) return props.copy.futureNote
@@ -82,7 +93,8 @@ const futureNote = computed(() => {
 const pickHint = computed(
   () =>
     ({
-      basins: t.value.panel.pickBasin,
+      // The water panel is long enough; its basins need no prompt.
+      basins: null,
       oblasts: t.value.panel.pickRegion,
       stations: t.value.panel.pickStation,
     })[props.file.geometry],
@@ -113,10 +125,79 @@ function onKeydown(event: KeyboardEvent) {
         @close="emit('close')"
       />
       <div v-else class="space-y-3">
-        <h2 class="text-xs font-medium text-ink-muted tabular-nums">{{ when }}</h2>
+        <button
+          v-if="water?.view === 'future'"
+          type="button"
+          class="text-xs font-medium text-accent-ink hover:underline focus-ring"
+          @click="emit('view', 'gap')"
+        >
+          ← {{ t.waterUse.back }}
+        </button>
         <p class="sr-only"><RichText :text="summary" /></p>
-        <CountrySummary :rows="rows" :file="file" :config="config" :copy="copy" :format="format" />
-        <p class="text-xs leading-relaxed text-ink-muted">{{ pickHint }}</p>
+        <template v-if="water && water.view !== 'future'">
+          <p class="text-[13px] leading-relaxed text-ink">{{ t.waterUse.intro[water.view] }}</p>
+          <WaterSectors
+            :model-value="water.sector"
+            :sectors="sectorItems"
+            :label="t.waterUse.sectorsLabel"
+            @update:model-value="emit('sector', $event)"
+          >
+            <CountrySummary
+              :rows="rows"
+              :file="file"
+              :config="config"
+              :copy="copy"
+              :format="format"
+              compact
+              :value-color="countryValueColor"
+            />
+          </WaterSectors>
+        </template>
+        <CountrySummary
+          v-else
+          :focus="water?.view === 'future' ? 'future' : 'observed'"
+          :rows="rows"
+          :file="file"
+          :config="config"
+          :copy="copy"
+          :format="format"
+        />
+        <p v-if="pickHint" class="text-xs leading-relaxed text-ink-muted">{{ pickHint }}</p>
+        <button
+          v-if="waterHistory"
+          type="button"
+          class="group flex w-full items-center gap-3 rounded-xl bg-accent/15 px-3 py-3 text-left ring-1 ring-accent/50 transition-colors hover:bg-accent/25 focus-ring"
+          @click="emit('view', 'future')"
+        >
+          <!-- A telescope: looking ahead. -->
+          <span
+            class="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-white"
+            aria-hidden="true"
+          >
+            <svg
+              class="size-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 13l12-6 2 4-12 6z M15 7l3-1.5 2 4-3 1.5 M9 16l-2 5 M11 15l2 6" />
+            </svg>
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-xs font-semibold tracking-wide text-accent-ink uppercase">{{
+              t.waterUse.future
+            }}</span>
+            <span class="block text-xs text-ink">{{ t.waterUse.futureHint }}</span>
+          </span>
+          <span
+            aria-hidden="true"
+            class="text-lg text-accent-ink transition-transform group-hover:translate-x-0.5"
+            >→</span
+          >
+        </button>
         <!-- The scenario and the method, out of the way until asked for. -->
         <details class="group text-xs text-ink-muted">
           <summary

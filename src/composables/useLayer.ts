@@ -3,7 +3,15 @@ import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 
 import { layerConfig } from '../config/layers'
 import { riversLayer } from '../lib/rivers'
-import type { BasinsFile, KoppenFile, LayerFile, LayerId, OblastsFile, RiversFile } from '../types'
+import type {
+  BasinsFile,
+  KoppenFile,
+  LayerFile,
+  LayerId,
+  OblastsFile,
+  RiversFile,
+  WaterUseFile,
+} from '../types'
 
 /** A static JSON file under `public/`, versioned with the site. */
 async function fetchStatic<T>(path: string): Promise<T> {
@@ -36,6 +44,15 @@ export function useLayer(id: MaybeRefOrGetter<LayerId>) {
 /** River stations with their places and coordinates (SPEC §4.5). */
 export function useRivers(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({ ...RIVERS_QUERY, enabled: computed(() => toValue(enabled)) })
+}
+
+/** Water demand and the gap by sector and year, for the water layer's history views. */
+export function useWaterUse(enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: ['water-use'],
+    queryFn: () => fetchStatic<WaterUseFile>('data/water-use.json'),
+    enabled: computed(() => toValue(enabled)),
+  })
 }
 
 export function useOblasts() {

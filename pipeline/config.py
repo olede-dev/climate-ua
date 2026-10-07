@@ -171,6 +171,14 @@ WWM_DEMAND = {
     sector: (WWM_DIR / "demand" / "gridded_annual" / f"{sector}GrossDemand_annuaTot_output.nc", f"{sector}_gross_demand")
     for sector in ("total", "domestic", "industry", "irrigation")
 }
+#: The water gap: demand met from non-renewable water (fossil groundwater). The model gives only
+#: the total; each sector's gap is the total split by the sector's share of demand, so the
+#: three add up to it.
+WWM_GAP = {
+    sector: (WWM_DIR / "gap" / "gridded_annual" / f"{sector}WaterGap_annuaTot_output.nc", f"{sector}_water_gap")
+    for sector in ("total", "domestic", "industry", "irrigation")
+}
+WATER_USE_PATH = PUBLIC_DATA / "water-use.json"
 
 #: WRI Aqueduct 4.0, free to use with attribution.
 AQUEDUCT_URL = "https://files.wri.org/aqueduct/aqueduct-4-0-water-risk-data.zip"
@@ -245,6 +253,7 @@ RIVER_NAMES = {
     "Uzh": ("Уж", "Uzh"),
 }
 
+WWM_SOURCE = "Utrecht University, World Water Map (PCR-GLOBWB 2)"
 WATER_SOURCE = "Utrecht University, World Water Map (PCR-GLOBWB 2); WRI Aqueduct 4.0"
 
 # --- Climate analogue (SPEC §4.4) ----------------------------------------------------------

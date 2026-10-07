@@ -16,19 +16,30 @@ const props = defineProps<{
   config: LayerConfig
   copy: Messages['layers'][LayerId]
   format: ValueFormat
+  /** Only the big number and its title: no change against the norm, no columns. */
+  compact?: boolean
+  /** Colours the big number; mixed with the text colour so it reads in both themes. */
+  valueColor?: string | null
+  /** Which row is the big number: the observed year (default) or the projection. */
+  focus?: 'observed' | 'future'
 }>()
 
 const { t } = useLocale()
 
-const observed = computed(() => props.rows.find((row) => row.kind === 'observed'))
+const focusKind = computed(() =>
+  props.focus === 'future' && props.rows.some((row) => row.kind === 'future')
+    ? 'future'
+    : 'observed',
+)
+const focused = computed(() => props.rows.find((row) => row.kind === focusKind.value))
 const norm = computed(() => props.rows.find((row) => row.kind === 'norm'))
 
-/** The observed year against the norm, signed, as the numbers are shown. */
+/** The focused row against the norm, signed, as the numbers are shown. */
 const delta = computed(() => {
-  if (observed.value?.value == null || norm.value?.value == null) return null
+  if (focused.value?.value == null || norm.value?.value == null) return null
   const places = props.config.decimals
   const difference =
-    Number(observed.value.value.toFixed(places)) - Number(norm.value.value.toFixed(places))
+    Number(focused.value.value.toFixed(places)) - Number(norm.value.value.toFixed(places))
   const text = props.format(Math.abs(difference))
   if (text === props.format(0)) return null
   const up = difference > 0
@@ -66,22 +77,27 @@ const columns = computed(() =>
 <template>
   <div class="space-y-4" aria-hidden="true">
     <div>
-      <p class="text-4xl leading-none font-semibold text-ink tabular-nums">
-        {{ columns[1]?.text }}
+      <p
+        class="text-4xl leading-none font-semibold text-ink tabular-nums"
+        :style="
+          valueColor ? { color: `color-mix(in oklab, ${valueColor} 75%, var(--ui-ink))` } : {}
+        "
+      >
+        {{ columns.find((column) => column.kind === focusKind)?.text }}
       </p>
       <p class="mt-1.5 text-[13px] leading-snug text-ink-muted">{{ copy.legendTitle }}</p>
-      <p v-if="delta" class="mt-1 text-[13px] font-medium text-ink">
+      <p v-if="delta && !compact" class="mt-1 text-[13px] font-medium text-ink">
         {{ delta.arrow }} {{ delta.sentence }}
       </p>
     </div>
 
     <!-- Usual, now, then: the same number three times, coloured as on the map. -->
-    <ol class="grid grid-cols-3 gap-2">
+    <ol v-if="!compact" class="grid grid-cols-3 gap-2">
       <li
         v-for="column in columns"
         :key="column.kind"
         class="rounded-xl bg-fill-strong/60 p-2"
-        :class="{ 'ring-2 ring-accent': column.kind === 'observed' }"
+        :class="{ 'ring-2 ring-accent': column.kind === focusKind }"
       >
         <span
           class="mb-1.5 block h-1.5 rounded-full"

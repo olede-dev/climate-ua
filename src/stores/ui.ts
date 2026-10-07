@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 import { DEFAULT_URL_STATE, type UrlState } from '../lib/urlState'
 import type { TimeStep } from '../lib/time'
-import type { LayerId } from '../types'
+import type { LayerId, WaterSector, WaterView } from '../types'
 
 /** Client-only UI state; data files live in vue-query. Mirrored in the URL by `useUrlSync`. */
 export const useUiStore = defineStore('ui', () => {
@@ -15,6 +15,9 @@ export const useUiStore = defineStore('ui', () => {
   const playing = ref(false)
   /** Water stress hotspots (stage 4). */
   const hotspots = ref(DEFAULT_URL_STATE.hotspots)
+  /** The water layer's view: demand or the gap by year, or the stress projection. */
+  const waterView = ref<WaterView>(DEFAULT_URL_STATE.waterView)
+  const waterSector = ref<WaterSector>(DEFAULT_URL_STATE.waterSector)
 
   function toUrlState(): UrlState {
     return {
@@ -22,6 +25,8 @@ export const useUiStore = defineStore('ui', () => {
       time: time.value,
       region: regionId.value,
       hotspots: hotspots.value,
+      waterView: waterView.value,
+      waterSector: waterSector.value,
     }
   }
 
@@ -30,7 +35,19 @@ export const useUiStore = defineStore('ui', () => {
     time.value = state.time
     regionId.value = state.region
     hotspots.value = state.hotspots
+    waterView.value = state.waterView
+    waterSector.value = state.waterSector
   }
 
-  return { layer, time, regionId, playing, hotspots, toUrlState, applyUrlState }
+  return {
+    layer,
+    time,
+    regionId,
+    playing,
+    hotspots,
+    waterView,
+    waterSector,
+    toUrlState,
+    applyUrlState,
+  }
 })

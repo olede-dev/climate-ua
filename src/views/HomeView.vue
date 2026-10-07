@@ -11,10 +11,12 @@ import MapLegend from '../components/map/MapLegend.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
 import RegionTable, { type RegionRow } from '../components/map/RegionTable.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
+import PeriodPicker from '../components/map/PeriodPicker.vue'
+import WaterTabs from '../components/map/WaterTabs.vue'
 import LayerList from '../components/panel/LayerList.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
-import { LAYER_IDS, layerConfig } from '../config/layers'
-import { useBasins, useLayer, useOblasts, useRivers } from '../composables/useLayer'
+import { LAYER_IDS, layerConfig, waterUseConfig } from '../config/layers'
+import { useBasins, useLayer, useOblasts, useRivers, useWaterUse } from '../composables/useLayer'
 import { useLocale } from '../composables/useLocale'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useUrlSync } from '../composables/useUrlSync'
@@ -24,20 +26,35 @@ import { stationPoints } from '../lib/rivers'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, valueAt, type StepValue } from '../lib/series'
 import { isFuture, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
+import { WATER_USE_VIEWS, waterUseCopy, waterUseLayer, waterUseScale } from '../lib/waterUse'
 import { useUiStore } from '../stores/ui'
-import type { RegionsFile } from '../types'
+import type { FuturePeriod, LayerFile, RegionsFile, WaterView } from '../types'
 
 useUrlSync()
 const { locale, t } = useLocale()
 const ui = useUiStore()
 const basemap = ref<BasemapKind>('openfreemap')
 
-const config = computed(() => layerConfig(ui.layer))
+/** The water layer's demand or gap by year; its future view is the stress layer file. */
+const waterHistory = computed(() => ui.layer === 'water' && ui.waterView !== 'future')
+const waterUseQuery = useWaterUse(waterHistory)
+const waterFuture = computed(() => ui.layer === 'water' && ui.waterView === 'future')
 const layerQuery = useLayer(() => ui.layer)
 const oblastsQuery = useOblasts()
 // Basin names list their oblasts, so the oblasts load for every layer.
 const basinsQuery = useBasins()
-const layer = computed(() => layerQuery.data.value)
+const layer = computed<LayerFile | undefined>(() => {
+  if (!waterHistory.value) return layerQuery.data.value
+  const file = waterUseQuery.data.value
+  return file && ui.waterView !== 'future'
+    ? waterUseLayer(file, ui.waterView, ui.waterSector)
+    : undefined
+})
+const config = computed(() =>
+  waterHistory.value && layer.value && ui.waterView !== 'future'
+    ? waterUseConfig(ui.waterView, waterUseScale(layer.value))
+    : layerConfig(ui.layer),
+)
 // Stations are drawn over the oblast outlines (SPEC §6).
 const geometryQuery = computed(() =>
   config.value.geometry === 'basins' ? basinsQuery : oblastsQuery,
@@ -52,6 +69,7 @@ const regionsFile = computed<RegionsFile | undefined>(() => geometryQuery.value.
 const loadError = computed(
   () =>
     layerQuery.isError.value ||
+    waterUseQuery.isError.value ||
     oblastsQuery.isError.value ||
     geometryQuery.value.isError.value ||
     riversQuery.isError.value,
@@ -67,9 +85,12 @@ const axis = computed<TimeAxis | null>(() =>
     : null,
 )
 /** The step on screen: the stored one fitted to this layer's axis, or its latest observed year. */
-const step = computed<TimeStep | null>(() =>
-  axis.value ? snapStep(axis.value, ui.time ?? axis.value.to) : null,
-)
+const step = computed<TimeStep | null>(() => {
+  if (!axis.value) return null
+  const shown = snapStep(axis.value, ui.time ?? axis.value.to)
+  // The future view shows periods only: a year from a link opens the headline period.
+  return waterFuture.value && !isFuture(shown) ? (config.value.headlinePeriod ?? shown) : shown
+})
 // A step from another layer or a stale URL is replaced by the one actually shown.
 watch(step, (shown) => {
   if (shown !== null && ui.time !== null && shown !== ui.time) ui.time = shown
@@ -99,7 +120,36 @@ const mapValues = computed<Record<string, number | null>>(() =>
   ),
 )
 
-const copy = computed(() => t.value.layers[config.value.id])
+const copy = computed(() =>
+  waterHistory.value && ui.waterView !== 'future'
+    ? waterUseCopy(t.value, ui.waterView, ui.waterSector)
+    : t.value.layers[config.value.id],
+)
+const waterState = computed(() =>
+  ui.layer === 'water' ? { view: ui.waterView, sector: ui.waterSector } : null,
+)
+/** The projection periods as buttons: each is 30 years around the year named (Aqueduct). */
+const periodChoices = computed(() =>
+  (layer.value?.futurePeriods ?? []).map((id) => ({
+    id,
+    label: id,
+    note: `${Number(id) - 15}–${Number(id) + 15}`,
+  })),
+)
+const periodModel = computed<FuturePeriod>({
+  get: () => (step.value !== null && isFuture(step.value) ? step.value : '2050'),
+  set: (value) => (ui.time = value),
+})
+const waterViews = computed(() =>
+  WATER_USE_VIEWS.map((id) => ({ id, label: t.value.waterUse.views[id] })),
+)
+
+/** The future view opens on the headline period; history returns to the latest year. */
+function setWaterView(view: WaterView) {
+  ui.waterView = view
+  ui.playing = false
+  ui.time = view === 'future' ? layerConfig('water').headlinePeriod : null
+}
 // The unit comes with the copy: a count of days is a word that agrees with the number.
 const valueFormatter = computed(() =>
   valueFormat(locale.value, copy.value.unit, config.value.decimals),
@@ -112,8 +162,10 @@ const layerChoices = computed(() =>
   LAYER_IDS.map((id) => ({
     id,
     name: t.value.layers[id].name,
-    description: t.value.layers[id].legendTitle,
-    gradient: cssGradient(layerConfig(id).scale),
+    description:
+      id === 'water' ? t.value.waterUse.layerDescription : t.value.layers[id].legendTitle,
+    // The layer on screen shows its current scale: the water views' own ramp.
+    gradient: cssGradient(id === ui.layer ? config.value.scale : layerConfig(id).scale),
   })),
 )
 const gradient = computed(() => cssGradient(config.value.scale))
@@ -319,6 +371,14 @@ const tooltip = computed(() => {
             :gradient="gradient"
             :position="tooltip.position"
           />
+          <!-- Gap or demand over the map, as on the World Water Map. -->
+          <WaterTabs
+            v-if="waterHistory && ui.waterView !== 'future'"
+            v-model="ui.waterView"
+            class="absolute top-3 left-1/2 z-10 -translate-x-1/2 md:left-[calc(50%+11rem)]"
+            :views="waterViews"
+            :label="t.waterUse.viewsLabel"
+          />
           <!-- Hotspots beside the zoom buttons (SPEC §8.1). -->
           <HotspotToggle
             v-if="config.hotspotAbove !== undefined"
@@ -339,7 +399,10 @@ const tooltip = computed(() => {
                 :step="step"
                 :format="valueFormatter"
                 :region="selected"
+                :water="waterState"
                 @close="ui.regionId = null"
+                @sector="ui.waterSector = $event"
+                @view="setWaterView"
               />
               <!-- The legend in the corner above the timeline (SPEC §7). -->
               <MapLegend
@@ -354,8 +417,15 @@ const tooltip = computed(() => {
                 :middle="config.display === 'anomaly' ? copy.norm : undefined"
               />
             </div>
+            <PeriodPicker
+              v-if="waterFuture && layer"
+              v-model="periodModel"
+              :periods="periodChoices"
+              :label="t.waterUse.periodsLabel"
+              :scenario="layer.scenario"
+            />
             <TimeSlider
-              v-if="axis && layer"
+              v-else-if="axis && layer"
               v-model="timeModel"
               v-model:playing="ui.playing"
               :axis="axis"
@@ -382,7 +452,10 @@ const tooltip = computed(() => {
         :step="step"
         :format="valueFormatter"
         :region="selected"
+        :water="waterState"
         @close="ui.regionId = null"
+        @sector="ui.waterSector = $event"
+        @view="setWaterView"
       />
     </main>
     <AppFooter :basemap="basemap" />

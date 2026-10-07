@@ -39,7 +39,7 @@ npm run lint && npm test -- --run && npm run build
 Перед першим запуском:
 
 1. Акаунт [Copernicus CDS](https://cds.climate.copernicus.eu/): ключ у `~/.cdsapirc` і прийнята ліцензія датасету [C3S Atlas](https://cds.climate.copernicus.eu/datasets/multi-origin-c3s-atlas).
-2. Пакет [World Water Map](https://doi.org/10.24416/UU01-0Q6SU6) Утрехтського університету — вручну через браузер (репозиторій закритий перевіркою на ботів). Потрібні 4 файли `demand/gridded_annual/*GrossDemand_annuaTot_output.nc` (~270 МБ) у `pipeline/data/raw/wwm/` зі збереженням структури папок.
+2. Пакет [World Water Map](https://doi.org/10.24416/UU01-0Q6SU6) Утрехтського університету — вручну через браузер (репозиторій закритий перевіркою на ботів). Потрібні 8 файлів `demand/gridded_annual/*GrossDemand_annuaTot_output.nc` і `gap/gridded_annual/*WaterGap_annuaTot_output.nc` (~760 МБ) у `pipeline/data/raw/wwm/` зі збереженням структури папок.
 
 ```bash
 cd pipeline
@@ -49,6 +49,7 @@ uv run python build_climate.py   # → public/data/layers/{temp,heat,frost,droug
 uv run python fetch_aqueduct.py  # WRI Aqueduct 4.0, ~260 МБ
 uv run python build_basins.py    # суббасейни → public/data/basins.geojson
 uv run python build_water.py     # Утрехт + Aqueduct → public/data/layers/water.json
+uv run python build_water_use.py # попит і дефіцит по галузях → public/data/water-use.json
 uv run python fetch_koppen.py    # карти Кеппена–Гейгера, ~130 МБ
 uv run python build_koppen.py    # → public/data/koppen.json
 uv run python fetch_rivers.py    # GloFAS v4 через Open-Meteo (з паузами на ліміт запитів)

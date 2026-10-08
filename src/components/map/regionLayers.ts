@@ -16,6 +16,7 @@ export const STATION_DOT = 'station-dot'
 const FOCUS_SATELLITE = 'focus-satellite'
 const FOCUS_OBLAST_SOURCE = 'focus-oblasts'
 const FOCUS_OBLAST_LINE = 'focus-oblast-line'
+const GRID = 'grid'
 const BORDER_SOURCE = 'country-border'
 const BORDER_GLOW = 'country-border-glow'
 const BORDER_LINE = 'country-border-line'
@@ -238,14 +239,17 @@ export function setFillOpacity(
   theme: Theme,
 ) {
   if (!map.getLayer(REGION_FILL)) return
+  // Over the raster the fill stays invisible: it only catches the pointer for hover and click.
   map.setPaintProperty(
     REGION_FILL,
     'fill-opacity',
-    focused
-      ? ['case', SELECTED, FOCUS_SELECTED_OPACITY, HOVER, FOCUS_HOVER_OPACITY, 0]
-      : hovering
-        ? ['case', HOVER, FILL_OPACITY, DIMMED_OPACITY]
-        : FILL_OPACITY,
+    map.getLayer(GRID)
+      ? 0
+      : focused
+        ? ['case', SELECTED, FOCUS_SELECTED_OPACITY, HOVER, FOCUS_HOVER_OPACITY, 0]
+        : hovering
+          ? ['case', HOVER, FILL_OPACITY, DIMMED_OPACITY]
+          : FILL_OPACITY,
   )
   map.setPaintProperty(REGION_LINE, 'line-opacity', focused ? 0 : 1)
   // The theme's dark outline is lost on imagery; white reads on both.
@@ -307,4 +311,45 @@ export function setCountryBorder(map: MaplibreMap, visible: boolean) {
   if (map.getLayer(BORDER_GLOW))
     map.setPaintProperty(BORDER_GLOW, 'line-opacity', visible ? 0.55 : 0)
   if (map.getLayer(BORDER_LINE)) map.setPaintProperty(BORDER_LINE, 'line-opacity', visible ? 1 : 0)
+}
+
+/**
+ * The grid raster (`paintGrid`) under the region borders, in place of the fill; an image
+ * source, since its canvas is repainted only when the step changes. Null removes it.
+ */
+export function setGridImage(
+  map: MaplibreMap,
+  image: { url: string; coordinates: [number, number][] } | null,
+) {
+  if (!map.getLayer(REGION_FILL)) return
+  const source = map.getSource(GRID)
+  if (!image) {
+    if (map.getLayer(GRID)) map.removeLayer(GRID)
+    if (source) map.removeSource(GRID)
+    return
+  }
+  const coordinates = image.coordinates as [
+    [number, number],
+    [number, number],
+    [number, number],
+    [number, number],
+  ]
+  if (source && 'updateImage' in source && typeof source.updateImage === 'function') {
+    source.updateImage({ url: image.url, coordinates })
+    return
+  }
+  map.addSource(GRID, { type: 'image', url: image.url, coordinates })
+  map.addLayer(
+    {
+      id: GRID,
+      type: 'raster',
+      source: GRID,
+      paint: {
+        'raster-opacity': FILL_OPACITY,
+        'raster-resampling': 'linear',
+        'raster-fade-duration': 0,
+      },
+    },
+    REGION_FILL,
+  )
 }

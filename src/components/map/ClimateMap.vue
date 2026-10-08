@@ -11,8 +11,9 @@ import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
 import { geometryBounds } from '../../lib/geometry'
+import { gridCorners, paintGrid } from '../../lib/grid'
 import type { ColorScale } from '../../lib/scale'
-import type { OblastsFile, RegionsFile } from '../../types'
+import type { GridFile, OblastsFile, RegionsFile } from '../../types'
 import { useTheme } from '../../composables/useTheme'
 import { basemapStyle, setPlaceLabelsOnImagery, type BasemapKind } from './basemap'
 import {
@@ -25,6 +26,7 @@ import {
   setCountryBorder,
   setFillOpacity,
   setFutureHatch,
+  setGridImage,
   setRegionData,
   setRegionScale,
   setStationData,
@@ -49,6 +51,11 @@ const props = defineProps<{
   /** The value each region (or marker) shows now; a missing or null value draws no data. */
   values: Record<string, number | null>
   scale: ColorScale
+  /**
+   * Grid cells drawn as a raster in place of the region fill, clipped to the regions; the
+   * regions still carry the hover, the selection and the tooltip. Null: the fill shows values.
+   */
+  grid?: { file: GridFile; values: (number | null)[] } | null
   /** Hatch the fill: the current step is a projection. */
   future: boolean
   selectedId: string | null
@@ -114,6 +121,9 @@ let tweenFrame = 0
 /** The current style has loaded; data layers can be added. */
 let styleReady = false
 
+/** Where the grid raster is painted; MapLibre gets it as an image. */
+const gridCanvas = document.createElement('canvas')
+
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
 /** Basemap for the label language and the page theme. */
@@ -139,6 +149,25 @@ function targetLayer(): string {
 function setValue(id: string, value: number | null) {
   map?.setFeatureState({ source: valueSource(), id }, { value })
   shown[id] = value
+}
+
+/** Repaints the grid raster for the current values, or removes it. */
+function applyGrid() {
+  if (!map || !styleReady) return
+  const grid = props.grid
+  if (!grid || !props.regions) {
+    setGridImage(map, null)
+  } else {
+    paintGrid(
+      gridCanvas,
+      grid.file,
+      grid.values,
+      props.scale,
+      props.regions.features.map((f) => f.geometry),
+    )
+    setGridImage(map, { url: gridCanvas.toDataURL(), coordinates: gridCorners(grid.file) })
+  }
+  applyFillOpacity()
 }
 
 /** Moves every region from its drawn value to the new one; a gap in either jumps. */
@@ -262,6 +291,7 @@ function installRegions() {
   setFutureHatch(map, props.future)
   setCountryBorder(map, props.projection ?? false)
   redraw()
+  applyGrid()
 }
 
 /** The region or marker under the pointer. */
@@ -375,9 +405,13 @@ watch(
   },
 )
 watch(() => props.values, tweenTo)
+watch(() => props.grid, applyGrid)
 watch(
   () => props.scale,
-  (scale) => map && setRegionScale(map, scale),
+  (scale) => {
+    if (map) setRegionScale(map, scale)
+    applyGrid()
+  },
 )
 watch(
   () => props.future,

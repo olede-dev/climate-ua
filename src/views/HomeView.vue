@@ -15,7 +15,14 @@ import TimeSlider from '../components/map/TimeSlider.vue'
 import LayerList from '../components/panel/LayerList.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
 import { LAYER_IDS, layerConfig, waterUseConfig } from '../config/layers'
-import { useBasins, useLayer, useOblasts, useRivers, useWaterUse } from '../composables/useLayer'
+import {
+  useBasins,
+  useGrid,
+  useLayer,
+  useOblasts,
+  useRivers,
+  useWaterUse,
+} from '../composables/useLayer'
 import { useLocale } from '../composables/useLocale'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useUrlSync } from '../composables/useUrlSync'
@@ -25,6 +32,7 @@ import { stationPoints } from '../lib/rivers'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, atBound, hasRange, valueAt, type StepValue } from '../lib/series'
 import { outerBorder } from '../lib/geometry'
+import { gridValues } from '../lib/grid'
 import { isFuture, shownAxis, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
 import {
   blankEmptyBasins,
@@ -151,6 +159,15 @@ function shownValue(id: string): StepValue | null {
   if (!value) return null
   return config.value.display === 'anomaly' ? anomaly(value, series.norm) : value
 }
+
+const gridQuery = useGrid(() => config.value.gridPath ?? null)
+/** The layer's cells at the current step, for the map raster; null draws the region fill. */
+const mapGrid = computed(() => {
+  const file = gridQuery.data.value
+  if (!file || file.layer !== ui.layer || step.value === null) return null
+  const values = gridValues(file, step.value, ui.bound, config.value.display === 'anomaly')
+  return values && { file, values }
+})
 
 const mapValues = computed<Record<string, number | null>>(() =>
   Object.fromEntries(
@@ -558,6 +575,7 @@ const tooltip = computed(() => {
           :regions="regionsFile"
           :markers="markers"
           :values="mapValues"
+          :grid="mapGrid"
           :scale="config.scale"
           :future="step !== null && isFuture(step)"
           :selected-id="ui.regionId"

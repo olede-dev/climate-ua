@@ -32,10 +32,12 @@ def regional_mean(values: xr.DataArray, weights: xr.DataArray) -> xr.DataArray:
 
 
 def annual(monthly: xr.DataArray, how: str) -> xr.DataArray:
-    """Calendar years with all twelve months; a mean weighs each month by its days.
+    """Calendar years with all twelve months, per grid cell; a mean weighs each month by its days.
 
-    `dry_months` counts the months the region's mean SPEI is below `config.DRY_SPEI`; a year
-    with a month the index leaves undefined is dropped (NaN), since its count would be short.
+    `dry_months` counts the months a cell's SPEI is below `config.DRY_SPEI`, so a region's value
+    is the mean count over its area: a regional mean SPEI first would smooth local droughts
+    away. A cell-year with a month the index leaves undefined is NaN, since its count would be
+    short, and `regional_mean` skips it.
     """
     years = monthly["time"].dt.year
     complete = monthly["time"].groupby(years).count() == 12
@@ -87,6 +89,77 @@ def scaled_delta(delta: np.ndarray, norm: float, model_norm: np.ndarray) -> np.n
     return delta * (norm + k) / (model_norm + k)
 
 
+def build_grid(
+    layer: config.ClimateLayer, observed: xr.DataArray, modelled: xr.DataArray, inside: xr.DataArray
+) -> dict:
+    """ERA5 cell by cell for the map raster, with the delta method of SPEC §5.2 per cell.
+
+    Each model's change is interpolated from its ~1° grid onto the 0.25° ERA5 cells (clamped at
+    the edge, not extrapolated) and added to the cell's observed norm: the pattern inside a
+    model cell comes from ERA5, the change itself stays as coarse as the models. Cells outside
+    Ukraine are null; rows run south to north and columns west to east, as in the Atlas file.
+    """
+    rows = np.flatnonzero(inside.any("lon").values)
+    cols = np.flatnonzero(inside.any("lat").values)
+    observed = observed.isel(lat=slice(rows[0], rows[-1] + 1), lon=slice(cols[0], cols[-1] + 1))
+    inside = inside.isel(lat=slice(rows[0], rows[-1] + 1), lon=slice(cols[0], cols[-1] + 1))
+    norm = period_mean(observed, config.NORM)
+
+    def fill_coast(values: xr.DataArray) -> xr.DataArray:
+        """Model sea cells take the nearest land value, so interpolation along the coast does not
+        turn the ERA5 land cells next to them into NaN (SPEI has no value over the sea)."""
+        for dim in ("lon", "lat"):
+            values = values.interpolate_na(dim, method="nearest", fill_value="extrapolate")
+        return values
+
+    model_norm = fill_coast(period_mean(modelled, config.NORM))
+    at = {
+        "lat": observed["lat"].clip(modelled["lat"].min(), modelled["lat"].max()),
+        "lon": observed["lon"].clip(modelled["lon"].min(), modelled["lon"].max()),
+    }
+    decimals = config.GRID_DECIMALS
+
+    def cells(values: xr.DataArray) -> list[float | None]:
+        values = values.where(inside).transpose("lat", "lon").values.ravel()
+        return [None if np.isnan(v) else round(float(v), decimals) for v in values]
+
+    future = {}
+    for name, period in config.FUTURE_PERIODS.items():
+        delta = (fill_coast(period_mean(modelled, period)) - model_norm).interp(at, method="linear")
+        delta = delta.assign_coords(lat=observed["lat"], lon=observed["lon"])
+        if layer.delta == "scale":
+            k = config.SCALE_PSEUDO_DAYS
+            base = model_norm.interp(at, method="linear").assign_coords(lat=observed["lat"], lon=observed["lon"])
+            delta = delta * (norm + k) / (base + k)
+        per_model = norm + delta
+        low, high = layer.bounds
+        if low is not None or high is not None:
+            per_model = per_model.clip(low, high)
+        future[name] = {
+            key: cells(per_model.quantile(q, dim="member").drop_vars("quantile"))
+            for key, q in (("median", 0.5), ("p10", 0.1), ("p90", 0.9))
+        }
+
+    lat, lon = observed["lat"].values, observed["lon"].values
+    step = float(lat[1] - lat[0])
+    years = observed.sel(year=slice(config.HISTORY_FROM, None))
+    return {
+        "layer": layer.id,
+        "unit": layer.unit,
+        # Outer edges of the cell block, degrees: cells are `step` wide around their centres.
+        "west": round(float(lon[0]) - step / 2, 4),
+        "south": round(float(lat[0]) - step / 2, 4),
+        "step": step,
+        "rows": len(lat),
+        "cols": len(lon),
+        "history": {"from": int(years["year"][0]), "to": int(years["year"][-1])},
+        "norm": cells(norm),
+        "values": [cells(years.sel(year=year)) for year in years["year"].values],
+        "future": future,
+        "source": config.ATLAS_SOURCE,
+    }
+
+
 def build(layer: config.ClimateLayer, regions: gpd.GeoDataFrame) -> dict:
     country = gpd.GeoDataFrame({"id": [COUNTRY_ID]}, geometry=[regions.geometry.union_all()], crs=regions.crs)
     areas = gpd.GeoDataFrame(
@@ -96,13 +169,16 @@ def build(layer: config.ClimateLayer, regions: gpd.GeoDataFrame) -> dict:
     )
 
     era5 = xr.open_dataset(atlas_file("era5", "observed", layer))
-    observed = annual(regional_mean(era5[layer.nc_name], grid_weights(era5, areas)), layer.annual)
+    era5_weights = grid_weights(era5, areas)
+    era5_annual = annual(era5[layer.nc_name], layer.annual)
+    observed = regional_mean(era5_annual, era5_weights)
     history = observed.sel(year=slice(config.HISTORY_FROM, None))
     norm = period_mean(observed, config.NORM)
 
     cmip6 = open_cmip6(layer)
     weights = grid_weights(xr.open_dataset(atlas_file("cmip6", "historical", layer)), areas)
-    modelled = annual(regional_mean(cmip6, weights), layer.annual)
+    cmip6_annual = annual(cmip6, layer.annual)
+    modelled = regional_mean(cmip6_annual, weights)
     model_norm = period_mean(modelled, config.NORM)
 
     def series(region_id: str) -> dict:
@@ -122,6 +198,11 @@ def build(layer: config.ClimateLayer, regions: gpd.GeoDataFrame) -> dict:
             "history": [None if np.isnan(v) else round(float(v), layer.decimals) for v in values],
             "future": future,
         }
+
+    if layer.grid:
+        grid = build_grid(layer, era5_annual, cmip6_annual, era5_weights.sel(region=COUNTRY_ID) > 0)
+        size = write_json(config.PUBLIC_DATA / "grids" / f"{layer.id}.json", grid)
+        print(f"  grid: {grid['rows']}×{grid['cols']} cells, {size // 1024} KB")
 
     years = history["year"].values
     return {

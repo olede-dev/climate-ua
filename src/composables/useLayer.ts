@@ -5,6 +5,7 @@ import { layerConfig } from '../config/layers'
 import { riversLayer } from '../lib/rivers'
 import type {
   BasinsFile,
+  GridFile,
   KoppenFile,
   LayerFile,
   LayerId,
@@ -76,5 +77,15 @@ export function useKoppen() {
   return useQuery({
     queryKey: ['koppen'],
     queryFn: () => fetchStatic<KoppenFile>('data/koppen.json'),
+  })
+}
+
+/** A climate layer's ERA5 cells for the map raster; null loads nothing (no grid for the layer). */
+export function useGrid(path: MaybeRefOrGetter<string | null>) {
+  const file = computed(() => toValue(path))
+  return useQuery({
+    queryKey: ['grid', file],
+    queryFn: () => fetchStatic<GridFile>(file.value!),
+    enabled: computed(() => file.value !== null),
   })
 }

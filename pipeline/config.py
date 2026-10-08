@@ -107,6 +107,8 @@ class ClimateLayer:
     #: How a model's change joins the observed norm: added as it is, or scaled by how the
     #: observed norm compares with the model's own (`scaled_delta`, SPEC §5.2).
     delta: Literal["add", "scale"] = "add"
+    #: Also write the ERA5 grid cell by cell, `public/data/grids/<id>.json`, for the map raster.
+    grid: bool = False
 
 
 CLIMATE_LAYERS = {
@@ -118,6 +120,7 @@ CLIMATE_LAYERS = {
         annual="mean",
         bounds=(None, None),
         decimals=2,
+        grid=True,
     ),
     "heat": ClimateLayer(
         id="heat",
@@ -128,6 +131,7 @@ CLIMATE_LAYERS = {
         bounds=(0, 365),
         decimals=1,
         delta="scale",
+        grid=True,
     ),
     "frost": ClimateLayer(
         id="frost",
@@ -138,6 +142,7 @@ CLIMATE_LAYERS = {
         bounds=(0, 365),
         decimals=1,
         delta="scale",
+        grid=True,
     ),
     "drought": ClimateLayer(
         id="drought",
@@ -147,8 +152,12 @@ CLIMATE_LAYERS = {
         annual="dry_months",
         bounds=(0, 12),
         decimals=1,
+        grid=True,
     ),
 }
+
+#: Decimals of a grid cell value: the raster is coloured, not read digit by digit.
+GRID_DECIMALS = 1
 
 #: Days added to both norms before scaling a delta: where a model or the observations have
 #: almost no such days, the ratio is unstable, and the change falls back to being added.

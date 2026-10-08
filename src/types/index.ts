@@ -112,6 +112,30 @@ export interface LayerFile {
   source: string
 }
 
+/**
+ * `public/data/grids/<id>.json`, written by `pipeline/build_climate.py`: the ERA5 cells of a
+ * climate layer for the map raster. Each cell list runs row by row, south to north, west to
+ * east within a row; null is a cell outside Ukraine or without data.
+ */
+export interface GridFile {
+  layer: LayerId
+  unit: string
+  /** Outer edges of the cell block, degrees. */
+  west: number
+  south: number
+  /** Cell size, degrees. */
+  step: number
+  rows: number
+  cols: number
+  history: { from: number; to: number }
+  norm: (number | null)[]
+  /** One cell list per year from `history.from`. */
+  values: (number | null)[][]
+  /** Each cell's observed norm plus the models' change (SPEC §5.2). */
+  future: Partial<Record<ClimatePeriod, Record<'median' | 'p10' | 'p90', (number | null)[]>>>
+  source: string
+}
+
 /** The views of the water layer (SPEC §4.1): demand and gap by year, or the stress projection. */
 /** The World Water Map's projection scenarios: sustainable, nationalist, fossil-powered. */
 export type WaterScenario = 'SSP1-2.6' | 'SSP3-7.0' | 'SSP5-8.5'

@@ -36,7 +36,7 @@ export const en: Messages = {
       {
         heading: 'The past',
         paragraphs: [
-          'Temperature, extreme heat, frost and drought come from the ERA5 reanalysis, year by year since 1950. A region’s value is the mean over the grid cells (~25 km), weighted by how much of each cell lies in the region. The norm is 1991–2020.',
+          'Temperature, extreme heat, frost and drought come from the ERA5 reanalysis, year by year since 1950. A region’s value is the mean over the grid cells (~25 km), weighted by how much of each cell lies in the region. The climate layer maps show the cells themselves, blended smoothly between their centres; a cell’s projection is its norm plus the models’ change, interpolated from their ~100 km grid. The norm is 1991–2020.',
           'Water comes from the PCR-GLOBWB 2 hydrological model of Utrecht University as the World Water Map shows it: demand and the gap by year, 1980–2019, on 265 HydroBASINS level 7 subbasins. Rivers come from the GloFAS v4 reanalysis, 1997–2025.',
         ],
       },
@@ -75,7 +75,7 @@ export const en: Messages = {
       { name: 'Frost', text: 'days with a minimum temperature below 0 °C.' },
       {
         name: 'Drought',
-        text: 'months with SPEI-6 below −1 (moderate drought or worse), averaged over the region. The C3S Atlas standardises the index on 1971–2005 (1971–2010 for ERA5), not on 1991–2020.',
+        text: 'months with SPEI-6 below −1 (moderate drought or worse), counted in each grid cell and averaged over the region’s area. The C3S Atlas standardises the index on 1971–2005 (1971–2010 for ERA5), not on 1991–2020.',
       },
       {
         name: 'Rivers',

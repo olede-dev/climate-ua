@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { koppenText } from '../src/config/koppen'
 import type {
   BasinsFile,
+  GridFile,
   KoppenFile,
   LayerFile,
   OblastsFile,
@@ -12,6 +13,10 @@ import type {
 
 // The pipeline output under public/data, checked as committed (SPEC §9).
 const layers = import.meta.glob<LayerFile>('../public/data/layers/*.json', {
+  eager: true,
+  import: 'default',
+})
+const grids = import.meta.glob<GridFile>('../public/data/grids/*.json', {
   eager: true,
   import: 'default',
 })
@@ -109,6 +114,37 @@ describe.each(Object.entries(layers))('%s', (_path, layer) => {
         expect(median).toBeLessThanOrEqual(p90)
       }
     }
+  })
+})
+
+describe.each(Object.entries(grids))('%s', (path, grid) => {
+  const layer = layers[path.replace('/grids/', '/layers/')]
+
+  it('belongs to a layer file with the same years and periods', () => {
+    expect(layer).toBeDefined()
+    expect(grid.layer).toBe(layer!.layer)
+    expect(grid.history).toEqual(layer!.history)
+    expect(Object.keys(grid.future).sort()).toEqual([...layer!.futurePeriods].sort())
+  })
+
+  it('has one value per cell in every list, and cells inside Ukraine', () => {
+    const cells = grid.rows * grid.cols
+    expect(grid.west).toBeGreaterThan(21)
+    expect(grid.west + grid.cols * grid.step).toBeLessThan(41)
+    expect(grid.norm).toHaveLength(cells)
+    expect(grid.norm.filter((v) => v !== null).length).toBeGreaterThan(cells / 3)
+    expect(grid.values).toHaveLength(grid.history.to - grid.history.from + 1)
+    for (const year of grid.values) expect(year).toHaveLength(cells)
+    for (const bands of Object.values(grid.future))
+      for (const band of Object.values(bands)) expect(band).toHaveLength(cells)
+  })
+
+  it('averages close to the country norm', () => {
+    const inside = grid.norm.filter((v): v is number => v !== null)
+    const mean = inside.reduce((a, b) => a + b, 0) / inside.length
+    // Unweighted cells lean north (smaller in area), so only roughly: within 5 % or 0.5 units.
+    const norm = layer!.country.norm
+    expect(Math.abs(mean - norm)).toBeLessThan(Math.max(0.5, Math.abs(norm) * 0.05))
   })
 })
 

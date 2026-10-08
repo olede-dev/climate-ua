@@ -16,6 +16,8 @@ export interface LayerConfig {
    * null for a layer without one.
    */
   headlinePeriod: FuturePeriod | null
+  /** ERA5 cells under `public/`, drawn as a raster instead of the region fill; absent: regions only. */
+  gridPath?: string
   /** Fixed for the whole timeline, so 1960 and 2080 compare (SPEC §6). */
   scale: ColorScale
 }
@@ -139,6 +141,7 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     id: 'temp',
     geometry: 'oblasts',
     path: 'data/layers/temp.json',
+    gridPath: 'data/grids/temp.json',
     futurePeriods: CLIMATE_PERIODS,
     display: 'anomaly',
     decimals: 1,
@@ -149,6 +152,7 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     id: 'heat',
     geometry: 'oblasts',
     path: 'data/layers/heat.json',
+    gridPath: 'data/grids/heat.json',
     futurePeriods: CLIMATE_PERIODS,
     display: 'value',
     // One decimal: the north averages a fraction of a day, which a whole number would show as 0.
@@ -160,6 +164,7 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     id: 'frost',
     geometry: 'oblasts',
     path: 'data/layers/frost.json',
+    gridPath: 'data/grids/frost.json',
     futurePeriods: CLIMATE_PERIODS,
     display: 'value',
     decimals: 0,
@@ -170,6 +175,7 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     id: 'drought',
     geometry: 'oblasts',
     path: 'data/layers/drought.json',
+    gridPath: 'data/grids/drought.json',
     futurePeriods: CLIMATE_PERIODS,
     display: 'value',
     // A year counts whole months; one decimal keeps the averages apart.

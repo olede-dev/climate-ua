@@ -257,13 +257,6 @@ const legend = computed(() => {
 /** A projection is on screen: the water scenarios or a future climate period. */
 const inFuture = computed(() => waterFuture.value || (step.value !== null && isFuture(step.value)))
 
-// Water picks its scenario in the side panel, so the timeline does not repeat it.
-const timelineScenario = computed(() =>
-  !waterFuture.value && step.value !== null && isFuture(step.value)
-    ? (layer.value?.scenario ?? null)
-    : null,
-)
-
 const legendProps = computed(() => ({
   title: copy.value.legendTitle,
   gradient: gradient.value,
@@ -606,7 +599,6 @@ const tooltip = computed(() => {
               v-model="timeModel"
               v-model:playing="ui.playing"
               :axis="sliderAxis"
-              :scenario="timelineScenario"
             />
           </div>
         </ClimateMap>
@@ -662,7 +654,6 @@ const tooltip = computed(() => {
             v-model:playing="ui.playing"
             class="w-full max-w-xl min-w-0"
             :axis="sliderAxis"
-            :scenario="timelineScenario"
           >
             <MapLegend v-bind="legendProps" />
           </TimeSlider>

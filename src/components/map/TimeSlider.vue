@@ -17,8 +17,6 @@ import {
 
 const props = defineProps<{
   axis: TimeAxis
-  /** The projection scenario, always named next to the timeline (SPEC §1); null: none. */
-  scenario: string | null
 }>()
 const step = defineModel<TimeStep>({ required: true })
 const playing = defineModel<boolean>('playing', { required: true })
@@ -37,7 +35,7 @@ const thumb = computed(() => stepPosition(props.axis, step.value))
 const future = computed(() => isFuture(step.value))
 const label = computed(() => (isFuture(step.value) ? formatPeriod(step.value) : String(step.value)))
 const valueText = computed(() =>
-  future.value ? `${label.value}, ${t.value.timeline.forecast} ${props.scenario}` : label.value,
+  future.value ? `${label.value}, ${t.value.timeline.forecast}` : label.value,
 )
 
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -148,7 +146,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 
 <template>
   <div class="glass pointer-events-auto rounded-2xl px-2.5 py-2 shadow-float sm:px-3">
-    <!-- One row: play, the step and its arrows, the track, then the scenario if any. -->
+    <!-- One row: play, the step and its arrows, then the track. -->
     <div class="flex items-center gap-2 sm:gap-3">
       <button
         type="button"
@@ -329,14 +327,6 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
           >
         </div>
       </div>
-
-      <!-- The projection scenario, always named next to the timeline (SPEC §1). -->
-      <span
-        v-if="scenario"
-        class="max-w-[8rem] shrink-0 truncate rounded-full bg-fill-strong px-2 py-1 text-[11px] font-medium text-ink"
-        :title="`${t.timeline.scenario}: ${scenario}`"
-        >{{ scenario }}</span
-      >
     </div>
     <!-- Something read with the timeline, such as the map's legend. -->
     <div v-if="$slots.default" class="mt-1.5 border-t border-ink/10 pt-2">

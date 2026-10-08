@@ -175,16 +175,6 @@ const regionSeries = computed(() =>
   props.region ? props.file.regions[props.region.id] : undefined,
 )
 
-const pickHint = computed(
-  () =>
-    ({
-      // The water panel is long enough; its basins need no prompt.
-      basins: null,
-      oblasts: t.value.panel.pickRegion,
-      stations: t.value.panel.pickStation,
-    })[props.file.geometry],
-)
-
 function onKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && props.region) emit('close')
 }
@@ -287,7 +277,6 @@ function onKeydown(event: KeyboardEvent) {
           />
           <p class="text-xs leading-relaxed text-ink-muted">{{ t.panel.boundsHint }}</p>
         </div>
-        <p v-if="pickHint" class="text-xs leading-relaxed text-ink-muted">{{ pickHint }}</p>
       </div>
     </div>
     <!-- Pinned under the scroll, so the way into the projection is always in reach. -->

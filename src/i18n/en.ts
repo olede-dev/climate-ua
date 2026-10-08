@@ -155,8 +155,6 @@ export const en: Messages = {
     /** `{delta}`. */
     moreThanUsual: '{delta} above the norm',
     lessThanUsual: '{delta} below the norm',
-    pickRegion: 'Click a region to see its history and projection.',
-    pickStation: 'Click a point on a river to see its history.',
     close: 'Close the region card',
     loading: 'Loading the chart',
   },
@@ -422,6 +420,5 @@ export const en: Messages = {
     forecast: 'projection',
     observed: 'observed',
     future: 'Future',
-    scenario: 'Projection scenario',
   },
 }

@@ -145,6 +145,8 @@ export const en: Messages = {
     hint: 'Pick a region to open its card.',
   },
   panel: {
+    /** `{year}`: the end of the last projection period. */
+    futureHint: 'Projection to {year}',
     back: 'Ukraine',
     rank: 'Place {place} of {of} by size',
     usual: 'Usually',

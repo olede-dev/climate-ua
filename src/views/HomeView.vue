@@ -24,7 +24,7 @@ import { basinLabel, oblastLabel, oblastName, stationLabel, type RegionLabel } f
 import { stationPoints } from '../lib/rivers'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, valueAt, type StepValue } from '../lib/series'
-import { isFuture, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
+import { isFuture, shownAxis, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
 import {
   blankEmptyBasins,
   regionSectors,
@@ -107,6 +107,17 @@ watch(step, (shown) => {
 watch(layer, (file) => {
   if (file && ui.regionId !== null && !(ui.regionId in file.regions)) ui.regionId = null
 })
+
+/** The timeline shows the observed years or the future periods, never both at once. */
+const sliderAxis = computed(() =>
+  axis.value && step.value !== null ? shownAxis(axis.value, step.value) : null,
+)
+
+/** The side panel's switch between the observed years and the projection periods. */
+function setFuture(on: boolean) {
+  ui.playing = false
+  ui.time = on ? (layer.value?.futurePeriods[0] ?? null) : null
+}
 
 const timeModel = computed<TimeStep>({
   get: () => step.value ?? 0,
@@ -218,7 +229,9 @@ const legend = computed(() => {
 const timelineScenario = computed(() =>
   waterFuture.value
     ? t.value.waterUse.scenarios[ui.waterScenario].name
-    : (layer.value?.scenario ?? null),
+    : step.value !== null && isFuture(step.value)
+      ? (layer.value?.scenario ?? null)
+      : null,
 )
 
 const legendProps = computed(() => ({
@@ -548,10 +561,10 @@ const tooltip = computed(() => {
             class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3"
           >
             <TimeSlider
-              v-if="axis && layer"
+              v-if="sliderAxis && layer"
               v-model="timeModel"
               v-model:playing="ui.playing"
-              :axis="axis"
+              :axis="sliderAxis"
               :scenario="timelineScenario"
             />
           </div>
@@ -594,6 +607,7 @@ const tooltip = computed(() => {
           @close="ui.regionId = null"
           @sector="ui.waterSector = $event"
           @view="setWaterView"
+          @future="setFuture"
           @scenario="ui.waterScenario = $event"
           @bound="ui.waterBound = $event"
         />
@@ -601,14 +615,14 @@ const tooltip = computed(() => {
       <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
         <div ref="bottomBar" class="relative z-10 flex justify-center">
           <TimeSlider
-            v-if="axis && layer"
+            v-if="sliderAxis && layer"
             v-model="timeModel"
             v-model:playing="ui.playing"
             class="w-full max-w-xl min-w-0"
-            :axis="axis"
+            :axis="sliderAxis"
             :scenario="timelineScenario"
           >
-            <MapLegend v-bind="legendProps" class="pb-2" />
+            <MapLegend v-bind="legendProps" />
           </TimeSlider>
         </div>
       </div>
@@ -672,6 +686,7 @@ const tooltip = computed(() => {
         @close="ui.regionId = null"
         @sector="ui.waterSector = $event"
         @view="setWaterView"
+        @future="setFuture"
         @scenario="ui.waterScenario = $event"
         @bound="ui.waterBound = $event"
       />

@@ -127,6 +127,13 @@ const decades = computed(() => {
   }
   return out
 })
+/** The decades named under the track: every second one on a long axis, so they never crowd. */
+const labelled = computed(() => {
+  const every = props.axis.to - props.axis.from > 50 ? 20 : 10
+  return decades.value.filter((tick) => tick.year % every === 0)
+})
+/** The future view: only projection periods, no observed years. */
+const periodsOnly = computed(() => props.axis.to < props.axis.from)
 const prev = computed(() => prevStep(props.axis, step.value))
 const next = computed(() => nextStep(props.axis, step.value))
 
@@ -141,12 +148,11 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 
 <template>
   <div class="glass pointer-events-auto rounded-2xl px-2.5 py-2 shadow-float sm:px-3">
-    <!-- Something read with the timeline, such as the map's legend. -->
-    <slot />
-    <div class="flex items-center gap-3">
+    <!-- One row: play, the step and its arrows, the track, then the scenario if any. -->
+    <div class="flex items-center gap-2 sm:gap-3">
       <button
         type="button"
-        class="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover focus-ring"
+        class="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover focus-ring"
         :aria-label="playing ? t.timeline.pause : t.timeline.play"
         :aria-pressed="playing"
         @click="playing = !playing"
@@ -166,66 +172,76 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
         </svg>
       </button>
 
-      <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div class="flex items-baseline justify-between gap-2">
-          <p class="flex min-w-0 items-center gap-1.5 truncate text-sm text-ink" aria-hidden="true">
-            <button
-              type="button"
-              tabindex="-1"
-              class="flex size-7 shrink-0 items-center justify-center rounded-full bg-fill-strong text-ink transition-colors hover:bg-accent hover:text-white disabled:opacity-30 disabled:hover:bg-fill-strong disabled:hover:text-ink"
-              :disabled="prev === null"
-              @click="moveTo(prev)"
-            >
-              <svg
-                viewBox="0 0 16 16"
-                class="size-4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.25"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M10 3.5 5.5 8l4.5 4.5" />
-              </svg>
-            </button>
-            <span class="min-w-[3.5rem] text-center text-base font-semibold tabular-nums">{{
-              label
-            }}</span>
-            <button
-              type="button"
-              tabindex="-1"
-              class="flex size-7 shrink-0 items-center justify-center rounded-full bg-fill-strong text-ink transition-colors hover:bg-accent hover:text-white disabled:opacity-30 disabled:hover:bg-fill-strong disabled:hover:text-ink"
-              :disabled="next === null"
-              @click="moveTo(next)"
-            >
-              <svg
-                viewBox="0 0 16 16"
-                class="size-4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2.25"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M6 3.5 10.5 8 6 12.5" />
-              </svg>
-            </button>
-            <span v-if="future" class="text-ink-muted">
-              · {{ t.timeline.forecast }} ({{ scenario }})</span
-            >
-          </p>
-          <!-- On phones a future step already names the scenario on the left. -->
-          <p
-            v-if="scenario"
-            class="shrink-0 text-[11px] text-ink-muted"
-            :class="{ 'max-sm:hidden': future }"
-          >
-            <span class="max-sm:hidden">{{ t.timeline.scenario }}</span> {{ scenario }}
-          </p>
-        </div>
+      <!-- Projection periods alone: a few named choices, not a track. -->
+      <div
+        v-if="periodsOnly"
+        class="flex min-w-0 flex-1 gap-1 rounded-full bg-fill-strong p-1"
+        role="radiogroup"
+        :aria-label="t.timeline.label"
+      >
+        <button
+          v-for="period in axis.periods"
+          :key="period"
+          type="button"
+          role="radio"
+          class="min-w-0 flex-1 truncate rounded-full px-1 py-1 text-[11px] sm:text-xs font-semibold tabular-nums transition-colors focus-ring"
+          :class="period === step ? 'bg-accent text-white shadow-card' : 'text-ink hover:bg-fill'"
+          :aria-checked="period === step"
+          @click="moveTo(period)"
+        >
+          {{ formatPeriod(period) }}
+        </button>
+      </div>
 
+      <div v-if="!periodsOnly" class="flex shrink-0 items-center text-ink" aria-hidden="true">
+        <button
+          type="button"
+          tabindex="-1"
+          class="flex size-6 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink disabled:opacity-0"
+          :disabled="prev === null"
+          @click="moveTo(prev)"
+        >
+          <svg
+            viewBox="0 0 16 16"
+            class="size-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.25"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M10 3.5 5.5 8l4.5 4.5" />
+          </svg>
+        </button>
+        <span
+          class="text-center text-base font-semibold tabular-nums"
+          :class="future ? 'min-w-[5.5rem]' : 'min-w-[3rem]'"
+          >{{ label }}</span
+        >
+        <button
+          type="button"
+          tabindex="-1"
+          class="flex size-6 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink disabled:opacity-0"
+          :disabled="next === null"
+          @click="moveTo(next)"
+        >
+          <svg
+            viewBox="0 0 16 16"
+            class="size-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.25"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M6 3.5 10.5 8 6 12.5" />
+          </svg>
+        </button>
+      </div>
+
+      <div v-if="!periodsOnly" class="flex min-w-0 flex-1 flex-col sm:pt-3.5">
         <!-- Observed years as one continuous track, then the future periods as separate steps. -->
         <div
           ref="track"
@@ -298,17 +314,11 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
           class="relative hidden h-3.5 text-[10px] leading-none text-ink-muted tabular-nums sm:block"
         >
           <span
-            v-for="tick in decades"
+            v-for="tick in labelled"
             :key="tick.year"
             class="absolute -translate-x-1/2"
             :style="{ left: percent(tick.at) }"
             >{{ tick.year }}</span
-          >
-          <span
-            v-if="axis.to % 10 >= 4"
-            class="absolute -translate-x-full"
-            :style="{ left: percent(historyEnd) }"
-            >{{ axis.to }}</span
           >
           <span
             v-for="slot in slots"
@@ -319,6 +329,18 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
           >
         </div>
       </div>
+
+      <!-- The projection scenario, always named next to the timeline (SPEC §1). -->
+      <span
+        v-if="scenario"
+        class="max-w-[8rem] shrink-0 truncate rounded-full bg-fill-strong px-2 py-1 text-[11px] font-medium text-ink"
+        :title="`${t.timeline.scenario}: ${scenario}`"
+        >{{ scenario }}</span
+      >
+    </div>
+    <!-- Something read with the timeline, such as the map's legend. -->
+    <div v-if="$slots.default" class="mt-1.5 border-t border-ink/10 pt-2">
+      <slot />
     </div>
   </div>
 </template>

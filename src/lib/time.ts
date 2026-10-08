@@ -33,8 +33,23 @@ export function periodRange(period: FuturePeriod): [start: number, end: number] 
   return end === undefined ? [start - 5, start + 5] : [start, end]
 }
 
+/** The part of an axis the timeline shows at once: its observed years, or its future periods
+ * alone when `step` is one of them; the two are switched from the side panel. */
+export function shownAxis(axis: TimeAxis, step: TimeStep): TimeAxis {
+  return isFuture(step)
+    ? { from: axis.from, to: axis.from - 1, periods: axis.periods }
+    : { from: axis.from, to: axis.to, periods: [] }
+}
+
+function hasYears(axis: TimeAxis): boolean {
+  return axis.to >= axis.from
+}
+
 export function axisSteps(axis: TimeAxis): TimeStep[] {
-  const years = Array.from({ length: axis.to - axis.from + 1 }, (_, i) => axis.from + i)
+  const years = Array.from(
+    { length: Math.max(0, axis.to - axis.from + 1) },
+    (_, i) => axis.from + i,
+  )
   return [...years, ...axis.periods]
 }
 
@@ -83,15 +98,21 @@ export function parseStep(raw: string, periods: readonly FuturePeriod[]): TimeSt
 }
 
 function historyShare(axis: TimeAxis): number {
+  if (!hasYears(axis)) return 0
   return axis.periods.length === 0 ? 1 : HISTORY_SHARE
+}
+
+function gapShare(axis: TimeAxis): number {
+  return hasYears(axis) && axis.periods.length > 0 ? GAP_SHARE : 0
 }
 
 /** Where a step sits on the slider track, 0 (left) to 1 (right). */
 export function stepPosition(axis: TimeAxis, step: TimeStep): number {
   const share = historyShare(axis)
+  const gap = gapShare(axis)
   if (isFuture(step)) {
-    const slot = (1 - share - GAP_SHARE) / axis.periods.length
-    return share + GAP_SHARE + slot * (axis.periods.indexOf(step) + 0.5)
+    const slot = (1 - share - gap) / axis.periods.length
+    return share + gap + slot * (axis.periods.indexOf(step) + 0.5)
   }
   const span = axis.to - axis.from
   return span === 0 ? 0 : ((step - axis.from) / span) * share
@@ -102,21 +123,23 @@ export function periodSlots(
   axis: TimeAxis,
 ): { period: FuturePeriod; start: number; end: number }[] {
   const share = historyShare(axis)
-  const slot = (1 - share - GAP_SHARE) / axis.periods.length
+  const gap = gapShare(axis)
+  const slot = (1 - share - gap) / axis.periods.length
   return axis.periods.map((period, i) => ({
     period,
-    start: share + GAP_SHARE + slot * i,
-    end: share + GAP_SHARE + slot * (i + 1),
+    start: share + gap + slot * i,
+    end: share + gap + slot * (i + 1),
   }))
 }
 
 /** The step under a point of the slider track (0–1), for pointer drags. */
 export function stepAtPosition(axis: TimeAxis, position: number): TimeStep {
   const share = historyShare(axis)
+  const gap = gapShare(axis)
   const x = Math.min(1, Math.max(0, position))
-  if (axis.periods.length > 0 && x > share + GAP_SHARE / 2) {
-    const slot = (1 - share - GAP_SHARE) / axis.periods.length
-    const at = Math.floor((x - share - GAP_SHARE) / slot)
+  if (axis.periods.length > 0 && (share === 0 || x > share + gap / 2)) {
+    const slot = (1 - share - gap) / axis.periods.length
+    const at = Math.floor((x - share - gap) / slot)
     return axis.periods[Math.min(axis.periods.length - 1, Math.max(0, at))]!
   }
   return Math.min(

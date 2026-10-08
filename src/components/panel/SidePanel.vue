@@ -8,7 +8,7 @@ import { plural, type ValueFormat } from '../../lib/format'
 import { summaryStory, type StoryInput } from '../../lib/narrative'
 import { summaryRows } from '../../lib/summary'
 import type { RegionLabel } from '../../lib/regions'
-import type { TimeStep } from '../../lib/time'
+import { isFuture, type TimeStep } from '../../lib/time'
 import { countryColor, WATER_SCENARIOS, WATER_SECTORS, WATER_USE_VIEWS } from '../../lib/waterUse'
 import type {
   LayerFile,
@@ -56,9 +56,28 @@ const emit = defineEmits<{
   view: [WaterView]
   scenario: [WaterScenario]
   bound: [WaterBound]
+  /** Another layer's switch between its observed years and its projection periods. */
+  future: [boolean]
 }>()
 
 const { locale, t } = useLocale()
+
+/** Where the side panel offers the future: the water gap view, or any layer with periods. */
+const futureOn = computed(() =>
+  props.water ? props.water.view === 'future' : isFuture(props.step),
+)
+const futureOffered = computed(() =>
+  props.water ? props.water.view === 'gap' : !futureOn.value && props.file.futurePeriods.length > 0,
+)
+const futureHint = computed(() => {
+  if (props.water) return t.value.waterUse.futureHint
+  const last = props.file.futurePeriods[props.file.futurePeriods.length - 1]
+  return last ? t.value.panel.futureHint.replace('{year}', last.split('-').pop()!) : ''
+})
+function openFuture(on: boolean) {
+  if (props.water) emit('view', on ? 'future' : 'gap')
+  else emit('future', on)
+}
 
 function story(where: string, series: StoryInput['series']): StoryInput {
   return {
@@ -185,10 +204,10 @@ function onKeydown(event: KeyboardEvent) {
       />
       <div v-else class="space-y-3">
         <button
-          v-if="water?.view === 'future'"
+          v-if="futureOn"
           type="button"
           class="text-xs font-medium text-accent-ink hover:underline focus-ring"
-          @click="emit('view', 'gap')"
+          @click="openFuture(false)"
         >
           ← {{ t.waterUse.back }}
         </button>
@@ -248,10 +267,10 @@ function onKeydown(event: KeyboardEvent) {
         />
         <p v-if="pickHint" class="text-xs leading-relaxed text-ink-muted">{{ pickHint }}</p>
         <button
-          v-if="water?.view === 'gap'"
+          v-if="futureOffered"
           type="button"
           class="group flex w-full items-center gap-3 rounded-xl bg-accent/15 px-3 py-3 text-left ring-1 ring-accent/50 transition-colors hover:bg-accent/25 focus-ring"
-          @click="emit('view', 'future')"
+          @click="openFuture(true)"
         >
           <!-- A telescope: looking ahead. -->
           <span
@@ -274,7 +293,7 @@ function onKeydown(event: KeyboardEvent) {
             <span class="block text-xs font-semibold tracking-wide text-accent-ink uppercase">{{
               t.waterUse.future
             }}</span>
-            <span class="block text-xs text-ink">{{ t.waterUse.futureHint }}</span>
+            <span class="block text-xs text-ink">{{ futureHint }}</span>
           </span>
           <span
             aria-hidden="true"

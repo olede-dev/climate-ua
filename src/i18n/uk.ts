@@ -144,6 +144,8 @@ export const uk = {
     hint: 'Оберіть регіон, щоб відкрити його картку.',
   },
   panel: {
+    /** `{year}`: the end of the last projection period. */
+    futureHint: 'Прогноз до {year} року',
     back: 'Україна',
     /** `{place}`, `{of}`. */
     rank: 'Місце {place} з {of} за величиною',

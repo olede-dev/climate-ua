@@ -8,6 +8,7 @@ import {
   periodSlots,
   periodYear,
   prevStep,
+  shownAxis,
   snapStep,
   stepAtPosition,
   stepIndex,
@@ -114,5 +115,23 @@ describe('periodRange', () => {
   it('reads both ends of a span and centres a single year', () => {
     expect(periodRange('2041-2060')).toEqual([2041, 2060])
     expect(periodRange('2050')).toEqual([2045, 2055])
+  })
+})
+
+describe('shownAxis', () => {
+  const full: TimeAxis = { from: 1950, to: 2025, periods: ['2021-2040', '2041-2060'] }
+
+  it('keeps only the observed years for a year', () => {
+    const years = shownAxis(full, 2000)
+    expect(axisSteps(years)).toHaveLength(76)
+    expect(stepPosition(years, 2025)).toBe(1)
+  })
+
+  it('keeps only the periods for a period, spread over the whole track', () => {
+    const future = shownAxis(full, '2041-2060')
+    expect(axisSteps(future)).toEqual(['2021-2040', '2041-2060'])
+    expect(stepPosition(future, '2021-2040')).toBe(0.25)
+    expect(stepAtPosition(future, 0)).toBe('2021-2040')
+    expect(nextStep(future, '2021-2040')).toBe('2041-2060')
   })
 })

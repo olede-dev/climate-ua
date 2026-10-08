@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { geometryBounds } from '../src/lib/geometry'
-import { anomaly, valueAt } from '../src/lib/series'
+import { anomaly, atBound, hasRange, valueAt } from '../src/lib/series'
+import type { LayerFile } from '../src/types'
 import type { RegionSeries } from '../src/types'
 
 const history = { from: 2000, to: 2002 }
@@ -63,5 +64,29 @@ describe('geometryBounds', () => {
       [30, 45],
       [34, 51],
     ])
+  })
+})
+
+describe('atBound', () => {
+  const series: RegionSeries = {
+    norm: 0,
+    history: [1],
+    future: { '2041-2060': { median: 5, p10: 3, p90: 8 }, '2081-2100': { median: 6 } },
+  }
+  const file = { country: series, regions: { a: series } } as unknown as LayerFile
+
+  it('moves each projection to the chosen end of the model range', () => {
+    expect(atBound(file, 'min').country.future['2041-2060']?.median).toBe(3)
+    expect(atBound(file, 'max').regions.a?.future['2041-2060']?.median).toBe(8)
+  })
+
+  it('keeps the median where there is no range, and the history', () => {
+    expect(atBound(file, 'max').country.future['2081-2100']?.median).toBe(6)
+    expect(atBound(file, 'max').country.history).toEqual([1])
+  })
+
+  it('tells whether a series has a range', () => {
+    expect(hasRange(series)).toBe(true)
+    expect(hasRange({ ...series, future: { '2081-2100': { median: 6 } } })).toBe(false)
   })
 })

@@ -29,7 +29,7 @@ const props = defineProps<{
   chartTitle: string
   /** The layer's copy, for the big number's caption. */
   copy: Messages['layers'][LayerId]
-  /** The water views: the big number alone, coloured, with the region's place among the rest. */
+  /** The water history views: the big number alone, without the norm and projection lines. */
   compact?: boolean
   /** The split between the uses in the year on screen; the series' own split otherwise. */
   sectors?: Sectors | null
@@ -66,10 +66,9 @@ const rows = computed(() =>
 )
 const valueColor = computed(() => {
   const mapValue = rows.value.find((row) => row.kind === 'observed')?.mapValue
-  return props.compact && mapValue != null ? colorAt(props.config.scale, mapValue) : null
+  return mapValue != null ? colorAt(props.config.scale, mapValue) : null
 })
 const rank = computed(() => {
-  if (!props.compact) return null
   const place = rankAt(props.file, props.id, props.step)
   return (
     place &&
@@ -140,18 +139,16 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
 
     <!-- The country's summary, mirrored: big number, then what it is made of. -->
     <template v-if="hasData && !projection">
-      <div>
-        <CountrySummary
-          :rows="rows"
-          :file="file"
-          :config="config"
-          :copy="copy"
-          :format="format"
-          :compact="compact"
-          :value-color="valueColor"
-        />
-        <p v-if="rank" class="mt-1 text-[13px] font-medium text-ink">{{ rank }}</p>
-      </div>
+      <CountrySummary
+        :rows="rows"
+        :file="file"
+        :config="config"
+        :copy="copy"
+        :format="format"
+        :compact="compact"
+        :value-color="valueColor"
+        :note="rank"
+      />
       <SectorBar v-if="sectors && typeof step === 'number'" :sectors="sectors" :year="step" />
       <SectorBar v-else-if="series.sectors" :sectors="series.sectors" :year="file.history.to" />
     </template>

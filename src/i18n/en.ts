@@ -149,11 +149,12 @@ export const en: Messages = {
     futureHint: 'Projection to {year}',
     back: 'Ukraine',
     rank: 'Place {place} of {of} by size',
-    usual: 'Usually',
-    now: 'selected year',
+    boundsHint:
+      'The map shows the low or high end of the projection: 10% of climate models give less or more.',
+    normNote: 'The norm is the {period} average: {value}.',
     /** `{delta}`. */
-    moreThanUsual: '{delta} more than usual',
-    lessThanUsual: '{delta} less than usual',
+    moreThanUsual: '{delta} above the norm',
+    lessThanUsual: '{delta} below the norm',
     pickRegion: 'Click a region to see its history and projection.',
     pickStation: 'Click a point on a river to see its history.',
     close: 'Close the region card',
@@ -311,7 +312,7 @@ export const en: Messages = {
     },
     temp: {
       name: 'Temperature',
-      legendTitle: 'Mean annual temperature compared with the 1991–2020 norm',
+      legendTitle: 'Mean annual temperature',
       low: 'Colder',
       high: 'Warmer',
       norm: 'norm',

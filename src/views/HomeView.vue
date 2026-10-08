@@ -23,7 +23,7 @@ import { formatPeriod, valueFormat } from '../lib/format'
 import { basinLabel, oblastLabel, oblastName, stationLabel, type RegionLabel } from '../lib/regions'
 import { stationPoints } from '../lib/rivers'
 import { cssGradient, scalePosition } from '../lib/scale'
-import { anomaly, valueAt, type StepValue } from '../lib/series'
+import { anomaly, atBound, hasRange, valueAt, type StepValue } from '../lib/series'
 import { outerBorder } from '../lib/geometry'
 import { isFuture, shownAxis, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
 import {
@@ -55,10 +55,13 @@ const countryBorder = computed(() => {
 // Basin names list their oblasts, so the oblasts load for every layer.
 const basinsQuery = useBasins()
 const layer = computed<LayerFile | undefined>(() => {
-  if (ui.layer !== 'water') return layerQuery.data.value
+  if (ui.layer !== 'water') {
+    const file = layerQuery.data.value
+    return file && atBound(file, ui.bound)
+  }
   const file = waterUseQuery.data.value
   if (!file) return undefined
-  if (ui.waterView === 'future') return waterProjectionLayer(file, ui.waterScenario, ui.waterBound)
+  if (ui.waterView === 'future') return waterProjectionLayer(file, ui.waterScenario, ui.bound)
   const history = waterUseLayer(file, ui.waterView, ui.waterSector)
   // A zero gap is a real value (renewable water covers the demand), not missing data; so is
   // zero irrigation, as in the wet west where fields are not watered.
@@ -172,10 +175,19 @@ const projection = computed(() => {
   if (!waterFuture.value || !file) return null
   return {
     scenario: ui.waterScenario,
-    bound: ui.waterBound,
+    bound: ui.bound,
     band: file.projection.scenarios[ui.waterScenario].country,
     observed: { series: file.views.gap.sectors.total.country, year: file.history.to },
   }
+})
+/** A climate layer's projection period: the chosen bound and the country's model range. */
+const climateRange = computed(() => {
+  const file = layerQuery.data.value
+  const at = step.value
+  if (ui.layer === 'water' || !file || at === null || !isFuture(at) || !hasRange(file.country))
+    return null
+  const value = file.country.future[at]
+  return value ? { bound: ui.bound, low: value.p10!, high: value.p90! } : null
 })
 /** The open basin's chart in the future view: its observed gap, then the projection. */
 const regionProjection = computed(() => {
@@ -631,6 +643,7 @@ const tooltip = computed(() => {
           :region="selected"
           :water="waterState"
           :projection="projection"
+          :climate-range="climateRange"
           :region-projection="regionProjection"
           :region-sectors="regionSectorShares"
           @close="ui.regionId = null"
@@ -638,7 +651,7 @@ const tooltip = computed(() => {
           @view="setWaterView"
           @future="setFuture"
           @scenario="ui.waterScenario = $event"
-          @bound="ui.waterBound = $event"
+          @bound="ui.bound = $event"
         />
       </div>
       <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
@@ -712,13 +725,14 @@ const tooltip = computed(() => {
         :region="selected"
         :water="waterState"
         :projection="projection"
+        :climate-range="climateRange"
         :region-projection="regionProjection"
         @close="ui.regionId = null"
         @sector="ui.waterSector = $event"
         @view="setWaterView"
         @future="setFuture"
         @scenario="ui.waterScenario = $event"
-        @bound="ui.waterBound = $event"
+        @bound="ui.bound = $event"
       />
     </main>
     <!-- Wide: the credits in small print in the bottom right corner, as on a map. -->

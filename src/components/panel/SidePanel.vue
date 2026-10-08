@@ -45,6 +45,8 @@ const props = defineProps<{
     band: WaterBand
     observed: { series: RegionSeries; year: number }
   } | null
+  /** A climate layer's projection: the bound the map shows and the country's model range. */
+  climateRange?: { bound: WaterBound; low: number; high: number } | null
   /** The open basin's projection chart, in the future view. */
   regionProjection?: InstanceType<typeof RegionCard>['$props']['projection']
   /** The open basin's split between the uses in the year on screen. */
@@ -126,6 +128,22 @@ const scenarioViews = computed(() =>
     ...SCENARIO_MARKS[id],
   })),
 )
+
+/** An arrow down or up for the models' low and high end, green and red as in the water projection. */
+const BOUND_MARKS: Record<WaterBound, { icon: string; tone: string }> = {
+  min: { icon: 'M8 2.5v11M3.5 9 8 13.5 12.5 9', tone: 'text-emerald-600 dark:text-emerald-400' },
+  max: { icon: 'M8 13.5v-11M3.5 7 8 2.5 12.5 7', tone: 'text-red-600 dark:text-red-400' },
+}
+/** Мін and Макс, each with the country's value at that end of the range. */
+const climateBounds = computed(() => {
+  const range = props.climateRange
+  if (!range) return []
+  return (['min', 'max'] as const).map((id) => ({
+    id,
+    label: `${t.value.waterUse.futureCard.bounds[id]} · ${props.format(id === 'min' ? range.low : range.high)}`,
+    ...BOUND_MARKS[id],
+  }))
+})
 
 const waterHistory = computed(() => !!props.water && props.water.view !== 'future')
 /** The observed year's country value, coloured by where it sits in the country's own record. */
@@ -257,7 +275,18 @@ function onKeydown(event: KeyboardEvent) {
           :config="config"
           :copy="copy"
           :format="format"
+          :focus="futureOn ? 'future' : 'observed'"
         />
+        <div v-if="!water && climateRange" class="space-y-1.5">
+          <WaterTabs
+            :model-value="climateRange.bound"
+            block
+            :views="climateBounds"
+            :label="t.waterUse.futureCard.boundsLabel"
+            @update:model-value="emit('bound', $event)"
+          />
+          <p class="text-xs leading-relaxed text-ink-muted">{{ t.panel.boundsHint }}</p>
+        </div>
         <p v-if="pickHint" class="text-xs leading-relaxed text-ink-muted">{{ pickHint }}</p>
       </div>
     </div>

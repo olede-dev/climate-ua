@@ -17,7 +17,7 @@ export const useUiStore = defineStore('ui', () => {
   const waterView = ref<WaterView>(DEFAULT_URL_STATE.waterView)
   const waterSector = ref<WaterSector>(DEFAULT_URL_STATE.waterSector)
   const waterScenario = ref<WaterScenario>(DEFAULT_URL_STATE.waterScenario)
-  const waterBound = ref<WaterBound>(DEFAULT_URL_STATE.waterBound)
+  const bound = ref<WaterBound>(DEFAULT_URL_STATE.bound)
 
   function toUrlState(): UrlState {
     return {
@@ -27,7 +27,7 @@ export const useUiStore = defineStore('ui', () => {
       waterView: waterView.value,
       waterSector: waterSector.value,
       waterScenario: waterScenario.value,
-      waterBound: waterBound.value,
+      bound: bound.value,
     }
   }
 
@@ -38,7 +38,7 @@ export const useUiStore = defineStore('ui', () => {
     waterView.value = state.waterView
     waterSector.value = state.waterSector
     waterScenario.value = state.waterScenario
-    waterBound.value = state.waterBound
+    bound.value = state.bound
   }
 
   return {
@@ -49,7 +49,7 @@ export const useUiStore = defineStore('ui', () => {
     waterView,
     waterSector,
     waterScenario,
-    waterBound,
+    bound,
     toUrlState,
     applyUrlState,
   }

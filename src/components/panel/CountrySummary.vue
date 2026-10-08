@@ -9,7 +9,7 @@ import { colorAt } from '../../lib/scale'
 import type { SummaryRow } from '../../lib/summary'
 import type { LayerFile, LayerId } from '../../types'
 
-/** The country at a glance (SPEC §8.2): one big number, then norm, now and projection on the scale. */
+/** The country at a glance (SPEC §8.2): one big number, its gap from the norm, and what the norm is. */
 const props = defineProps<{
   rows: SummaryRow[]
   file: LayerFile
@@ -22,6 +22,8 @@ const props = defineProps<{
   valueColor?: string | null
   /** Which row is the big number: the observed year (default) or the projection. */
   focus?: 'observed' | 'future'
+  /** A line under the caption, e.g. the region's place among the rest. */
+  note?: string | null
 }>()
 
 const { t } = useLocale()
@@ -52,61 +54,41 @@ const delta = computed(() => {
   }
 })
 
-/** Three columns, past to future: what is usual, the year on screen, the projection. */
-const columns = computed(() =>
-  props.rows.map((row) => ({
-    kind: row.kind,
-    title:
-      row.kind === 'norm'
-        ? t.value.panel.usual
-        : row.kind === 'future'
-          ? formatPeriod(String(row.when))
-          : String(row.when),
-    note:
-      row.kind === 'norm'
-        ? formatPeriod(`${props.file.norm.from}-${props.file.norm.to}`)
-        : row.kind === 'future'
-          ? t.value.timeline.forecast
-          : t.value.panel.now,
-    text: row.value === null ? '—' : props.format(row.value),
-    color: row.mapValue === null ? null : colorAt(props.config.scale, row.mapValue),
-  })),
+/** «Норма — середнє за 1991–2020 роки: 9,3 °C.» */
+const normNote = computed(() =>
+  norm.value?.value == null
+    ? null
+    : t.value.panel.normNote
+        .replace('{period}', formatPeriod(`${props.file.norm.from}-${props.file.norm.to}`))
+        .replace('{value}', props.format(norm.value.value)),
+)
+
+/** The big number's colour: the one passed, or where it sits on the map's scale. */
+const bigColor = computed(
+  () =>
+    props.valueColor ??
+    (focused.value?.mapValue == null ? null : colorAt(props.config.scale, focused.value.mapValue)),
 )
 </script>
 
 <template>
-  <div class="space-y-4" aria-hidden="true">
+  <div class="space-y-2" aria-hidden="true">
     <div>
       <p
         class="text-4xl leading-none font-semibold text-ink tabular-nums"
-        :style="
-          valueColor ? { color: `color-mix(in oklab, ${valueColor} 75%, var(--ui-ink))` } : {}
-        "
+        :style="bigColor ? { color: `color-mix(in oklab, ${bigColor} 75%, var(--ui-ink))` } : {}"
       >
-        {{ columns.find((column) => column.kind === focusKind)?.text }}
+        {{ focused?.value == null ? '—' : format(focused.value) }}
       </p>
       <p class="mt-1.5 text-[13px] leading-snug text-ink-muted">{{ copy.legendTitle }}</p>
+      <p v-if="note" class="mt-1 text-[13px] font-medium text-ink">{{ note }}</p>
       <p v-if="delta && !compact" class="mt-1 text-[13px] font-medium text-ink">
         {{ delta.arrow }} {{ delta.sentence }}
       </p>
     </div>
 
-    <!-- Usual, now, then: the same number three times, coloured as on the map. -->
-    <ol v-if="!compact" class="grid grid-cols-3 gap-2">
-      <li
-        v-for="column in columns"
-        :key="column.kind"
-        class="rounded-xl bg-fill-strong/60 p-2"
-        :class="{ 'ring-2 ring-accent': column.kind === focusKind }"
-      >
-        <span
-          class="mb-1.5 block h-1.5 rounded-full"
-          :style="{ background: column.color ?? 'transparent' }"
-        ></span>
-        <span class="block text-base font-semibold text-ink tabular-nums">{{ column.text }}</span>
-        <span class="block text-xs font-medium text-ink">{{ column.title }}</span>
-        <span class="block text-[11px] text-ink-muted">{{ column.note }}</span>
-      </li>
-    </ol>
+    <p v-if="normNote && !compact" class="text-xs leading-relaxed text-ink-muted">
+      {{ normNote }}
+    </p>
   </div>
 </template>

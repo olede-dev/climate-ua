@@ -3,7 +3,7 @@ import type { LayerId, WaterBound, WaterScenario, WaterSector, WaterView } from 
 import { parseStep, type TimeStep } from './time'
 import { WATER_SCENARIOS, WATER_SECTORS } from './waterUse'
 
-const WATER_BOUNDS: readonly WaterBound[] = ['min', 'max']
+const BOUNDS: readonly WaterBound[] = ['min', 'max']
 const WATER_VIEWS: readonly WaterView[] = ['gap', 'demand', 'future']
 /** The periods of the retired stress projection, still in shared links. */
 const LEGACY_WATER_PERIODS = ['2030', '2050', '2080']
@@ -20,7 +20,7 @@ export interface UrlState {
   /** The projection scenario of the water layer's future view. */
   waterScenario: WaterScenario
   /** The end of the models' range the projection shows. */
-  waterBound: WaterBound
+  bound: WaterBound
 }
 
 export const DEFAULT_URL_STATE: Readonly<UrlState> = {
@@ -30,7 +30,7 @@ export const DEFAULT_URL_STATE: Readonly<UrlState> = {
   waterView: 'gap',
   waterSector: 'total',
   waterScenario: 'SSP1-2.6',
-  waterBound: 'max',
+  bound: 'max',
 }
 
 /** Query values as vue-router exposes them: repeated keys become arrays. */
@@ -70,7 +70,7 @@ export function parseUrlState(query: QueryInput): UrlState {
     waterSector: WATER_SECTORS.find((v) => v === rawSector) ?? DEFAULT_URL_STATE.waterSector,
     waterScenario:
       WATER_SCENARIOS.find((v) => v === first(query.sc)) ?? DEFAULT_URL_STATE.waterScenario,
-    waterBound: WATER_BOUNDS.find((v) => v === first(query.b)) ?? DEFAULT_URL_STATE.waterBound,
+    bound: BOUNDS.find((v) => v === first(query.b)) ?? DEFAULT_URL_STATE.bound,
   }
 }
 
@@ -83,6 +83,6 @@ export function toUrlQuery(state: UrlState): Record<string, string> {
   if (state.waterView !== DEFAULT_URL_STATE.waterView) query.view = state.waterView
   if (state.waterSector !== DEFAULT_URL_STATE.waterSector) query.use = state.waterSector
   if (state.waterScenario !== DEFAULT_URL_STATE.waterScenario) query.sc = state.waterScenario
-  if (state.waterBound !== DEFAULT_URL_STATE.waterBound) query.b = state.waterBound
+  if (state.bound !== DEFAULT_URL_STATE.bound) query.b = state.bound
   return query
 }

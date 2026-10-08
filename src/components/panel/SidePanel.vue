@@ -74,8 +74,13 @@ function story(where: string, series: StoryInput['series']): StoryInput {
   }
 }
 
+/** Each view's mark: a crossed-out drop for the gap, a tap for the demand. */
+const VIEW_ICONS: Record<(typeof WATER_USE_VIEWS)[number], string> = {
+  gap: 'M8 1.5C5.5 5 4 7.3 4 9.5a4 4 0 0 0 8 0c0-2.2-1.5-4.5-4-8zM2.5 2.5l11 11',
+  demand: 'M2 5.5h7a3 3 0 0 1 3 3v1M2 3.5v4M5.5 5.5V3M4 3h3M12 12v2',
+}
 const waterViews = computed(() =>
-  WATER_USE_VIEWS.map((id) => ({ id, label: t.value.waterUse.views[id] })),
+  WATER_USE_VIEWS.map((id) => ({ id, label: t.value.waterUse.views[id], icon: VIEW_ICONS[id] })),
 )
 
 /** Each scenario's mark: a leaf for the sustainable path, a flag for the national one, a flame
@@ -237,7 +242,7 @@ function onKeydown(event: KeyboardEvent) {
         />
         <p v-if="pickHint" class="text-xs leading-relaxed text-ink-muted">{{ pickHint }}</p>
         <button
-          v-if="waterHistory"
+          v-if="water?.view === 'gap'"
           type="button"
           class="group flex w-full items-center gap-3 rounded-xl bg-accent/15 px-3 py-3 text-left ring-1 ring-accent/50 transition-colors hover:bg-accent/25 focus-ring"
           @click="emit('view', 'future')"

@@ -3,7 +3,8 @@ import { useLocale } from '../../composables/useLocale'
 import LanguageMenu from './LanguageMenu.vue'
 import ThemeMenu from './ThemeMenu.vue'
 
-/** `inline`: the brand alone, without the floating bar or its menus, as the top of a card. */
+/** `inline`: the title without the floating bar or subtitle, as the top of a card; the slot
+ * holds its controls on the right. */
 defineProps<{ inline?: boolean }>()
 const { t } = useLocale()
 const logoUrl = `${import.meta.env.BASE_URL}favicon.svg`
@@ -16,12 +17,10 @@ const buttonClass =
   <!-- A floating bar inset from every edge of the window, over whatever scrolls beneath it. -->
   <header v-if="inline" class="flex items-center gap-3">
     <img :src="logoUrl" alt="" class="size-8 shrink-0" width="32" height="32" />
-    <div class="min-w-0">
-      <h1 class="text-[15px] leading-tight font-semibold tracking-tight text-ink">
-        {{ t.header.title }}
-      </h1>
-      <p class="text-xs leading-tight text-ink-muted">{{ t.header.subtitleLong }}</p>
-    </div>
+    <h1 class="min-w-0 flex-1 text-[15px] leading-tight font-semibold tracking-tight text-ink">
+      {{ t.header.title }}
+    </h1>
+    <slot />
   </header>
   <header
     v-else

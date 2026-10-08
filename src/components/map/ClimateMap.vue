@@ -56,7 +56,7 @@ const props = defineProps<{
    */
   insets?: Required<PaddingOptions>
   /** Where the zoom buttons sit, from the top right corner, when panels float over the map. */
-  controls?: { top: number; right: number }
+  controls?: { right: number }
 }>()
 const emit = defineEmits<{
   basemap: [kind: BasemapKind]
@@ -280,7 +280,7 @@ onMounted(() => {
   })
   map.touchZoomRotate.disableRotation()
   map.keyboard.disableRotation()
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
   map.on('style.load', () => {
     styleReady = true
     installRegions()
@@ -362,7 +362,6 @@ watch(
     class="relative size-full"
     :style="
       controls && {
-        '--controls-top': `${controls.top}px`,
         '--controls-right': `${controls.right}px`,
       }
     "
@@ -373,9 +372,9 @@ watch(
 </template>
 
 <style scoped>
-/* The zoom buttons sit in the corner left free by the panels over the map. */
-:deep(.maplibregl-ctrl-top-right) {
-  top: var(--controls-top, 0);
+/* The zoom buttons sit in the bottom corner under the layer column, above the credits line. */
+:deep(.maplibregl-ctrl-bottom-right) {
+  bottom: 14px;
   right: var(--controls-right, 0);
 }
 </style>

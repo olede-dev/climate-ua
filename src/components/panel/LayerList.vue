@@ -32,8 +32,9 @@ const ICONS: Record<LayerId, string> = {
       >
         {{ label }}
       </legend>
-      <!-- A control beside the title, such as the button that folds the list away. -->
-      <slot name="action" />
+      <!-- A control beside the title, such as the button that folds the list away;
+           the folded column moves it below the icons instead. -->
+      <slot v-if="!compact" name="action" />
     </div>
     <div :class="compact ? 'grid gap-1' : 'grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1'">
       <!-- The selected look follows the model, not `:checked`: Chromium does not restyle
@@ -72,6 +73,9 @@ const ICONS: Record<LayerId, string> = {
           </span>
         </span>
       </label>
+    </div>
+    <div v-if="compact && $slots.action" class="mt-1 border-t border-line pt-1">
+      <slot name="action" />
     </div>
   </fieldset>
 </template>

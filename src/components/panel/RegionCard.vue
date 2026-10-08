@@ -116,6 +116,27 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       </button>
     </header>
 
+    <p
+      v-if="kakhovka"
+      role="note"
+      class="flex gap-2.5 rounded-xl border-l-4 border-warn bg-warn-fill px-3 py-2.5 text-[13px] leading-relaxed text-warn-ink"
+    >
+      <!-- A warning triangle. -->
+      <svg
+        viewBox="0 0 24 24"
+        class="mt-0.5 size-4 shrink-0 text-warn"
+        aria-hidden="true"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="M12 3 2 20h20L12 3zM12 10v4M12 17h.01" />
+      </svg>
+      <span>{{ t.basin.kakhovka }}</span>
+    </p>
+
     <p v-if="!hasData" class="rounded-xl bg-fill px-4 py-6 text-center text-sm text-ink-muted">
       {{ t.tooltip.noData }}
     </p>
@@ -143,8 +164,5 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
 
     <SectorBar v-if="hasData && series.sectors" :sectors="series.sectors" :year="file.history.to" />
 
-    <p v-if="kakhovka" class="text-[13px] leading-relaxed text-ink-muted">
-      {{ t.basin.kakhovka }}
-    </p>
   </article>
 </template>

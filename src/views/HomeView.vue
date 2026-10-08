@@ -274,19 +274,18 @@ const tableCaption = computed(
   () => `${copy.value.legendTitle} · ${stepLabel.value}. ${t.value.table.hint}`,
 )
 
-/** Tailwind's `md`: the map fills the window under floating panels; below it, the panel is a
+/** Tailwind's `lg`: the map fills the window under floating panels; below it, the panel is a
  * card under the map. */
-const isWide = useMediaQuery('(min-width: 48rem)')
+const isWide = useMediaQuery('(min-width: 64rem)')
 
 /** The panels around the full-screen map, measured so the map frames Ukraine between them. */
 const panelCard = useTemplateRef<HTMLElement>('panelCard')
 const controlsColumn = useTemplateRef<HTMLElement>('controlsColumn')
 const bottomBar = useTemplateRef<HTMLElement>('bottomBar')
 const insets = ref<Required<PaddingOptions>>({ top: 0, bottom: 0, left: 0, right: 0 })
-/** The zoom buttons go under the control column; MapLibre adds its own 10px margin. */
-const controls = ref({ top: 0, right: 0 })
+/** The zoom buttons line up with the control column's right edge; MapLibre adds its own 10px margin. */
+const controls = ref({ right: 0 })
 const CONTROL_MARGIN = 10
-const GUTTER = 12
 
 function measureInsets() {
   const rect = (el: unknown) => (el instanceof HTMLElement ? el.getBoundingClientRect() : null)
@@ -300,10 +299,8 @@ function measureInsets() {
     bottom: Math.round(height - (rect(bottomBar.value)?.top ?? height)),
   }
   if (column) {
-    const top = Math.round(column.bottom + GUTTER - CONTROL_MARGIN)
     const right = Math.round(width - column.right - CONTROL_MARGIN)
-    if (top !== controls.value.top || right !== controls.value.right)
-      controls.value = { top, right }
+    if (right !== controls.value.right) controls.value = { right }
   }
   const now = insets.value
   // A new object reframes the map, so only a real change makes one.
@@ -562,7 +559,12 @@ const tooltip = computed(() => {
         ref="panelCard"
         class="glass pointer-events-auto relative z-10 flex w-[22rem] shrink-0 flex-col overflow-hidden rounded-2xl shadow-float"
       >
-        <AppHeader inline class="shrink-0 px-4 pt-4" />
+        <AppHeader inline class="shrink-0 px-4 pt-4">
+          <div class="-my-1 flex gap-0.5">
+            <LanguageMenu :button-class="menuButtonClass" icon-only />
+            <ThemeMenu :button-class="menuButtonClass" icon-only />
+          </div>
+        </AppHeader>
         <SidePanel
           v-if="layer && step !== null"
           class="min-h-0 flex-1"
@@ -615,7 +617,8 @@ const tooltip = computed(() => {
             <template v-if="isDesktop" #action>
               <button
                 type="button"
-                class="-my-1.5 flex size-7 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                class="flex items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                :class="layersHidden ? 'h-10 w-full' : '-my-1.5 size-7'"
                 :aria-expanded="!layersHidden"
                 :aria-label="layersHidden ? t.home.showLayers : t.home.hideLayers"
                 :title="layersHidden ? t.home.showLayers : t.home.hideLayers"
@@ -623,14 +626,14 @@ const tooltip = computed(() => {
               >
                 <svg
                   viewBox="0 0 16 16"
-                  class="size-4"
+                  :class="layersHidden ? 'size-5' : 'size-4'"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="1.5"
                   aria-hidden="true"
                 >
                   <path
-                    :d="layersHidden ? 'M2.5 4h11M2.5 8h11M2.5 12h11' : 'M4 4l8 8M12 4l-8 8'"
+                    :d="layersHidden ? 'M8 4L4 8l4 4M12 4L8 8l4 4' : 'M4 4l4 4-4 4M8 4l4 4-4 4'"
                     stroke-linecap="round"
                     stroke-linejoin="round"
                   />
@@ -639,13 +642,6 @@ const tooltip = computed(() => {
             </template>
           </LayerList>
         </aside>
-        <div
-          class="glass flex gap-0.5 rounded-2xl p-1 shadow-float"
-          :class="{ 'flex-col': layersHidden }"
-        >
-          <LanguageMenu :button-class="menuButtonClass" icon-only />
-          <ThemeMenu :button-class="menuButtonClass" icon-only />
-        </div>
       </div>
       <SidePanel
         v-if="!isWide && layer && step !== null"

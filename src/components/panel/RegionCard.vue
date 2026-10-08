@@ -3,10 +3,14 @@ import { computed, defineAsyncComponent, h, onMounted, useTemplateRef } from 'vu
 
 import { useLocale } from '../../composables/useLocale'
 import type { LayerConfig } from '../../config/layers'
+import type { Messages } from '../../i18n'
 import type { ValueFormat } from '../../lib/format'
+import { colorAt } from '../../lib/scale'
+import { rankAt, summaryRows } from '../../lib/summary'
 import type { TimeStep } from '../../lib/time'
-import type { LayerFile, RegionSeries, Sectors, WaterBand } from '../../types'
+import type { LayerFile, LayerId, RegionSeries, Sectors, WaterBand } from '../../types'
 import ClimateAnalog from './ClimateAnalog.vue'
+import CountrySummary from './CountrySummary.vue'
 import SectorBar from './SectorBar.vue'
 
 const props = defineProps<{
@@ -23,6 +27,12 @@ const props = defineProps<{
   format: ValueFormat
   /** What the chart measures; the legend title of the layer. */
   chartTitle: string
+  /** The layer's copy, for the big number's caption. */
+  copy: Messages['layers'][LayerId]
+  /** The water views: the big number alone, coloured, with the region's place among the rest. */
+  compact?: boolean
+  /** The split between the uses in the year on screen; the series' own split otherwise. */
+  sectors?: Sectors | null
   /** Shown instead of the chart when every value is zero, e.g. a basin with no water gap. */
   zeroNote?: string | null
   /** The chart of a projection: the observed record, then the models' yearly mean and range. */
@@ -43,6 +53,29 @@ const hasData = computed(
     props.series.history.some((value) => value !== null) ||
     Object.keys(props.series.future).length > 0,
 )
+
+/** The same summary as the country's, for this region (SPEC §8.2). */
+const rows = computed(() =>
+  summaryRows(
+    props.file,
+    props.series,
+    props.step,
+    props.config.headlinePeriod,
+    props.config.display,
+  ),
+)
+const valueColor = computed(() => {
+  const mapValue = rows.value.find((row) => row.kind === 'observed')?.mapValue
+  return props.compact && mapValue != null ? colorAt(props.config.scale, mapValue) : null
+})
+const rank = computed(() => {
+  if (!props.compact) return null
+  const place = rankAt(props.file, props.id, props.step)
+  return (
+    place &&
+    t.value.panel.rank.replace('{place}', String(place.place)).replace('{of}', String(place.of))
+  )
+})
 
 const allZero = computed(
   () =>
@@ -71,50 +104,57 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
 
 <template>
   <article class="space-y-4">
-    <header class="flex items-start justify-between gap-3">
-      <div>
-        <h2
-          ref="heading"
-          tabindex="-1"
-          class="text-xl leading-tight font-semibold tracking-tight text-ink focus-visible:outline-none"
-        >
-          {{ name }}
-        </h2>
-        <p v-if="subtitle" class="mt-1 flex items-start gap-1 text-xs leading-snug text-ink-muted">
-          <svg
-            viewBox="0 0 24 24"
-            class="mt-px size-3.5 shrink-0"
-            aria-hidden="true"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" />
-            <path d="M9 4v14M15 6v14" />
-          </svg>
-          <span>{{ subtitle }}</span>
-        </p>
-      </div>
+    <header>
       <button
         type="button"
         :aria-label="t.panel.close"
-        :title="t.panel.close"
-        class="mt-0.5 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-fill text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink focus-ring"
+        class="mb-2 text-xs font-medium text-accent-ink hover:underline focus-ring"
         @click="$emit('close')"
       >
+        ‹ {{ t.panel.back }}
+      </button>
+      <h2
+        ref="heading"
+        tabindex="-1"
+        class="text-xl leading-tight font-semibold tracking-tight text-ink focus-visible:outline-none"
+      >
+        {{ name }}
+      </h2>
+      <p v-if="subtitle" class="mt-1 flex items-start gap-1 text-xs leading-snug text-ink-muted">
         <svg
           viewBox="0 0 24 24"
-          class="size-3.5"
+          class="mt-px size-3.5 shrink-0"
           aria-hidden="true"
           fill="none"
           stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
         >
-          <path stroke-width="2.5" stroke-linecap="round" d="M7 7l10 10M17 7L7 17" />
+          <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z" />
+          <path d="M9 4v14M15 6v14" />
         </svg>
-      </button>
+        <span>{{ subtitle }}</span>
+      </p>
     </header>
+
+    <!-- The country's summary, mirrored: big number, then what it is made of. -->
+    <template v-if="hasData && !projection">
+      <div>
+        <CountrySummary
+          :rows="rows"
+          :file="file"
+          :config="config"
+          :copy="copy"
+          :format="format"
+          :compact="compact"
+          :value-color="valueColor"
+        />
+        <p v-if="rank" class="mt-1 text-[13px] font-medium text-ink">{{ rank }}</p>
+      </div>
+      <SectorBar v-if="sectors && typeof step === 'number'" :sectors="sectors" :year="step" />
+      <SectorBar v-else-if="series.sectors" :sectors="series.sectors" :year="file.history.to" />
+    </template>
 
     <p
       v-if="kakhovka"
@@ -162,7 +202,10 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
 
     <ClimateAnalog v-if="config.geometry === 'oblasts'" :region-id="id" />
 
-    <SectorBar v-if="hasData && series.sectors" :sectors="series.sectors" :year="file.history.to" />
-
+    <SectorBar
+      v-if="hasData && projection && series.sectors"
+      :sectors="series.sectors"
+      :year="file.history.to"
+    />
   </article>
 </template>

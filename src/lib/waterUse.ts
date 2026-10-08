@@ -3,6 +3,7 @@ import type {
   LayerFile,
   LayerId,
   RegionSeries,
+  Sectors,
   WaterBound,
   WaterScenario,
   WaterSector,
@@ -189,4 +190,25 @@ export function countryColor(series: RegionSeries, value: number): string {
     noData: WATER_NO_DATA,
   }
   return max > min ? colorAt(scale, value) : colors[0]!
+}
+
+/**
+ * A basin's split of the view's water between the three uses in an observed year, as shares
+ * summing to 1; null when any use has no value or all are zero.
+ */
+export function regionSectors(
+  file: WaterUseFile,
+  view: WaterUseView,
+  id: string,
+  year: number,
+): Sectors | null {
+  const at = (sector: Exclude<WaterSector, 'total'>) =>
+    file.views[view].sectors[sector].regions[id]?.history[year - file.history.from] ?? null
+  const irrigation = at('irrigation')
+  const domestic = at('domestic')
+  const industrial = at('industrial')
+  if (irrigation === null || domestic === null || industrial === null) return null
+  const sum = irrigation + domestic + industrial
+  if (sum <= 0) return null
+  return { irrigation: irrigation / sum, domestic: domestic / sum, industrial: industrial / sum }
 }

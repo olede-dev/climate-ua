@@ -49,3 +49,26 @@ export function summaryRows(
   }
   return rows
 }
+
+/**
+ * Where a region's value at a step sits among all regions with a value then: 1 is the highest.
+ * Null when the region has no value; ties share the better place.
+ */
+export function rankAt(
+  file: LayerFile,
+  id: string,
+  step: TimeStep,
+): { place: number; of: number } | null {
+  const own = file.regions[id]
+  const value = own ? valueAt(own, file.history, step)?.median : undefined
+  if (value === undefined) return null
+  let of = 0
+  let above = 0
+  for (const series of Object.values(file.regions)) {
+    const other = valueAt(series, file.history, step)?.median
+    if (other === undefined) continue
+    of += 1
+    if (other > value) above += 1
+  }
+  return { place: above + 1, of }
+}

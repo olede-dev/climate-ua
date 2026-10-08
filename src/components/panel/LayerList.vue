@@ -19,13 +19,17 @@ const ICONS: Record<LayerId, string> = {
   heat: 'M12 3v2M12 19v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M3 12h2M19 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
   frost: 'M12 2v20M4.93 7l14.14 10M4.93 17L19.07 7M9 4l3 3 3-3M9 20l3-3 3 3',
   drought: 'M3 21h18M5 17l3-4 3 2 3-5 2 3 3-2M12 3v3M7 5l1.5 2M17 5l-1.5 2',
-  rivers: 'M2 6c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2M2 12c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2M2 18c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2',
+  rivers:
+    'M2 6c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2M2 12c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2M2 18c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2',
 }
 </script>
 
 <template>
   <fieldset>
-    <div class="flex items-center gap-2 pb-2" :class="compact ? 'justify-center' : 'justify-between'">
+    <div
+      class="flex items-center gap-2 pb-2"
+      :class="compact ? 'justify-center' : 'justify-between'"
+    >
       <legend
         class="float-left px-1 text-xs font-medium text-ink-muted"
         :class="{ 'sr-only': compact }"
@@ -67,7 +71,9 @@ const ICONS: Record<LayerId, string> = {
           <span class="block text-sm font-semibold">{{ layer.name }}</span>
           <span
             class="mt-0.5 block text-xs leading-snug max-sm:hidden"
-            :class="model === layer.id ? 'text-white/80' : 'text-ink-muted group-hover:text-white/80'"
+            :class="
+              model === layer.id ? 'text-white/80' : 'text-ink-muted group-hover:text-white/80'
+            "
           >
             {{ layer.description }}
           </span>

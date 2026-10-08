@@ -14,6 +14,7 @@ import type {
   LayerFile,
   LayerId,
   RegionSeries,
+  Sectors,
   WaterBand,
   WaterBound,
   WaterScenario,
@@ -46,6 +47,8 @@ const props = defineProps<{
   } | null
   /** The open basin's projection chart, in the future view. */
   regionProjection?: InstanceType<typeof RegionCard>['$props']['projection']
+  /** The open basin's split between the uses in the year on screen. */
+  regionSectors?: Sectors | null
 }>()
 const emit = defineEmits<{
   close: []
@@ -175,6 +178,9 @@ function onKeydown(event: KeyboardEvent) {
         :projection="regionProjection"
         :zero-note="water?.view === 'gap' ? t.waterUse.noGap : null"
         :chart-title="copy.chartTitle"
+        :copy="copy"
+        :compact="waterHistory"
+        :sectors="regionSectors"
         @close="emit('close')"
       />
       <div v-else class="space-y-3">

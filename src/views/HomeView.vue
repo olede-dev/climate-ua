@@ -27,6 +27,7 @@ import { anomaly, valueAt, type StepValue } from '../lib/series'
 import { isFuture, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
 import {
   blankEmptyBasins,
+  regionSectors,
   waterProjectionLayer,
   waterUseCopy,
   waterUseLayer,
@@ -158,6 +159,17 @@ const regionProjection = computed(() => {
   const observed = waterUseLayer(file, 'gap', 'total')
   const series = observed.regions[id]
   return band && series ? { file: observed, series, from: file.projection.from, band } : null
+})
+
+/** What the open basin withdrew its water for in the year on screen, in the history views; the
+ * caption names withdrawals, so the split is of the demand in both views. */
+const regionSectorShares = computed(() => {
+  const file = waterUseQuery.data.value
+  const id = ui.regionId
+  const year = step.value
+  if (ui.layer !== 'water' || ui.waterView === 'future' || !file || id === null) return null
+  if (typeof year !== 'number') return null
+  return regionSectors(file, 'demand', id, year)
 })
 
 /** The future view opens on this year; history returns to the latest observed year. Gap and
@@ -577,6 +589,7 @@ const tooltip = computed(() => {
           :water="waterState"
           :projection="projection"
           :region-projection="regionProjection"
+          :region-sectors="regionSectorShares"
           @close="ui.regionId = null"
           @sector="ui.waterSector = $event"
           @view="setWaterView"

@@ -6,6 +6,7 @@ import {
   hasWaterData,
   countryColor,
   niceCeil,
+  regionSectors,
   waterUseCopy,
   waterUseLayer,
   waterUseScale,
@@ -111,5 +112,14 @@ describe('blankEmptyBasins', () => {
     })
     expect(blanked.regions.a!.history).toEqual([null, null])
     expect(blanked.regions.b!.history).toEqual([0, 2])
+  })
+})
+
+describe('regionSectors', () => {
+  it('splits the year between the uses and has no split when all are zero', () => {
+    const split = regionSectors(file, 'demand', 'b', 2018)
+    expect(split?.irrigation).toBeCloseTo(1 / 3)
+    expect(regionSectors(file, 'demand', 'a', 2018)).toBeNull()
+    expect(regionSectors(file, 'demand', 'missing', 2019)).toBeNull()
   })
 })

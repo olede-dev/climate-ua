@@ -8,6 +8,7 @@ import {
   niceCeil,
   regionSectors,
   waterUseCopy,
+  waterProjectionLayer,
   waterUseLayer,
   waterUseScale,
 } from '../src/lib/waterUse'
@@ -29,15 +30,15 @@ const file: WaterUseFile = {
     },
   },
   projection: {
-    from: 2020,
-    to: 2021,
+    periods: ['2021-2035', '2036-2050'],
+    base: { observed: [2010, 2019], model: [2020, 2029] },
     unit: 'km³',
     scenarios: Object.fromEntries(
       (['SSP1-2.6', 'SSP3-7.0', 'SSP5-8.5'] as const).map((id) => [
         id,
         {
-          country: { mean: [5, 6], min: [4, 5], max: [6, 7] },
-          regions: { a: { mean: [1, 2], min: [0, 1], max: [2, 3] } },
+          country: { '2021-2035': { mean: 5, low: 4, high: 7 } },
+          regions: { a: { '2021-2035': { mean: 1, low: 0, high: 2 } } },
         },
       ]),
     ) as unknown as WaterUseFile['projection']['scenarios'],
@@ -60,6 +61,23 @@ describe('waterUseLayer', () => {
     const layer = waterUseLayer(file, 'gap', 'irrigation')
     expect(layer).toMatchObject({ layer: 'water', geometry: 'basins', unit: 'млн м³' })
     expect(layer.futurePeriods).toEqual([])
+    expect(layer.regions.b?.history).toEqual([2, 3])
+  })
+})
+
+describe('waterProjectionLayer', () => {
+  const layer = waterProjectionLayer(file, 'SSP3-7.0')
+
+  it('follows the observed gap with the period means, extremes as the range', () => {
+    expect(layer).toMatchObject({ scenario: 'SSP3-7.0', unit: 'km³' })
+    expect(layer.futurePeriods).toEqual(['2021-2035', '2036-2050'])
+    expect(layer.regions.a?.history).toEqual([0, 1])
+    expect(layer.regions.a?.future['2021-2035']).toEqual({ median: 1, p10: 0, p90: 2 })
+    expect(layer.country.future['2021-2035']).toEqual({ median: 5, p10: 4, p90: 7 })
+  })
+
+  it('leaves a basin without a projection with none', () => {
+    expect(layer.regions.b?.future).toEqual({})
     expect(layer.regions.b?.history).toEqual([2, 3])
   })
 })
@@ -101,7 +119,7 @@ describe('blankEmptyBasins', () => {
 
   it('treats a series of only zeros as no data', () => {
     expect(hasWaterData(series([0, 0]))).toBe(false)
-    expect(hasWaterData({ ...series([0]), future: { '2050': { median: 0.3 } } })).toBe(true)
+    expect(hasWaterData({ ...series([0]), future: { '2036-2050': { median: 0.3 } } })).toBe(true)
   })
 
   it('blanks only the basins without data', () => {

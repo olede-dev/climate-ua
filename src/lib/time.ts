@@ -18,19 +18,37 @@ export function isFuture(step: TimeStep): step is FuturePeriod {
   return typeof step === 'string'
 }
 
-/** Middle year of a period: `2041-2060` → 2050.5, `2050` → 2050. */
+/** The years a period covers, inclusive: `2041-2060` → [2041, 2060]. */
+export function periodRange(period: FuturePeriod): [start: number, end: number] {
+  return period.split('-').map(Number) as [number, number]
+}
+
+/** Middle year of a period: `2041-2060` → 2050.5. */
 export function periodYear(period: FuturePeriod): number {
-  const [start, end = start] = period.split('-').map(Number) as [number, number?]
+  const [start, end] = periodRange(period)
   return (start + end) / 2
 }
 
+function nearestPeriod(periods: readonly FuturePeriod[], year: number): FuturePeriod {
+  return periods.reduce((best, period) =>
+    Math.abs(periodYear(period) - year) < Math.abs(periodYear(best) - year) ? period : best,
+  )
+}
+
 /**
- * The years a period covers, inclusive: `2041-2060` → [2041, 2060]. A single-year period names
- * the centre of a span (Aqueduct's `2030`); it is drawn as the decade around it.
+ * The period that holds a year, or else the one with the nearest middle year: a year from an old
+ * link opens the projection where it falls. Undefined when there are no periods.
  */
-export function periodRange(period: FuturePeriod): [start: number, end: number] {
-  const [start, end] = period.split('-').map(Number) as [number, number?]
-  return end === undefined ? [start - 5, start + 5] : [start, end]
+export function periodFor(
+  periods: readonly FuturePeriod[],
+  year: number,
+): FuturePeriod | undefined {
+  if (periods.length === 0) return undefined
+  const holding = periods.find((p) => {
+    const [start, end] = periodRange(p)
+    return year >= start && year <= end
+  })
+  return holding ?? nearestPeriod(periods, year)
 }
 
 /** The part of an axis the timeline shows at once: its observed years, or its future periods
@@ -84,10 +102,7 @@ export function snapStep(axis: TimeAxis, step: TimeStep): TimeStep {
     const year = isFuture(step) ? periodYear(step) : step
     return Math.min(axis.to, Math.max(axis.from, Math.round(year)))
   }
-  const year = periodYear(step)
-  return axis.periods.reduce((best, period) =>
-    Math.abs(periodYear(period) - year) < Math.abs(periodYear(best) - year) ? period : best,
-  )
+  return nearestPeriod(axis.periods, periodYear(step))
 }
 
 /** Reads a step from its URL form (`1987`, `2041-2060`); null when it is neither. */

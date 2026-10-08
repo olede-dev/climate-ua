@@ -3,7 +3,7 @@ import { ref } from 'vue'
 
 import { DEFAULT_URL_STATE, type UrlState } from '../lib/urlState'
 import type { TimeStep } from '../lib/time'
-import type { LayerId, WaterBound, WaterScenario, WaterSector, WaterView } from '../types'
+import type { LayerId, ProjectionBound, WaterScenario, WaterSector, WaterView } from '../types'
 
 /** Client-only UI state; data files live in vue-query. Mirrored in the URL by `useUrlSync`. */
 export const useUiStore = defineStore('ui', () => {
@@ -17,7 +17,7 @@ export const useUiStore = defineStore('ui', () => {
   const waterView = ref<WaterView>(DEFAULT_URL_STATE.waterView)
   const waterSector = ref<WaterSector>(DEFAULT_URL_STATE.waterSector)
   const waterScenario = ref<WaterScenario>(DEFAULT_URL_STATE.waterScenario)
-  const bound = ref<WaterBound>(DEFAULT_URL_STATE.bound)
+  const bound = ref<ProjectionBound>(DEFAULT_URL_STATE.bound)
 
   function toUrlState(): UrlState {
     return {

@@ -43,8 +43,8 @@ export const en: Messages = {
       {
         heading: 'The future',
         paragraphs: [
-          'Climate models do not forecast the weather of a given year: 2047 in a model is just one possible year. So the climate layers show the future as a 20-year mean (2021–2040, 2041–2060, 2081–2100): the median of 17–23 CMIP6 models (depending on the measure), with the range that 80% of the models fall in in brackets.',
-          'The World Water Map projects the water gap year by year, 2020–2050. The map shows the mean of the climate models; the card and the chart add their spread, from the lowest to the highest. Read a single projected year as a trend, not a forecast of that very year. There is no projection of demand or of the gap by sector.',
+          'Climate models do not forecast the weather of a given year: 2047 in a model is just one possible year. So the climate layers show the future as a 20-year mean (2021–2040, 2041–2060, 2081–2100): the median of 17–23 CMIP6 models (depending on the measure), with the range that 80% of the models fall in in brackets. The switch under a projection puts the median or an end of that range on the map; the ends are taken cell by cell, so such a map matches no single model.',
+          'The World Water Map projects the water gap year by year, 2020–2050, but a modelled year is just one possible year. So the projection is shown as 15-year means (2021–2035, 2036–2050), tied to the observations by the delta method: the 2010–2019 gap plus the change the models’ mean gives from 2020–2029 to the period. The source has no historical runs of the models, so the projection’s first decade serves as the base of the change. The range in brackets is the lowest and highest single year of the period across all models, not the spread of the models themselves. There is no projection of demand or of the gap by sector.',
         ],
       },
       {
@@ -149,8 +149,16 @@ export const en: Messages = {
     futureHint: 'Projection to {year}',
     back: 'Ukraine',
     rank: 'Place {place} of {of} by size',
-    boundsHint:
-      'The map shows the low or high end of the projection: 10% of climate models give less or more.',
+    /** The bound tabs of a climate projection. */
+    bounds: { min: 'Min', median: 'Median', max: 'Max' },
+    /** Under the picked bound tab. */
+    boundsAbout: {
+      min: 'The low end: only 10% of the models give less.',
+      median: 'The middle: half the models give less, half give more.',
+      max: 'The high end: only 10% of the models give more.',
+    },
+    /** Over the bound tabs, climate and water alike. */
+    boundsTitle: 'What the map shows',
     normBar: {
       more: '{delta} above the norm',
       less: '{delta} below the norm',
@@ -173,7 +181,10 @@ export const en: Messages = {
   },
   story: {
     country: 'in Ukraine',
-    range: ' ({low} to {high})',
+    range: ' (80% of models: {low} to {high})',
+    /** A projection at an end of the models' range: `{period}`, `{edge}`, `{value}`, `{delta}`. */
+    futureEdge: 'For {period}, {edge} is {value}, {delta}.',
+    edges: { min: 'the low end of the projection', max: 'the high end of the projection' },
     missingYear: 'There is no data for {year}.',
     missingPeriod: 'There is no projection for {period}.',
     noForecast: 'There are no projections for rivers.',
@@ -184,8 +195,6 @@ export const en: Messages = {
     norm: 'norm',
     aria: '{title}: bars by year {from}–{to}, then projections by period up to {end}.',
     ariaHistory: '{title}: bars by year {from}–{to}.',
-    ariaYearly:
-      '{title}: bars by year {from}–{to}, then the models’ mean and range by year up to {end}.',
   },
   basin: {
     named: '{river} basin',
@@ -217,13 +226,16 @@ export const en: Messages = {
     future: 'Future scenarios',
     futureHint: 'Water gap up to 2050',
     futureCard: {
-      lead: 'In {year}, the water gap in Ukraine will be',
-      past: 'In {year} it was {value}',
-      boundsLabel: 'Climate model range',
-      bounds: { min: 'Min', max: 'Max' },
-      boundsHint:
-        'The lowest or highest value among the climate models; the map shows the one chosen.',
+      bounds: { min: 'Min', median: 'Mean', max: 'Max' },
+      boundsAbout: {
+        min: 'The lowest single year of the period across all models.',
+        median: 'The mean of all climate models over the period.',
+        max: 'The highest single year of the period across all models.',
+      },
     },
+    /** After a projected period mean: the single years around it. `{low}`, `{high}`. */
+    range: ' (single years in the models: {low} to {high})',
+    rangeYears: 'single years: {low} to {high}',
     scenarios: {
       'SSP1-2.6': {
         name: 'Sustainable',
@@ -277,7 +289,8 @@ export const en: Messages = {
       chartTitle: 'Water gap, km³',
       story: {
         observed: 'In {year}, the water gap {use} {where} was {value}, {delta}.',
-        future: '{period}: —.',
+        future:
+          "For {period}, the models' mean water gap {use} {where} is {value}{range}, {delta}.",
         above: 'more than the 1990–2019 average',
         below: 'less than the 1990–2019 average',
         same: 'the same as the 1990–2019 average',
@@ -313,7 +326,7 @@ export const en: Messages = {
       chartTitle: 'Share of the available water people withdraw, with projections to 2080',
       story: {
         observed: 'In {year}, people {where} withdrew {value} of the available water, {delta}.',
-        future: 'For {period}, the projection is {value}{range}, {delta}.',
+        future: 'For {period}, the model median is {value}{range}, {delta}.',
         above: 'more than the 1990–2019 average',
         below: 'less than the 1990–2019 average',
         same: 'in line with the 1990–2019 average',
@@ -332,7 +345,7 @@ export const en: Messages = {
       chartTitle: 'How the temperature has changed and what comes next',
       story: {
         observed: 'In {year}, the mean temperature {where} was {value}, {delta}.',
-        future: 'For {period}, the projection is {value}{range}, {delta}.',
+        future: 'For {period}, the model median is {value}{range}, {delta}.',
         above: '{delta} above the norm',
         below: '{delta} below the norm',
         same: 'in line with the norm',
@@ -351,7 +364,7 @@ export const en: Messages = {
       chartTitle: 'Days of extreme heat (above 35 °C) by year, with projections to 2100',
       story: {
         observed: 'In {year}, there were {value} of extreme heat {where}, {delta}.',
-        future: 'For {period}, the projection is {value}{range}, {delta}.',
+        future: 'For {period}, the model median is {value}{range}, {delta}.',
         above: '{delta} more than the norm',
         below: '{delta} fewer than the norm',
         same: 'in line with the norm',
@@ -370,7 +383,7 @@ export const en: Messages = {
       chartTitle: 'Frost days by year, with projections to 2100',
       story: {
         observed: 'In {year}, there were {value} {where}, {delta}.',
-        future: 'For {period}, the projection is {value}{range}, {delta}.',
+        future: 'For {period}, the model median is {value}{range}, {delta}.',
         above: '{delta} more than the norm',
         below: '{delta} fewer than the norm',
         same: 'in line with the norm',
@@ -389,7 +402,7 @@ export const en: Messages = {
       chartTitle: 'Dry months by year, with projections to 2100',
       story: {
         observed: 'In {year}, there were {value} {where}, {delta}.',
-        future: 'For {period}, the projection is {value}{range}, {delta}.',
+        future: 'For {period}, the model median is {value}{range}, {delta}.',
         above: '{delta} more than the norm',
         below: '{delta} fewer than the norm',
         same: 'in line with the norm',
@@ -400,10 +413,10 @@ export const en: Messages = {
       legendTitle: 'Low-flow days a year',
       low: 'None',
       high: 'Many',
-      norm: '1997–2025 average',
+      norm: '1997–2020 average',
       mean: 'Year',
       meanPeriod: 'Period',
-      normValue: '1997–2025 average',
+      normValue: '1997–2020 average',
       unit: {
         one: 'low-flow day',
         few: 'low-flow days',
@@ -413,7 +426,7 @@ export const en: Messages = {
       chartTitle: 'Low-flow days by year, 1997–2025',
       story: {
         observed: 'In {year}, there were {value} {where}, {delta}.',
-        future: 'For {period}, the projection is {value}{range}, {delta}.',
+        future: 'For {period}, the model median is {value}{range}, {delta}.',
         above: '{delta} more than on average',
         below: '{delta} fewer than on average',
         same: 'in line with the average',

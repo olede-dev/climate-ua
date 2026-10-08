@@ -1,11 +1,11 @@
 import { DEFAULT_LAYER, LAYER_IDS, layerConfig } from '../config/layers'
-import type { LayerId, WaterBound, WaterScenario, WaterSector, WaterView } from '../types'
+import type { LayerId, ProjectionBound, WaterScenario, WaterSector, WaterView } from '../types'
+import { BOUNDS } from './series'
 import { parseStep, type TimeStep } from './time'
-import { WATER_SCENARIOS, WATER_SECTORS } from './waterUse'
+import { WATER_PERIODS, WATER_SCENARIOS, WATER_SECTORS } from './waterUse'
 
-const BOUNDS: readonly WaterBound[] = ['min', 'max']
 const WATER_VIEWS: readonly WaterView[] = ['gap', 'demand', 'future']
-/** The periods of the retired stress projection, still in shared links. */
+/** The periods of the retired stress projection, still in shared links; they open the projection. */
 const LEGACY_WATER_PERIODS = ['2030', '2050', '2080']
 
 /** The part of the UI state that is shared through the URL (SPEC §8.7). */
@@ -19,8 +19,8 @@ export interface UrlState {
   waterSector: WaterSector
   /** The projection scenario of the water layer's future view. */
   waterScenario: WaterScenario
-  /** The end of the models' range the projection shows. */
-  bound: WaterBound
+  /** The value of the models' range the projection shows; the central one by default. */
+  bound: ProjectionBound
 }
 
 export const DEFAULT_URL_STATE: Readonly<UrlState> = {
@@ -30,7 +30,7 @@ export const DEFAULT_URL_STATE: Readonly<UrlState> = {
   waterView: 'gap',
   waterSector: 'total',
   waterScenario: 'SSP1-2.6',
-  bound: 'max',
+  bound: 'median',
 }
 
 /** Query values as vue-router exposes them: repeated keys become arrays. */
@@ -60,8 +60,8 @@ export function parseUrlState(query: QueryInput): UrlState {
     (LEGACY_WATER_PERIODS.some((p) => p === rawTime) || first(query.hot) === '1')
       ? 'future'
       : DEFAULT_URL_STATE.waterView)
-  // The water views are years only, the projection too.
-  const periods = layer === 'water' ? [] : layerConfig(layer).futurePeriods
+  // A year in the water projection, from a link to its old yearly view, opens the period holding it.
+  const periods = layer === 'water' ? WATER_PERIODS : layerConfig(layer).futurePeriods
   return {
     layer,
     time: rawTime === null ? null : parseStep(rawTime, periods),

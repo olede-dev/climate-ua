@@ -30,6 +30,8 @@ export type BasinsFile = FeatureCollection<Polygon | MultiPolygon, BasinProperti
 /** `public/data/rivers.json`, written by `pipeline/build_rivers.py` (SPEC §4.5). */
 export interface RiversFile {
   years: { from: number; to: number }
+  /** The period the day-of-year p10 threshold and `normLowFlowDays` are taken over. */
+  norm: { from: number; to: number }
   stations: {
     id: string
     river: string
@@ -41,7 +43,7 @@ export interface RiversFile {
     lon: number
     /** Days below the day's p10 discharge norm, one count per year from `years.from`. */
     lowFlowDays: number[]
-    /** Mean of `lowFlowDays`. */
+    /** Mean of `lowFlowDays` over `norm`: about 36.5 by construction of the p10 threshold. */
     normLowFlowDays: number
   }[]
   source: string
@@ -64,7 +66,8 @@ export interface KoppenFile {
 export type RegionsFile = FeatureCollection<Polygon | MultiPolygon, { id: string }>
 
 export type ClimatePeriod = '2021-2040' | '2041-2060' | '2081-2100'
-export type WaterPeriod = '2030' | '2050' | '2080'
+/** The water projection's periods (`pipeline/config.py` WATER_FUTURE_PERIODS). */
+export type WaterPeriod = '2021-2035' | '2036-2050'
 export type FuturePeriod = ClimatePeriod | WaterPeriod
 
 export type LayerId = 'water' | 'temp' | 'heat' | 'frost' | 'drought' | 'rivers'
@@ -139,8 +142,11 @@ export interface GridFile {
 /** The views of the water layer (SPEC §4.1): demand and gap by year, or the stress projection. */
 /** The World Water Map's projection scenarios: sustainable, nationalist, fossil-powered. */
 export type WaterScenario = 'SSP1-2.6' | 'SSP3-7.0' | 'SSP5-8.5'
-/** Which end of the models' range the projection shows. */
-export type WaterBound = 'min' | 'max'
+/**
+ * Which value of the models' range a projection shows: the low end, the central estimate (the
+ * median of the climate models, the mean of the water ones) or the high end.
+ */
+export type ProjectionBound = 'min' | 'median' | 'max'
 export type WaterView = 'gap' | 'demand' | 'future'
 export type WaterUseView = Exclude<WaterView, 'future'>
 export type WaterSector = 'total' | 'irrigation' | 'domestic' | 'industrial'
@@ -164,24 +170,30 @@ export interface WaterUseFile {
       >
     }
   >
-  /** The total water gap, yearly, per scenario: mean, min and max of the models. */
+  /**
+   * The total water gap per scenario as period means, by the delta method: the observed gap of
+   * `base.observed` plus the models' change from `base.model`. A basin the source has no
+   * projection for is missing.
+   */
   projection: {
-    from: number
-    to: number
+    periods: WaterPeriod[]
+    base: { observed: [number, number]; model: [number, number] }
     unit: string
     scenarios: Record<
       WaterScenario,
       {
-        country: WaterBand
-        regions: Record<string, WaterBand>
+        country: WaterProjection
+        regions: Record<string, WaterProjection>
       }
     >
   }
   source: string
 }
 
-export interface WaterBand {
-  mean: number[]
-  min: number[]
-  max: number[]
-}
+/**
+ * One basin's projection by period: the mean of the models, and the lowest and highest single
+ * year any model gives in the period (years and models together, not a range of model means).
+ */
+export type WaterProjection = Partial<
+  Record<WaterPeriod, { mean: number; low: number; high: number }>
+>

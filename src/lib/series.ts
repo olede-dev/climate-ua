@@ -1,4 +1,4 @@
-import type { FutureValue, LayerFile, RegionSeries, WaterBound } from '../types'
+import type { FutureValue, LayerFile, RegionSeries, ProjectionBound } from '../types'
 import { isFuture, type TimeStep } from './time'
 
 /** A region's value at one step; future steps carry the model range where the file has it. */
@@ -24,11 +24,16 @@ export function anomaly(value: StepValue, norm: number): StepValue {
   }
 }
 
+/** The bound tabs, low to high. */
+export const BOUNDS: readonly ProjectionBound[] = ['min', 'median', 'max']
+
 /**
  * The file with each projection's value moved to the models' low (p10) or high (p90) end, so the
- * map, the summary and the ranks show the chosen bound; values without a range keep the median.
+ * map, the summary and the ranks show the chosen bound; the median bound and values without a
+ * range keep the median.
  */
-export function atBound(file: LayerFile, bound: WaterBound): LayerFile {
+export function atBound(file: LayerFile, bound: ProjectionBound): LayerFile {
+  if (bound === 'median') return file
   const key = bound === 'min' ? 'p10' : 'p90'
   const shift = (series: RegionSeries): RegionSeries => ({
     ...series,
@@ -44,9 +49,4 @@ export function atBound(file: LayerFile, bound: WaterBound): LayerFile {
     country: shift(file.country),
     regions: Object.fromEntries(Object.entries(file.regions).map(([id, s]) => [id, shift(s)])),
   }
-}
-
-/** Whether any projection of the series has a model range to pick a bound from. */
-export function hasRange(series: RegionSeries): boolean {
-  return Object.values(series.future).some((v) => v?.p10 !== undefined && v.p90 !== undefined)
 }

@@ -5,6 +5,7 @@ import type { RiversFile } from '../src/types'
 
 const file: RiversFile = {
   years: { from: 2000, to: 2001 },
+  norm: { from: 2000, to: 2000 },
   stations: [
     {
       id: 'a',
@@ -42,8 +43,14 @@ describe('riversLayer', () => {
     expect(layer.regions.a).toEqual({ norm: 20, history: [10, 30], future: {} })
   })
 
-  it('averages the stations year by year for the country', () => {
+  it('averages the stations year by year for the country, against their own norms', () => {
+    // The norm is the stations' norm period, not the mean of every year (22.5).
     expect(riversLayer(file).country).toEqual({ norm: 22.5, history: [5, 40], future: {} })
+    expect(
+      riversLayer({ ...file, stations: file.stations.map((s) => ({ ...s, normLowFlowDays: 10 })) })
+        .country.norm,
+    ).toBe(10)
+    expect(riversLayer(file).norm).toEqual({ from: 2000, to: 2000 })
   })
 })
 

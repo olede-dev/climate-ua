@@ -6,6 +6,7 @@ import type { LayerConfig } from '../../config/layers'
 import type { Messages } from '../../i18n'
 import type { ValueFormat } from '../../lib/format'
 import { summaryStory, type StoryInput } from '../../lib/narrative'
+import { BOUNDS } from '../../lib/series'
 import { summaryRows } from '../../lib/summary'
 import type { RegionLabel } from '../../lib/regions'
 import { isFuture, type TimeStep } from '../../lib/time'
@@ -13,10 +14,8 @@ import { countryColor, WATER_SCENARIOS, WATER_SECTORS, WATER_USE_VIEWS } from '.
 import type {
   LayerFile,
   LayerId,
-  RegionSeries,
   Sectors,
-  WaterBand,
-  WaterBound,
+  ProjectionBound,
   WaterScenario,
   WaterSector,
   WaterView,
@@ -25,7 +24,6 @@ import WaterTabs from '../map/WaterTabs.vue'
 import { RichText } from '../ui/RichText'
 import CountrySummary from './CountrySummary.vue'
 import RegionCard from './RegionCard.vue'
-import WaterFuture from './WaterFuture.vue'
 import WaterSectors from './WaterSectors.vue'
 
 const props = defineProps<{
@@ -38,17 +36,10 @@ const props = defineProps<{
   region: (RegionLabel & { id: string }) | null
   /** The water layer's view and sector; null on the other layers. */
   water?: { view: WaterView; sector: WaterSector } | null
-  /** The water projection's scenario, the country's model range and its observed gap. */
-  projection?: {
-    scenario: WaterScenario
-    bound: WaterBound
-    band: WaterBand
-    observed: { series: RegionSeries; year: number }
-  } | null
-  /** A climate layer's projection: the bound the map shows and the country's model range. */
-  climateRange?: { bound: WaterBound; low: number; high: number } | null
-  /** The open basin's projection chart, in the future view. */
-  regionProjection?: InstanceType<typeof RegionCard>['$props']['projection']
+  /** The water projection's scenario. */
+  scenario?: WaterScenario
+  /** A projection on screen: the bound the map shows and the country's value at each. */
+  projectionRange?: { bound: ProjectionBound; values: Record<ProjectionBound, number> } | null
   /** The open basin's split between the uses in the year on screen. */
   regionSectors?: Sectors | null
 }>()
@@ -57,7 +48,7 @@ const emit = defineEmits<{
   sector: [WaterSector]
   view: [WaterView]
   scenario: [WaterScenario]
-  bound: [WaterBound]
+  bound: [ProjectionBound]
   /** Another layer's switch between its observed years and its projection periods. */
   future: [boolean]
 }>()
@@ -87,12 +78,15 @@ function story(where: string, series: StoryInput['series']): StoryInput {
     series,
     step: props.step,
     headline: props.config.headlinePeriod,
+    bound: props.projectionRange?.bound ?? 'median',
     where,
     layerCopy: props.copy.story,
-    // Demand and the gap have no projection; the stress view has.
+    // Demand and the gap have no projection; the future view's range is of single years.
     copy: waterHistory.value
       ? { ...t.value.story, noForecast: t.value.waterUse.noForecast }
-      : t.value.story,
+      : props.water
+        ? { ...t.value.story, range: t.value.waterUse.range }
+        : t.value.story,
     format: props.format,
     decimals: props.config.decimals,
   }
@@ -129,27 +123,41 @@ const scenarioViews = computed(() =>
   })),
 )
 
-/** An arrow down or up for the models' low and high end, green and red as in the water projection. */
-const BOUND_MARKS: Record<WaterBound, { icon: string; tone: string }> = {
+/**
+ * An arrow down for the models' low end, a marked centre for the central value, an arrow up for
+ * the high end: green, amber and red, as the water scale runs from little to much.
+ */
+const BOUND_MARKS: Record<ProjectionBound, { icon: string; tone: string }> = {
   min: { icon: 'M8 2.5v11M3.5 9 8 13.5 12.5 9', tone: 'text-emerald-600 dark:text-emerald-400' },
+  median: {
+    icon: 'M2 8h3.5M10.5 8H14M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5z',
+    tone: 'text-amber-600 dark:text-amber-400',
+  },
   max: { icon: 'M8 13.5v-11M3.5 7 8 2.5 12.5 7', tone: 'text-red-600 dark:text-red-400' },
 }
-/** Мін and Макс, each with the country's value at that end of the range. */
-const climateBounds = computed(() => {
-  const range = props.climateRange
+/** Мін, the central value and Макс, each with the country's value there, as a list. */
+const boundViews = computed(() => {
+  const range = props.projectionRange
   if (!range) return []
-  return (['min', 'max'] as const).map((id) => ({
+  const copy = props.water ? t.value.waterUse.futureCard : t.value.panel
+  return BOUNDS.map((id) => ({
     id,
-    label: `${t.value.waterUse.futureCard.bounds[id]} · ${props.format(id === 'min' ? range.low : range.high)}`,
+    label: `${copy.bounds[id]} · ${props.format(range.values[id])}`,
+    // What the picked value is, right under it, instead of a paragraph about all three.
+    about: copy.boundsAbout[id],
     ...BOUND_MARKS[id],
   }))
 })
 
 const waterHistory = computed(() => !!props.water && props.water.view !== 'future')
-/** The observed year's country value, coloured by where it sits in the country's own record. */
+/**
+ * The water country value, coloured by where it sits in the country's own observed record: the
+ * sum of the basins is far above the basin scale.
+ */
 const countryValueColor = computed(() => {
-  const value = rows.value.find((row) => row.kind === 'observed')?.value
-  return waterHistory.value && value != null ? countryColor(props.file.country, value) : null
+  const kind = futureOn.value ? 'future' : 'observed'
+  const value = rows.value.find((row) => row.kind === kind)?.value
+  return props.water && value != null ? countryColor(props.file.country, value) : null
 })
 const sectorItems = computed(() =>
   WATER_SECTORS.map((id) => ({ id, ...t.value.waterUse.sectors[id] })),
@@ -195,7 +203,6 @@ function onKeydown(event: KeyboardEvent) {
         :config="config"
         :step="step"
         :format="format"
-        :projection="regionProjection"
         :zero-note="water?.view === 'gap' ? t.waterUse.noGap : null"
         :chart-title="copy.chartTitle"
         :copy="copy"
@@ -205,8 +212,8 @@ function onKeydown(event: KeyboardEvent) {
       />
       <div v-else class="space-y-3">
         <WaterTabs
-          v-if="water?.view === 'future' && projection"
-          :model-value="projection.scenario"
+          v-if="water?.view === 'future' && scenario"
+          :model-value="scenario"
           stacked
           :views="scenarioViews"
           :label="t.waterUse.scenariosLabel"
@@ -239,17 +246,6 @@ function onKeydown(event: KeyboardEvent) {
             />
           </WaterSectors>
         </template>
-        <WaterFuture
-          v-else-if="water?.view === 'future' && projection"
-          :file="file"
-          :step="step"
-          :format="format"
-          :scenario="projection.scenario"
-          :bound="projection.bound"
-          :band="projection.band"
-          :observed="projection.observed"
-          @update:bound="emit('bound', $event)"
-        />
         <CountrySummary
           v-else
           :rows="rows"
@@ -257,18 +253,19 @@ function onKeydown(event: KeyboardEvent) {
           :config="config"
           :copy="copy"
           :format="format"
+          :value-color="countryValueColor"
           :focus="futureOn ? 'future' : 'observed'"
         />
-        <div v-if="!water && climateRange" class="space-y-1.5">
+        <section v-if="projectionRange" class="space-y-1.5">
+          <h3 class="text-xs font-medium text-ink-muted">{{ t.panel.boundsTitle }}</h3>
           <WaterTabs
-            :model-value="climateRange.bound"
-            block
-            :views="climateBounds"
-            :label="t.waterUse.futureCard.boundsLabel"
+            :model-value="projectionRange.bound"
+            stacked
+            :views="boundViews"
+            :label="t.panel.boundsTitle"
             @update:model-value="emit('bound', $event)"
           />
-          <p class="text-xs leading-relaxed text-ink-muted">{{ t.panel.boundsHint }}</p>
-        </div>
+        </section>
       </div>
     </div>
     <!-- Pinned under the scroll, so the way into the projection, and back, is always in reach. -->

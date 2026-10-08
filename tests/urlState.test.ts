@@ -11,7 +11,7 @@ describe('parseUrlState', () => {
       waterView: 'gap',
       waterSector: 'total',
       waterScenario: 'SSP1-2.6',
-      bound: 'max',
+      bound: 'median',
     })
     expect(parseUrlState({ t: '1987' }).time).toBe(1987)
   })
@@ -56,14 +56,17 @@ describe('toUrlQuery', () => {
     expect(parseUrlState(toUrlQuery(state))).toEqual(state)
   })
 
-  it('reads the water projection as years, with its scenario', () => {
-    expect(parseUrlState({ t: '2050', view: 'future', sc: 'SSP5-8.5' })).toMatchObject({
-      time: 2050,
+  it('reads the water projection periods, with its scenario', () => {
+    expect(parseUrlState({ t: '2036-2050', view: 'future', sc: 'SSP5-8.5' })).toMatchObject({
+      time: '2036-2050',
       waterScenario: 'SSP5-8.5',
     })
+    // A year from the old yearly projection stays a year; HomeView opens the period holding it.
+    expect(parseUrlState({ t: '2040', view: 'future' }).time).toBe(2040)
     expect(parseUrlState({ sc: 'SSP2-4.5' }).waterScenario).toBe('SSP1-2.6')
     expect(parseUrlState({ b: 'min' }).bound).toBe('min')
-    expect(parseUrlState({ b: 'mean' }).bound).toBe('max')
+    expect(parseUrlState({ b: 'max' }).bound).toBe('max')
+    expect(parseUrlState({ b: 'mean' }).bound).toBe('median')
     // Links shared before the views keep opening the projection.
     expect(parseUrlState({ t: '2050' })).toMatchObject({ time: 2050, waterView: 'future' })
     expect(parseUrlState({ hot: '1' }).waterView).toBe('future')

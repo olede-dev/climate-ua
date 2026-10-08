@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { geometryBounds } from '../src/lib/geometry'
-import { anomaly, atBound, hasRange, valueAt } from '../src/lib/series'
+import { anomaly, atBound, valueAt } from '../src/lib/series'
 import type { LayerFile } from '../src/types'
 import type { RegionSeries } from '../src/types'
 
@@ -78,15 +78,11 @@ describe('atBound', () => {
   it('moves each projection to the chosen end of the model range', () => {
     expect(atBound(file, 'min').country.future['2041-2060']?.median).toBe(3)
     expect(atBound(file, 'max').regions.a?.future['2041-2060']?.median).toBe(8)
+    expect(atBound(file, 'median').country.future['2041-2060']).toEqual(series.future['2041-2060'])
   })
 
   it('keeps the median where there is no range, and the history', () => {
     expect(atBound(file, 'max').country.future['2081-2100']?.median).toBe(6)
     expect(atBound(file, 'max').country.history).toEqual([1])
-  })
-
-  it('tells whether a series has a range', () => {
-    expect(hasRange(series)).toBe(true)
-    expect(hasRange({ ...series, future: { '2081-2100': { median: 6 } } })).toBe(false)
   })
 })

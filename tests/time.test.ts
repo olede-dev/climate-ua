@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  periodFor,
   periodRange,
   axisSteps,
   nextStep,
@@ -17,7 +18,7 @@ import {
 } from '../src/lib/time'
 
 const climate: TimeAxis = { from: 1950, to: 2025, periods: ['2021-2040', '2041-2060', '2081-2100'] }
-const water: TimeAxis = { from: 1980, to: 2019, periods: ['2030', '2050', '2080'] }
+const water: TimeAxis = { from: 1980, to: 2019, periods: ['2021-2035', '2036-2050'] }
 
 describe('axis steps', () => {
   it('lists every observed year, then the periods', () => {
@@ -31,7 +32,7 @@ describe('axis steps', () => {
     expect(stepIndex(climate, 1950)).toBe(0)
     expect(stepIndex(climate, '2041-2060')).toBe(77)
     expect(stepIndex(climate, 1949)).toBe(-1)
-    expect(stepIndex(climate, '2050')).toBe(-1)
+    expect(stepIndex(climate, '2036-2050')).toBe(-1)
   })
 
   it('steps forward across the history–future gap and stops at the ends', () => {
@@ -43,9 +44,18 @@ describe('axis steps', () => {
 })
 
 describe('periodYear', () => {
-  it('takes the middle of a range or the single year', () => {
+  it('takes the middle of a range', () => {
     expect(periodYear('2041-2060')).toBe(2050.5)
-    expect(periodYear('2050')).toBe(2050)
+  })
+})
+
+describe('periodFor', () => {
+  it('takes the period holding a year, or the nearest one', () => {
+    expect(periodFor(water.periods, 2021)).toBe('2021-2035')
+    expect(periodFor(water.periods, 2036)).toBe('2036-2050')
+    expect(periodFor(water.periods, 2080)).toBe('2036-2050')
+    expect(periodFor(water.periods, 2019)).toBe('2021-2035')
+    expect(periodFor([], 2030)).toBeUndefined()
   })
 })
 
@@ -60,10 +70,10 @@ describe('snapStep', () => {
   })
 
   it('moves a period to the one with the nearest middle year', () => {
-    expect(snapStep(water, '2041-2060')).toBe('2050')
-    expect(snapStep(water, '2081-2100')).toBe('2080')
-    expect(snapStep(climate, '2030')).toBe('2021-2040')
-    expect(snapStep(climate, '2080')).toBe('2081-2100')
+    expect(snapStep(water, '2041-2060')).toBe('2036-2050')
+    expect(snapStep(water, '2021-2040')).toBe('2021-2035')
+    expect(snapStep(climate, '2021-2035')).toBe('2021-2040')
+    expect(snapStep(climate, '2036-2050')).toBe('2041-2060')
   })
 
   it('turns a period into the last observed year on an axis without periods', () => {
@@ -75,7 +85,7 @@ describe('parseStep', () => {
   it('reads years and the layer’s own periods', () => {
     expect(parseStep('1987', climate.periods)).toBe(1987)
     expect(parseStep('2041-2060', climate.periods)).toBe('2041-2060')
-    expect(parseStep('2050', water.periods)).toBe('2050')
+    expect(parseStep('2036-2050', water.periods)).toBe('2036-2050')
   })
 
   it('rejects anything else', () => {
@@ -112,9 +122,8 @@ describe('slider positions', () => {
 })
 
 describe('periodRange', () => {
-  it('reads both ends of a span and centres a single year', () => {
+  it('reads both ends of a span', () => {
     expect(periodRange('2041-2060')).toEqual([2041, 2060])
-    expect(periodRange('2050')).toEqual([2045, 2055])
   })
 })
 

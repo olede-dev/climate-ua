@@ -30,13 +30,22 @@ import { formatPeriod, valueFormat } from '../lib/format'
 import { basinLabel, oblastLabel, oblastName, stationLabel, type RegionLabel } from '../lib/regions'
 import { stationPoints } from '../lib/rivers'
 import { cssGradient, scalePosition } from '../lib/scale'
-import { anomaly, atBound, hasRange, valueAt, type StepValue } from '../lib/series'
+import { anomaly, atBound, valueAt, type StepValue } from '../lib/series'
 import { outerBorder } from '../lib/geometry'
 import { gridValues } from '../lib/grid'
-import { isFuture, shownAxis, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
+import {
+  isFuture,
+  periodFor,
+  periodYear,
+  shownAxis,
+  snapStep,
+  type TimeAxis,
+  type TimeStep,
+} from '../lib/time'
 import {
   blankEmptyBasins,
   regionSectors,
+  WATER_PERIODS,
   waterProjectionLayer,
   waterUseCopy,
   waterUseLayer,
@@ -50,7 +59,7 @@ const { locale, t } = useLocale()
 const ui = useUiStore()
 const basemap = ref<BasemapKind>('openfreemap')
 
-/** The water layer's future view: the projected gap by year. */
+/** The water layer's future view: the observed gap, then its projection by period. */
 const waterFuture = computed(() => ui.layer === 'water' && ui.waterView === 'future')
 const waterUseQuery = useWaterUse(() => ui.layer === 'water')
 // The water layer comes from water-use.json alone.
@@ -69,7 +78,8 @@ const layer = computed<LayerFile | undefined>(() => {
   }
   const file = waterUseQuery.data.value
   if (!file) return undefined
-  if (ui.waterView === 'future') return waterProjectionLayer(file, ui.waterScenario, ui.bound)
+  if (ui.waterView === 'future')
+    return atBound(waterProjectionLayer(file, ui.waterScenario), ui.bound)
   const history = waterUseLayer(file, ui.waterView, ui.waterSector)
   // A zero gap is a real value (renewable water covers the demand), not missing data; so is
   // zero irrigation, as in the wet west where fields are not watered.
@@ -110,10 +120,16 @@ const axis = computed<TimeAxis | null>(() =>
       }
     : null,
 )
-/** The step on screen: the stored one fitted to this layer's axis, or its latest observed year. */
+/**
+ * The step on screen: the stored one fitted to this layer's axis, or its latest observed year.
+ * The water projection shows only its periods; a year there opens the period holding it.
+ */
 const step = computed<TimeStep | null>(() => {
   if (!axis.value) return null
-  return snapStep(axis.value, ui.time ?? axis.value.to)
+  const fitted = snapStep(axis.value, ui.time ?? axis.value.to)
+  if (!waterFuture.value || isFuture(fitted)) return fitted
+  const year = ui.time === null ? axis.value.to : isFuture(ui.time) ? periodYear(ui.time) : ui.time
+  return periodFor(axis.value.periods, year) ?? fitted
 })
 // A step from another layer or a stale URL is replaced by the one actually shown.
 watch(step, (shown) => {
@@ -186,35 +202,18 @@ const copy = computed(() =>
 const waterState = computed(() =>
   ui.layer === 'water' ? { view: ui.waterView, sector: ui.waterSector } : null,
 )
-/** What the projection card adds to its layer: the models' range and the observed gap. */
-const projection = computed(() => {
-  const file = waterUseQuery.data.value
-  if (!waterFuture.value || !file) return null
-  return {
-    scenario: ui.waterScenario,
-    bound: ui.bound,
-    band: file.projection.scenarios[ui.waterScenario].country,
-    observed: { series: file.views.gap.sectors.total.country, year: file.history.to },
-  }
-})
-/** A climate layer's projection period: the chosen bound and the country's model range. */
-const climateRange = computed(() => {
-  const file = layerQuery.data.value
+/** The projection on screen, unshifted: the country's value at each bound, for the bound tabs. */
+const projectionRange = computed(() => {
   const at = step.value
-  if (ui.layer === 'water' || !file || at === null || !isFuture(at) || !hasRange(file.country))
-    return null
-  const value = file.country.future[at]
-  return value ? { bound: ui.bound, low: value.p10!, high: value.p90! } : null
-})
-/** The open basin's chart in the future view: its observed gap, then the projection. */
-const regionProjection = computed(() => {
-  const file = waterUseQuery.data.value
-  const id = ui.regionId
-  if (!waterFuture.value || !file || id === null) return null
-  const band = file.projection.scenarios[ui.waterScenario].regions[id]
-  const observed = waterUseLayer(file, 'gap', 'total')
-  const series = observed.regions[id]
-  return band && series ? { file: observed, series, from: file.projection.from, band } : null
+  if (at === null || !isFuture(at)) return null
+  const water = waterUseQuery.data.value
+  const file =
+    ui.layer === 'water'
+      ? water && waterFuture.value && waterProjectionLayer(water, ui.waterScenario)
+      : layerQuery.data.value
+  const value = file ? file.country.future[at] : undefined
+  if (!value || value.p10 === undefined || value.p90 === undefined) return null
+  return { bound: ui.bound, values: { min: value.p10, median: value.median, max: value.p90 } }
 })
 
 /** What the open basin withdrew its water for in the year on screen, in the history views; the
@@ -228,14 +227,14 @@ const regionSectorShares = computed(() => {
   return regionSectors(file, 'demand', id, year)
 })
 
-/** The future view opens on this year; history returns to the latest observed year. Gap and
- * demand share a timeline, so switching between them keeps the year. */
+/** The future view opens on its first period; history returns to the latest observed year. Gap
+ * and demand share a timeline, so switching between them keeps the year. */
 function setWaterView(view: WaterView) {
   const crossing = (view === 'future') !== (ui.waterView === 'future')
   ui.waterView = view
   if (!crossing) return
   ui.playing = false
-  ui.time = view === 'future' ? new Date().getFullYear() : null
+  ui.time = view === 'future' ? (WATER_PERIODS[0] ?? null) : null
 }
 // The unit comes with the copy: a count of days is a word that agrees with the number.
 const valueFormatter = computed(() =>
@@ -283,12 +282,11 @@ const legendProps = computed(() => ({
 
 const stepLabel = computed(() => {
   if (step.value === null) return ''
-  if (waterFuture.value) {
-    const name = t.value.waterUse.scenarios[ui.waterScenario].name
-    return `${step.value} · ${t.value.timeline.forecast} (${name})`
-  }
   if (!isFuture(step.value)) return String(step.value)
-  return `${formatPeriod(step.value)} · ${t.value.timeline.forecast} (${layer.value?.scenario})`
+  const scenario = waterFuture.value
+    ? t.value.waterUse.scenarios[ui.waterScenario].name
+    : layer.value?.scenario
+  return `${formatPeriod(step.value)} · ${t.value.timeline.forecast} (${scenario})`
 })
 
 /** Names of the regions of the current geometry. */
@@ -452,7 +450,7 @@ const tooltip = computed(() => {
   const details: string[] = []
   if (shown?.p10 !== undefined && shown.p90 !== undefined) {
     details.push(
-      t.value.tooltip.range
+      (waterFuture.value ? t.value.waterUse.rangeYears : t.value.tooltip.range)
         .replace('{low}', format(shown.p10))
         .replace('{high}', format(shown.p90)),
     )
@@ -652,9 +650,8 @@ const tooltip = computed(() => {
           :format="valueFormatter"
           :region="selected"
           :water="waterState"
-          :projection="projection"
-          :climate-range="climateRange"
-          :region-projection="regionProjection"
+          :scenario="ui.waterScenario"
+          :projection-range="projectionRange"
           :region-sectors="regionSectorShares"
           @close="ui.regionId = null"
           @sector="ui.waterSector = $event"
@@ -733,9 +730,9 @@ const tooltip = computed(() => {
         :format="valueFormatter"
         :region="selected"
         :water="waterState"
-        :projection="projection"
-        :climate-range="climateRange"
-        :region-projection="regionProjection"
+        :scenario="ui.waterScenario"
+        :projection-range="projectionRange"
+        :region-sectors="regionSectorShares"
         @close="ui.regionId = null"
         @sector="ui.waterSector = $event"
         @view="setWaterView"

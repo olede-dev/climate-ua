@@ -2,10 +2,12 @@ import type { MultiPolygon, Polygon } from 'geojson'
 
 import { colorAt, type ColorScale } from './scale'
 import { isFuture, type TimeStep } from './time'
-import type { GridFile, WaterBound } from '../types'
+import type { GridFile, ProjectionBound } from '../types'
 
 /** Canvas pixels per grid cell across: enough for a crisp clip along the border at zoom 7. */
 const PIXELS_PER_CELL = 12
+
+const GRID_KEYS = { min: 'p10', median: 'median', max: 'p90' } as const
 
 /** Web Mercator y of a latitude, unscaled. */
 function mercatorY(lat: number): number {
@@ -25,17 +27,17 @@ export function gridCorners(file: GridFile): [number, number][] {
 }
 
 /**
- * Each cell's value at a step, as the map shows it: a projection at the chosen bound (p10 or
- * p90, like `atBound`), and with `anomaly` the difference from the cell's own norm.
+ * Each cell's value at a step, as the map shows it: a projection at the chosen bound (p10, median
+ * or p90, like `atBound`), and with `anomaly` the difference from the cell's own norm.
  */
 export function gridValues(
   file: GridFile,
   step: TimeStep,
-  bound: WaterBound,
+  bound: ProjectionBound,
   anomaly: boolean,
 ): (number | null)[] | null {
   const cells = isFuture(step)
-    ? file.future[step as keyof GridFile['future']]?.[bound === 'min' ? 'p10' : 'p90']
+    ? file.future[step as keyof GridFile['future']]?.[GRID_KEYS[bound]]
     : file.values[step - file.history.from]
   if (!cells) return null
   if (!anomaly) return cells

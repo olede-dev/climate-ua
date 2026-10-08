@@ -131,6 +131,9 @@ function applyStyle() {
   const own = ++styleRequest
   void basemapStyle(locale.value, theme.value).then(({ style, kind }) => {
     if (!map || own !== styleRequest) return
+    // A tween mid-flight would write feature state into a style that is still loading;
+    // `installRegions` redraws the current values once the new one is in.
+    cancelAnimationFrame(tweenFrame)
     styleReady = false
     map.setStyle(style, { diff: false })
     emit('basemap', kind)
@@ -176,7 +179,7 @@ function applyGrid() {
 /** Moves every region from its drawn value to the new one; a gap in either jumps. */
 function tweenTo(target: Record<string, number | null>) {
   cancelAnimationFrame(tweenFrame)
-  if (!map?.getSource(valueSource())) return
+  if (!styleReady || !map?.getSource(valueSource())) return
   const from = { ...shown }
   const ids = Object.keys(target)
   if (reducedMotion.matches) {

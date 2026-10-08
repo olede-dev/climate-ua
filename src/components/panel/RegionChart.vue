@@ -18,7 +18,7 @@ import type { LayerConfig } from '../../config/layers'
 import type { ValueFormat } from '../../lib/format'
 import { colorAt } from '../../lib/scale'
 import { isFuture, periodRange, type TimeStep } from '../../lib/time'
-import type { LayerFile, RegionSeries, WaterBand } from '../../types'
+import type { LayerFile, RegionSeries } from '../../types'
 import './chartDefaults'
 
 ChartJS.register(BarController, BarElement, LinearScale, Tooltip, annotationPlugin)
@@ -32,8 +32,6 @@ const props = defineProps<{
   format: ValueFormat
   /** What the bars measure, for screen readers. */
   title: string
-  /** A yearly projection after the history: the models' mean as bars, their range behind. */
-  projection?: { from: number; band: WaterBand } | null
 }>()
 
 /** Text takes the muted grey for glass (main.css): the chart sits on the glass panel over the map. */
@@ -72,16 +70,6 @@ const bars = computed(() =>
   ),
 )
 
-/** Projected years: the mean, and the models' range as a floating bar. */
-const projected = computed(() =>
-  (props.projection?.band.mean ?? []).map((mean, i) => ({
-    x: props.projection!.from + i,
-    y: mean - shift.value,
-    low: props.projection!.band.min[i]! - shift.value,
-    high: props.projection!.band.max[i]! - shift.value,
-  })),
-)
-
 const periods = computed(() =>
   props.file.futurePeriods.flatMap((period) => {
     const value = props.series.future[period]
@@ -101,36 +89,16 @@ const periods = computed(() =>
   }),
 )
 
-type Point = { x: number; y: number | [number, number] }
-
-const data = computed((): ChartData<'bar', (number | [number, number] | null)[]> => {
-  const scale = props.config.scale
-  const color = (y: number) => colorAt(scale, y)
-  // Chart.js types `data` as plain values, though a linear x axis reads {x, y} points.
-  const points = (values: Point[]) => values as unknown as [number, number][]
+const data = computed((): ChartData<'bar', (number | null)[]> => {
+  const color = (y: number) => colorAt(props.config.scale, y)
   return {
     datasets: [
       {
-        data: points(bars.value),
+        // Chart.js types `data` as plain values, though a linear x axis reads {x, y} points.
+        data: bars.value as unknown as number[],
         backgroundColor: bars.value.map((bar) => color(bar.y)),
         barPercentage: 1,
         categoryPercentage: 1,
-      },
-      {
-        data: points(projected.value.map((p) => ({ x: p.x, y: p.y }))),
-        backgroundColor: projected.value.map((p) => color(p.y)),
-        barPercentage: 0.6,
-        categoryPercentage: 1,
-        grouped: false,
-        order: 0,
-      },
-      {
-        data: points(projected.value.map((p) => ({ x: p.x, y: [p.low, p.high] }))),
-        backgroundColor: projected.value.map((p) => `${color(p.y)}${RANGE_ALPHA}`),
-        barPercentage: 1,
-        categoryPercentage: 1,
-        grouped: false,
-        order: 1,
       },
     ],
   }
@@ -198,9 +166,7 @@ const annotations = computed(() => {
     }
   }
   const year = props.step
-  const bar = isFuture(year)
-    ? undefined
-    : (bars.value.find((b) => b.x === year) ?? projected.value.find((b) => b.x === year))
+  const bar = isFuture(year) ? undefined : bars.value.find((b) => b.x === year)
   if (bar) {
     out.step = {
       type: 'point',
@@ -220,7 +186,6 @@ const yBounds = computed(() => {
   const values = [
     props.series.norm - shift.value,
     ...bars.value.map((b) => b.y),
-    ...projected.value.flatMap((p) => [p.low, p.high]),
     ...periods.value.flatMap((p) => [p.median, p.low ?? p.median, p.high ?? p.median]),
   ]
   return { min: Math.min(...values), max: Math.max(...values) }
@@ -228,7 +193,7 @@ const yBounds = computed(() => {
 
 const options = computed((): ChartOptions<'bar'> => {
   const COLORS = colors.value
-  const lastEnd = periods.value.at(-1)?.end ?? projected.value.at(-1)?.x ?? props.file.history.to
+  const lastEnd = periods.value.at(-1)?.end ?? props.file.history.to
   return {
     responsive: true,
     maintainAspectRatio: false,
@@ -281,12 +246,6 @@ const options = computed((): ChartOptions<'bar'> => {
         callbacks: {
           title: (items) => String(items[0]?.parsed.x ?? ''),
           label: (item) => {
-            const range = (item.raw as Point).y
-            if (Array.isArray(range)) {
-              return t.value.tooltip.range
-                .replace('{low}', props.format(range[0] + shift.value))
-                .replace('{high}', props.format(range[1] + shift.value))
-            }
             const y = item.parsed.y ?? 0
             return anomalyMode.value
               ? `${label(y)} · ${props.format(y + shift.value)}`
@@ -300,19 +259,11 @@ const options = computed((): ChartOptions<'bar'> => {
 })
 
 const aria = computed(() =>
-  (projected.value.length > 0
-    ? t.value.chart.ariaYearly
-    : periods.value.length > 0
-      ? t.value.chart.aria
-      : t.value.chart.ariaHistory
-  )
+  (periods.value.length > 0 ? t.value.chart.aria : t.value.chart.ariaHistory)
     .replace('{title}', props.title)
     .replace('{from}', String(props.file.history.from))
     .replace('{to}', String(props.file.history.to))
-    .replace(
-      '{end}',
-      String(periods.value.at(-1)?.end ?? projected.value.at(-1)?.x ?? props.file.history.to),
-    ),
+    .replace('{end}', String(periods.value.at(-1)?.end ?? props.file.history.to)),
 )
 </script>
 

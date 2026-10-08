@@ -152,6 +152,8 @@ describe('rivers.json', () => {
   it('has named stations inside Ukraine with one count per year', () => {
     expect(rivers).toBeDefined()
     const { years, stations } = rivers!
+    expect(rivers!.norm.from).toBeGreaterThanOrEqual(years.from)
+    expect(rivers!.norm.to).toBeLessThanOrEqual(years.to)
     expect(stations.length).toBeGreaterThan(5)
     expect(new Set(stations.map((s) => s.id)).size).toBe(stations.length)
     for (const s of stations) {
@@ -167,8 +169,11 @@ describe('rivers.json', () => {
         expect(days).toBeGreaterThanOrEqual(0)
         expect(days).toBeLessThanOrEqual(366)
       }
-      // The norm covers 1997–2020 (pipeline RIVERS_NORM), where p10 days average about 36.5 a year.
-      const norm = s.lowFlowDays.slice(0, 2020 - years.from + 1)
+      // The norm is the p10 threshold's own period, where low-flow days average about 36.5 a year.
+      const norm = s.lowFlowDays.slice(
+        rivers!.norm.from - years.from,
+        rivers!.norm.to - years.from + 1,
+      )
       const mean = norm.reduce((a, b) => a + b, 0) / norm.length
       expect(s.normLowFlowDays, s.id).toBeCloseTo(mean, 1)
     }
@@ -199,6 +204,25 @@ describe('water-use.json', () => {
       for (const series of [sector.country, ...Object.values(sector.regions)]) {
         expect(series.history, name).toHaveLength(years)
         for (const value of series.history) expect(value, name).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+
+  it('projects the gap by period for every scenario, the mean within the yearly extremes', () => {
+    const { periods, scenarios } = waterUse!.projection
+    expect(periods.length).toBeGreaterThan(0)
+    for (const [name, { country, regions }] of Object.entries(scenarios)) {
+      expect(
+        Object.keys(regions).every((id) => basinIds.includes(id)),
+        name,
+      ).toBe(true)
+      for (const projection of [country, ...Object.values(regions)]) {
+        expect(Object.keys(projection), name).toEqual(periods)
+        for (const { mean, low, high } of Object.values(projection)) {
+          expect(low, name).toBeGreaterThanOrEqual(0)
+          expect(low, name).toBeLessThanOrEqual(mean)
+          expect(mean, name).toBeLessThanOrEqual(high)
+        }
       }
     }
   })

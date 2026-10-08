@@ -30,6 +30,7 @@ describe('gridValues', () => {
   it('reads a projection at the chosen bound', () => {
     expect(gridValues(file, '2041-2060', 'min', true)).toEqual([2, null])
     expect(gridValues(file, '2041-2060', 'max', false)).toEqual([14, null])
+    expect(gridValues(file, '2041-2060', 'median', false)).toEqual([13, null])
   })
 
   it('has nothing for a step outside the file', () => {

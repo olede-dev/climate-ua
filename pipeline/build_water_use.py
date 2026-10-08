@@ -6,8 +6,15 @@ there is demand minus withdrawal: the demand renewable water does not meet. A ba
 border counts by the share of its area in Ukraine, and a fragment joined to a neighbour adds to
 it, so the basins add up to the country. Both are in km³.
 
-The projection is the total gap only, yearly 2020–2050, for three scenarios (mean, min and max
-of the models); the sectors and demand have none.
+The projection is the total gap only, for three scenarios; the sectors and demand have none.
+The service gives it by year, 2020–2050, as the mean, min and max of the climate models; a
+modelled year is one possible year, so it is written as period means (`WATER_FUTURE_PERIODS`)
+with the delta method of SPEC §5.2: the observed gap of 2010–2019 plus the models' mean change
+from 2020–2029. Their own historical runs are not in the service, so the projection's first
+decade stands in for the model baseline. `low` and `high` are the lowest and highest single
+year any model gives in the period, shifted the same way: the spread of years and models
+together, wider than that of the models' period means, which the service does not hold. A basin
+with no projection in the service has none here; the country counts it as unchanged.
 
 Run `fetch_wwm_basins.py` and `build_basins.py` first.
 """
@@ -60,8 +67,29 @@ def series(values: np.ndarray, years: np.ndarray, scale: float, decimals: int) -
     }
 
 
-def band(stats: dict[str, np.ndarray], scale: float, decimals: int) -> dict:
-    return {key: [round(float(v) * scale, decimals) for v in values] for key, values in stats.items()}
+def in_years(first: int, years: tuple[int, int]) -> slice:
+    """Positions of `years` (inclusive) in a yearly series that starts in `first`."""
+    return slice(years[0] - first, years[1] - first + 1)
+
+
+def periods(stats: dict[str, np.ndarray], observed: float, scale: float, decimals: int) -> dict:
+    """The projection of one series as period means by the delta method, with the yearly extremes.
+
+    `stats` holds the yearly mean, min and max of the models from `WWM_FUTURE[0]`; `observed` is
+    the observed mean over `WATER_OBSERVED_BASE`. A gap is never below zero.
+    """
+    first = config.WWM_FUTURE[0]
+    base = stats["mean"][in_years(first, config.WATER_MODEL_BASE)].mean()
+    out = {}
+    for name, years in config.WATER_FUTURE_PERIODS.items():
+        span = in_years(first, years)
+        values = {
+            "mean": stats["mean"][span].mean(),
+            "low": stats["min"][span].min(),
+            "high": stats["max"][span].max(),
+        }
+        out[name] = {k: round(max(0.0, float(observed + v - base)) * scale, decimals) for k, v in values.items()}
+    return out
 
 
 def main() -> None:
@@ -92,28 +120,31 @@ def main() -> None:
         total = sectors["total"]["country"]["history"]
         print(f"{view}: Ukraine {years[0]} {total[0]}, {years[-1]} {total[-1]} {unit}")
 
-    missing = [str(b) for b, text in zip(source["basinid"], source["A_370_mean"]) if not isinstance(text, str)]
-    if any(used[source["basinid"].astype(str).isin(missing).values]):
-        print(f"No projection for service basins {', '.join(missing)}: counted as zero")
     _, scale, unit, decimals = VIEWS["gap"]
+    gap = field(f"{VIEWS['gap'][0]}_total", len(years))
+    observed = gap[:, in_years(int(years[0]), config.WATER_OBSERVED_BASE)].mean(axis=1)
     scenarios = {}
     for scenario, prefix in config.WWM_SCENARIOS.items():
+        projected = weights @ source[f"{prefix}_mean"].map(lambda text: isinstance(text, str)).to_numpy(float) > 0
         stats = {key: field(f"{prefix}_{key}", future_years) for key in ("mean", "min", "max")}
         scenarios[scenario] = {
-            "country": band({k: v.sum(axis=0) for k, v in stats.items()}, scale, decimals),
+            "country": periods({k: v.sum(axis=0) for k, v in stats.items()}, observed.sum(), scale, decimals),
             "regions": {
-                basin_id: band({k: v[i] for k, v in stats.items()}, scale, decimals) for i, basin_id in enumerate(ids)
+                basin_id: periods({k: v[i] for k, v in stats.items()}, observed[i], scale, decimals)
+                for i, basin_id in enumerate(ids)
+                if projected[i]
             },
         }
-        print(f"gap {scenario}: Ukraine {config.WWM_FUTURE[1]} {scenarios[scenario]['country']['mean'][-1]} {unit}")
+        country = ", ".join(f"{p} {v['mean']} ({v['low']}–{v['high']})" for p, v in scenarios[scenario]["country"].items())
+        print(f"gap {scenario}: Ukraine {country} {unit}; {len(ids) - projected.sum()} basins without a projection")
 
     data = {
         "history": {"from": int(years[0]), "to": int(years[-1])},
         "norm": {"from": config.WATER_NORM[0], "to": config.WATER_NORM[1]},
         "views": views,
         "projection": {
-            "from": config.WWM_FUTURE[0],
-            "to": config.WWM_FUTURE[1],
+            "periods": list(config.WATER_FUTURE_PERIODS),
+            "base": {"observed": list(config.WATER_OBSERVED_BASE), "model": list(config.WATER_MODEL_BASE)},
             "unit": unit,
             "scenarios": scenarios,
         },

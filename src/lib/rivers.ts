@@ -6,7 +6,8 @@ const mean = (values: number[]) => values.reduce((sum, v) => sum + v, 0) / value
 
 /**
  * The river stations as a layer: one series of low-flow days per station, no projection
- * (SPEC §4.5). «Ukraine» is the mean of the stations, year by year.
+ * (SPEC §4.5). «Ukraine» is the mean of the stations, year by year, against the mean of their
+ * norms: every norm is taken over the threshold's own period, `file.norm`.
  */
 export function riversLayer(file: RiversFile): LayerFile {
   const regions: Record<string, RegionSeries> = Object.fromEntries(
@@ -24,10 +25,10 @@ export function riversLayer(file: RiversFile): LayerFile {
     geometry: 'stations',
     unit: 'днів',
     scenario: null,
-    norm: file.years,
+    norm: file.norm,
     history: file.years,
     futurePeriods: [],
-    country: { norm: mean(history), history, future: {} },
+    country: { norm: mean(file.stations.map((s) => s.normLowFlowDays)), history, future: {} },
     regions,
     source: file.source,
   }

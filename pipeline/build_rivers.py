@@ -1,6 +1,6 @@
 """Writes public/data/rivers.json from the GloFAS discharge in data/raw/rivers (SPEC §4.5).
 
-Per station: the yearly count of low-flow days and their mean over all years. A low-flow day is
+Per station: the yearly count of low-flow days and their mean over the norm period 1997–2020. A low-flow day is
 one whose discharge falls below that day's p10 norm: the 10th percentile of 1997–2020 values
 within ±3 days of the same day of year. Days run on a 365-day calendar, so 29 February counts as
 28 February and adds no day of its own.
@@ -78,7 +78,12 @@ def main() -> None:
         )
         print(f"  {station.id:26} mean {stations[-1]['normLowFlowDays']:5.1f}, range {min(counts)}–{max(counts)}")
 
-    data = {"years": {"from": first, "to": last}, "stations": stations, "source": config.RIVERS_SOURCE}
+    data = {
+        "years": {"from": first, "to": last},
+        "norm": {"from": norm_first, "to": norm_last},
+        "stations": stations,
+        "source": config.RIVERS_SOURCE,
+    }
     size = write_json(config.RIVERS_PATH, data)
     print(f"Wrote {len(stations)} stations ({size} B) to {config.RIVERS_PATH}")
 

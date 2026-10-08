@@ -185,6 +185,13 @@ WWM_BASINS_PATH = WWM_DIR / "hydrobasins_lvl7.geojson"
 WWM_SECTOR_FIELDS = {"total": "total", "irrigation": "irrigation", "domestic": "domestic", "industrial": "industrial"}
 #: Projection of the total water gap, yearly from WWM_FUTURE[0]: mean, min and max of the models.
 WWM_FUTURE = (2020, 2050)
+#: The projection as period means: a modelled year is one possible year, not a forecast of it.
+#: Fifteen years each, as long as the service's record allows (the climate layers take twenty).
+WATER_FUTURE_PERIODS = {"2021-2035": (2021, 2035), "2036-2050": (2036, 2050)}
+#: Delta method (SPEC §5.2) without the models' own historical runs, which the service lacks: the
+#: change from the projection's first decade is added to the observed decade just before it.
+WATER_MODEL_BASE = (2020, 2029)
+WATER_OBSERVED_BASE = (2010, 2019)
 WWM_SCENARIOS = {"SSP1-2.6": "A_126", "SSP3-7.0": "A_370", "SSP5-8.5": "A_585"}
 
 WATER_HISTORY = (1980, 2019)

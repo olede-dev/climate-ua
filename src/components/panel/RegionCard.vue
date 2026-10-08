@@ -8,7 +8,7 @@ import type { ValueFormat } from '../../lib/format'
 import { colorAt } from '../../lib/scale'
 import { rankAt, summaryRows } from '../../lib/summary'
 import { isFuture, type TimeStep } from '../../lib/time'
-import type { LayerFile, LayerId, RegionSeries, Sectors, WaterBand } from '../../types'
+import type { LayerFile, LayerId, RegionSeries, Sectors } from '../../types'
 import ClimateAnalog from './ClimateAnalog.vue'
 import CountrySummary from './CountrySummary.vue'
 import NormBar from './NormBar.vue'
@@ -36,13 +36,6 @@ const props = defineProps<{
   sectors?: Sectors | null
   /** Shown instead of the chart when every value is zero, e.g. a basin with no water gap. */
   zeroNote?: string | null
-  /** The chart of a projection: the observed record, then the models' yearly mean and range. */
-  projection?: {
-    file: LayerFile
-    series: RegionSeries
-    from: number
-    band: WaterBand
-  } | null
 }>()
 defineEmits<{ close: [] }>()
 
@@ -144,7 +137,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
     </header>
 
     <!-- The country's summary, mirrored: big number, then what it is made of. -->
-    <template v-if="hasData && !projection">
+    <template v-if="hasData">
       <CountrySummary
         :rows="rows"
         :file="file"
@@ -204,9 +197,8 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
         {{ chartTitle }}
       </figcaption>
       <RegionChart
-        :file="projection?.file ?? file"
-        :series="projection?.series ?? series"
-        :projection="projection"
+        :file="file"
+        :series="series"
         :config="config"
         :step="step"
         :format="format"
@@ -215,11 +207,5 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
     </figure>
 
     <ClimateAnalog v-if="climate" :region-id="id" />
-
-    <SectorBar
-      v-if="hasData && projection && series.sectors"
-      :sectors="series.sectors"
-      :year="file.history.to"
-    />
   </article>
 </template>

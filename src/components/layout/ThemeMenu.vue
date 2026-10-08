@@ -5,7 +5,7 @@ import { useLocale } from '../../composables/useLocale'
 import { useTheme, type ThemePreference } from '../../composables/useTheme'
 import HeaderMenu from './HeaderMenu.vue'
 
-defineProps<{ buttonClass: string }>()
+defineProps<{ buttonClass: string; iconOnly?: boolean }>()
 
 const VALUES: readonly ThemePreference[] = ['auto', 'light', 'dark']
 
@@ -29,6 +29,7 @@ const model = computed({ get: () => preference.value, set: setPreference })
   <HeaderMenu
     v-model="model"
     :button-class="buttonClass"
+    :icon-only="iconOnly"
     menu-id="theme-menu"
     :menu-label="t.theme.menuLabel"
     :trigger-label="t.theme.label"

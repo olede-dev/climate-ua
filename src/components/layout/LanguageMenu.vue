@@ -5,7 +5,7 @@ import { useLocale } from '../../composables/useLocale'
 import { LOCALE_NAMES, type Locale } from '../../i18n'
 import HeaderMenu from './HeaderMenu.vue'
 
-defineProps<{ buttonClass: string }>()
+defineProps<{ buttonClass: string; iconOnly?: boolean }>()
 
 const OPTIONS = (Object.keys(LOCALE_NAMES) as Locale[]).map((value) => ({
   value,
@@ -20,6 +20,7 @@ const model = computed({ get: () => locale.value, set: setLocale })
   <HeaderMenu
     v-model="model"
     :button-class="buttonClass"
+    :icon-only="iconOnly"
     menu-id="language-menu"
     :menu-label="t.language.menuLabel"
     :trigger-label="t.language.label"

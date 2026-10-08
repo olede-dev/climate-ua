@@ -140,176 +140,184 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 </script>
 
 <template>
-  <div
-    class="glass pointer-events-auto flex items-center gap-3 rounded-2xl px-2.5 py-2 shadow-float sm:px-3"
-  >
-    <button
-      type="button"
-      class="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover focus-ring"
-      :aria-label="playing ? t.timeline.pause : t.timeline.play"
-      :aria-pressed="playing"
-      @click="playing = !playing"
-    >
-      <svg v-if="playing" viewBox="0 0 16 16" class="size-4" fill="currentColor" aria-hidden="true">
-        <rect x="3" y="2" width="3.5" height="12" rx="1" />
-        <rect x="9.5" y="2" width="3.5" height="12" rx="1" />
-      </svg>
-      <svg v-else viewBox="0 0 16 16" class="size-4" fill="currentColor" aria-hidden="true">
-        <path d="M4 2.5v11a1 1 0 0 0 1.5.86l9-5.5a1 1 0 0 0 0-1.72l-9-5.5A1 1 0 0 0 4 2.5Z" />
-      </svg>
-    </button>
-
-    <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-      <div class="flex items-baseline justify-between gap-2">
-        <p class="flex min-w-0 items-center gap-1.5 truncate text-sm text-ink" aria-hidden="true">
-          <button
-            type="button"
-            tabindex="-1"
-            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-fill-strong text-ink transition-colors hover:bg-accent hover:text-white disabled:opacity-30 disabled:hover:bg-fill-strong disabled:hover:text-ink"
-            :disabled="prev === null"
-            @click="moveTo(prev)"
-          >
-            <svg
-              viewBox="0 0 16 16"
-              class="size-4"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.25"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M10 3.5 5.5 8l4.5 4.5" />
-            </svg>
-          </button>
-          <span class="min-w-[3.5rem] text-center text-base font-semibold tabular-nums">{{
-            label
-          }}</span>
-          <button
-            type="button"
-            tabindex="-1"
-            class="flex size-7 shrink-0 items-center justify-center rounded-full bg-fill-strong text-ink transition-colors hover:bg-accent hover:text-white disabled:opacity-30 disabled:hover:bg-fill-strong disabled:hover:text-ink"
-            :disabled="next === null"
-            @click="moveTo(next)"
-          >
-            <svg
-              viewBox="0 0 16 16"
-              class="size-4"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2.25"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M6 3.5 10.5 8 6 12.5" />
-            </svg>
-          </button>
-          <span v-if="future" class="text-ink-muted">
-            · {{ t.timeline.forecast }} ({{ scenario }})</span
-          >
-        </p>
-        <!-- On phones a future step already names the scenario on the left. -->
-        <p
-          v-if="scenario"
-          class="shrink-0 text-[11px] text-ink-muted"
-          :class="{ 'max-sm:hidden': future }"
-        >
-          <span class="max-sm:hidden">{{ t.timeline.scenario }}</span> {{ scenario }}
-        </p>
-      </div>
-
-      <!-- Observed years as one continuous track, then the future periods as separate steps. -->
-      <div
-        ref="track"
-        class="relative h-6 touch-none rounded-full select-none focus-ring"
-        role="slider"
-        tabindex="0"
-        :aria-label="t.timeline.label"
-        :aria-valuemin="0"
-        :aria-valuemax="steps.length - 1"
-        :aria-valuenow="steps.indexOf(step)"
-        :aria-valuetext="valueText"
-        @keydown="onKeydown"
-        @pointerdown="onPointerDown"
-        @pointermove="onPointerMove"
-        @pointerup="dragging = false"
-        @pointercancel="dragging = false"
-        @pointerleave="hoverAt = null"
+  <div class="glass pointer-events-auto rounded-2xl px-2.5 py-2 shadow-float sm:px-3">
+    <!-- Something read with the timeline, such as the map's legend. -->
+    <slot />
+    <div class="flex items-center gap-3">
+      <button
+        type="button"
+        class="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover focus-ring"
+        :aria-label="playing ? t.timeline.pause : t.timeline.play"
+        :aria-pressed="playing"
+        @click="playing = !playing"
       >
-        <span
-          class="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-fill-strong"
-          :style="{ left: 0, width: percent(historyEnd) }"
-        ></span>
-        <span
-          class="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-accent"
-          :style="{ left: 0, width: percent(Math.min(thumb, historyEnd)) }"
-        ></span>
-        <span
-          v-for="slot in slots"
-          :key="slot.period"
-          class="hatch absolute top-1/2 h-3 -translate-y-1/2 rounded-full"
-          :class="slot.period === step ? 'bg-accent text-white/40' : 'bg-fill-strong text-ink/25'"
-          :style="{
-            left: `calc(${percent(slot.start)} + 2px)`,
-            width: `calc(${percent(slot.end - slot.start)} - 4px)`,
-          }"
-        ></span>
-        <!-- A tick every decade, so a year can be found by eye. -->
-        <span
-          v-for="tick in decades"
-          :key="tick.year"
-          class="pointer-events-none absolute top-1/2 h-2.5 w-px -translate-1/2 bg-ink/30"
-          :style="{ left: percent(tick.at) }"
-        ></span>
-        <!-- The step a click would pick. -->
-        <template v-if="preview">
+        <svg
+          v-if="playing"
+          viewBox="0 0 16 16"
+          class="size-4"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <rect x="3" y="2" width="3.5" height="12" rx="1" />
+          <rect x="9.5" y="2" width="3.5" height="12" rx="1" />
+        </svg>
+        <svg v-else viewBox="0 0 16 16" class="size-4" fill="currentColor" aria-hidden="true">
+          <path d="M4 2.5v11a1 1 0 0 0 1.5.86l9-5.5a1 1 0 0 0 0-1.72l-9-5.5A1 1 0 0 0 4 2.5Z" />
+        </svg>
+      </button>
+
+      <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div class="flex items-baseline justify-between gap-2">
+          <p class="flex min-w-0 items-center gap-1.5 truncate text-sm text-ink" aria-hidden="true">
+            <button
+              type="button"
+              tabindex="-1"
+              class="flex size-7 shrink-0 items-center justify-center rounded-full bg-fill-strong text-ink transition-colors hover:bg-accent hover:text-white disabled:opacity-30 disabled:hover:bg-fill-strong disabled:hover:text-ink"
+              :disabled="prev === null"
+              @click="moveTo(prev)"
+            >
+              <svg
+                viewBox="0 0 16 16"
+                class="size-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.25"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M10 3.5 5.5 8l4.5 4.5" />
+              </svg>
+            </button>
+            <span class="min-w-[3.5rem] text-center text-base font-semibold tabular-nums">{{
+              label
+            }}</span>
+            <button
+              type="button"
+              tabindex="-1"
+              class="flex size-7 shrink-0 items-center justify-center rounded-full bg-fill-strong text-ink transition-colors hover:bg-accent hover:text-white disabled:opacity-30 disabled:hover:bg-fill-strong disabled:hover:text-ink"
+              :disabled="next === null"
+              @click="moveTo(next)"
+            >
+              <svg
+                viewBox="0 0 16 16"
+                class="size-4"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2.25"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M6 3.5 10.5 8 6 12.5" />
+              </svg>
+            </button>
+            <span v-if="future" class="text-ink-muted">
+              · {{ t.timeline.forecast }} ({{ scenario }})</span
+            >
+          </p>
+          <!-- On phones a future step already names the scenario on the left. -->
+          <p
+            v-if="scenario"
+            class="shrink-0 text-[11px] text-ink-muted"
+            :class="{ 'max-sm:hidden': future }"
+          >
+            <span class="max-sm:hidden">{{ t.timeline.scenario }}</span> {{ scenario }}
+          </p>
+        </div>
+
+        <!-- Observed years as one continuous track, then the future periods as separate steps. -->
+        <div
+          ref="track"
+          class="relative h-6 touch-none rounded-full select-none focus-ring"
+          role="slider"
+          tabindex="0"
+          :aria-label="t.timeline.label"
+          :aria-valuemin="0"
+          :aria-valuemax="steps.length - 1"
+          :aria-valuenow="steps.indexOf(step)"
+          :aria-valuetext="valueText"
+          @keydown="onKeydown"
+          @pointerdown="onPointerDown"
+          @pointermove="onPointerMove"
+          @pointerup="dragging = false"
+          @pointercancel="dragging = false"
+          @pointerleave="hoverAt = null"
+        >
           <span
-            class="pointer-events-none absolute top-1/2 size-2.5 -translate-1/2 rounded-full bg-ink/50"
-            :style="{ left: percent(preview.at) }"
+            class="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-fill-strong"
+            :style="{ left: 0, width: percent(historyEnd) }"
           ></span>
           <span
-            class="pointer-events-none absolute bottom-full mb-1 -translate-x-1/2 rounded-md bg-ink px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-canvas tabular-nums"
-            :style="{ left: percent(preview.at) }"
-            >{{ preview.label }}</span
+            class="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-accent"
+            :style="{ left: 0, width: percent(Math.min(thumb, historyEnd)) }"
+          ></span>
+          <span
+            v-for="slot in slots"
+            :key="slot.period"
+            class="hatch absolute top-1/2 h-3 -translate-y-1/2 rounded-full"
+            :class="slot.period === step ? 'bg-accent text-white/40' : 'bg-fill-strong text-ink/25'"
+            :style="{
+              left: `calc(${percent(slot.start)} + 2px)`,
+              width: `calc(${percent(slot.end - slot.start)} - 4px)`,
+            }"
+          ></span>
+          <!-- A tick every decade, so a year can be found by eye. -->
+          <span
+            v-for="tick in decades"
+            :key="tick.year"
+            class="pointer-events-none absolute top-1/2 h-2.5 w-px -translate-1/2 bg-ink/30"
+            :style="{ left: percent(tick.at) }"
+          ></span>
+          <!-- The step a click would pick. -->
+          <template v-if="preview">
+            <span
+              class="pointer-events-none absolute top-1/2 size-2.5 -translate-1/2 rounded-full bg-ink/50"
+              :style="{ left: percent(preview.at) }"
+            ></span>
+            <span
+              class="pointer-events-none absolute bottom-full mb-1 -translate-x-1/2 rounded-md bg-ink px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-canvas tabular-nums"
+              :style="{ left: percent(preview.at) }"
+              >{{ preview.label }}</span
+            >
+          </template>
+          <span
+            class="pointer-events-none absolute top-1/2 size-4 -translate-1/2 rounded-full border-2 border-white bg-accent shadow-card transition-[left,transform] duration-150 ease-out motion-reduce:transition-none"
+            :class="{ 'scale-125': dragging }"
+            :style="{ left: percent(thumb) }"
+          ></span>
+          <span
+            v-if="dragging"
+            class="pointer-events-none absolute bottom-full mb-1.5 -translate-x-1/2 rounded-md bg-accent px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-white tabular-nums"
+            :style="{ left: percent(thumb) }"
+            >{{ label }}</span
           >
-        </template>
-        <span
-          class="pointer-events-none absolute top-1/2 size-4 -translate-1/2 rounded-full border-2 border-white bg-accent shadow-card transition-[left,transform] duration-150 ease-out motion-reduce:transition-none"
-          :class="{ 'scale-125': dragging }"
-          :style="{ left: percent(thumb) }"
-        ></span>
-        <span
-          v-if="dragging"
-          class="pointer-events-none absolute bottom-full mb-1.5 -translate-x-1/2 rounded-md bg-accent px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-white tabular-nums"
-          :style="{ left: percent(thumb) }"
-          >{{ label }}</span
-        >
-      </div>
+        </div>
 
-      <div
-        class="relative hidden h-3.5 text-[10px] leading-none text-ink-muted tabular-nums sm:block"
-      >
-        <span
-          v-for="tick in decades"
-          :key="tick.year"
-          class="absolute -translate-x-1/2"
-          :style="{ left: percent(tick.at) }"
-          >{{ tick.year }}</span
+        <div
+          class="relative hidden h-3.5 text-[10px] leading-none text-ink-muted tabular-nums sm:block"
         >
-        <span
-          v-if="axis.to % 10 >= 4"
-          class="absolute -translate-x-full"
-          :style="{ left: percent(historyEnd) }"
-          >{{ axis.to }}</span
-        >
-        <span
-          v-for="slot in slots"
-          :key="slot.period"
-          class="absolute -translate-x-1/2 whitespace-nowrap"
-          :style="{ left: percent((slot.start + slot.end) / 2) }"
-          >{{ formatPeriod(slot.period) }}</span
-        >
+          <span
+            v-for="tick in decades"
+            :key="tick.year"
+            class="absolute -translate-x-1/2"
+            :style="{ left: percent(tick.at) }"
+            >{{ tick.year }}</span
+          >
+          <span
+            v-if="axis.to % 10 >= 4"
+            class="absolute -translate-x-full"
+            :style="{ left: percent(historyEnd) }"
+            >{{ axis.to }}</span
+          >
+          <span
+            v-for="slot in slots"
+            :key="slot.period"
+            class="absolute -translate-x-1/2 whitespace-nowrap"
+            :style="{ left: percent((slot.start + slot.end) / 2) }"
+            >{{ formatPeriod(slot.period) }}</span
+          >
+        </div>
       </div>
     </div>
   </div>

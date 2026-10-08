@@ -11,6 +11,8 @@ const props = defineProps<{
   /** The trigger reads `<triggerLabel>: <current option>`. */
   triggerLabel: string
   options: readonly { value: T; label: string }[]
+  /** The trigger shows the icon alone, as in the map's control column. */
+  iconOnly?: boolean
 }>()
 const model = defineModel<T>({ required: true })
 /** `iconClass` sizes the icon: larger on the trigger than in the menu. */
@@ -87,8 +89,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onDocumentPoin
       @click="open = !open"
     >
       <slot name="icon" :value="current.value" icon-class="size-[18px]" :in-menu="false" />
-      <span class="hidden sm:inline">{{ current.label }}</span>
+      <span v-if="!iconOnly" class="hidden sm:inline">{{ current.label }}</span>
       <svg
+        v-if="!iconOnly"
         viewBox="0 0 24 24"
         class="hidden size-3.5 text-ink-muted sm:block"
         aria-hidden="true"

@@ -4,6 +4,8 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch, watchE
 
 import AppFooter from '../components/layout/AppFooter.vue'
 import AppHeader from '../components/layout/AppHeader.vue'
+import LanguageMenu from '../components/layout/LanguageMenu.vue'
+import ThemeMenu from '../components/layout/ThemeMenu.vue'
 import type { BasemapKind } from '../components/map/basemap'
 import ClimateMap, { type RegionHover } from '../components/map/ClimateMap.vue'
 import MapLegend from '../components/map/MapLegend.vue'
@@ -277,21 +279,31 @@ const tableCaption = computed(
 const isWide = useMediaQuery('(min-width: 48rem)')
 
 /** The panels around the full-screen map, measured so the map frames Ukraine between them. */
-const headerBar = useTemplateRef<InstanceType<typeof AppHeader>>('headerBar')
-const panel = useTemplateRef<InstanceType<typeof SidePanel>>('panel')
-const layersCard = useTemplateRef<HTMLElement>('layersCard')
+const panelCard = useTemplateRef<HTMLElement>('panelCard')
+const controlsColumn = useTemplateRef<HTMLElement>('controlsColumn')
 const bottomBar = useTemplateRef<HTMLElement>('bottomBar')
 const insets = ref<Required<PaddingOptions>>({ top: 0, bottom: 0, left: 0, right: 0 })
+/** The zoom buttons go under the control column; MapLibre adds its own 10px margin. */
+const controls = ref({ top: 0, right: 0 })
+const CONTROL_MARGIN = 10
+const GUTTER = 12
 
 function measureInsets() {
   const rect = (el: unknown) => (el instanceof HTMLElement ? el.getBoundingClientRect() : null)
   const width = window.innerWidth
   const height = window.innerHeight
+  const column = rect(controlsColumn.value)
   const next = {
-    top: Math.round(rect(headerBar.value?.$el)?.bottom ?? 0),
-    left: Math.round(rect(panel.value?.$el)?.right ?? 0),
-    right: Math.round(width - (rect(layersCard.value)?.left ?? width)),
+    top: 0,
+    left: Math.round(rect(panelCard.value)?.right ?? 0),
+    right: Math.round(width - (column?.left ?? width)),
     bottom: Math.round(height - (rect(bottomBar.value)?.top ?? height)),
+  }
+  if (column) {
+    const top = Math.round(column.bottom + GUTTER - CONTROL_MARGIN)
+    const right = Math.round(width - column.right - CONTROL_MARGIN)
+    if (top !== controls.value.top || right !== controls.value.right)
+      controls.value = { top, right }
   }
   const now = insets.value
   // A new object reframes the map, so only a real change makes one.
@@ -301,7 +313,7 @@ function measureInsets() {
 }
 const insetObserver = new ResizeObserver(measureInsets)
 watchEffect((onCleanup) => {
-  const els = [headerBar.value?.$el, panel.value?.$el, layersCard.value, bottomBar.value]
+  const els = [panelCard.value, controlsColumn.value, bottomBar.value]
   for (const el of els) if (el instanceof HTMLElement) insetObserver.observe(el)
   window.addEventListener('resize', measureInsets)
   onCleanup(() => {
@@ -361,6 +373,9 @@ watch(
   },
 )
 
+const menuButtonClass =
+  'inline-flex size-10 items-center justify-center rounded-xl text-ink transition-colors hover:bg-fill focus-ring'
+
 const vFocus = { mounted: (el: HTMLElement) => el.focus() }
 
 const hover = ref<RegionHover | null>(null)
@@ -401,11 +416,9 @@ const tooltip = computed(() => {
        cards on the canvas, separated by one gutter (gap and padding). -->
   <div
     class="flex flex-col bg-canvas"
-    :class="
-      isWide ? 'h-dvh gap-3 overflow-hidden px-3 pt-3' : 'min-h-dvh gap-2 p-2 sm:gap-3 sm:p-3'
-    "
+    :class="isWide ? 'h-dvh overflow-hidden p-3' : 'min-h-dvh gap-2 p-2 sm:gap-3 sm:p-3'"
   >
-    <AppHeader ref="headerBar">
+    <AppHeader v-if="!isWide">
       <button
         v-if="!isWide"
         type="button"
@@ -495,6 +508,7 @@ const tooltip = computed(() => {
           :future="step !== null && isFuture(step)"
           :selected-id="ui.regionId"
           :insets="isWide ? insets : undefined"
+          :controls="isWide ? controls : undefined"
           @basemap="basemap = $event"
           @hover="hover = $event"
           @select="ui.regionId = $event"
@@ -541,77 +555,98 @@ const tooltip = computed(() => {
       />
       <!-- Wide: the panel on the left, the layers on the right, the timeline
            between them at the bottom (SPEC §8.1). -->
-      <SidePanel
-        v-if="isWide && layer && step !== null"
-        ref="panel"
-        class="glass pointer-events-auto relative z-10 max-h-full w-[22rem] shrink-0 self-start rounded-2xl shadow-float"
-        :file="layer"
-        :config="config"
-        :copy="copy"
-        :step="step"
-        :format="valueFormatter"
-        :region="selected"
-        :water="waterState"
-        :projection="projection"
-        :region-projection="regionProjection"
-        @close="ui.regionId = null"
-        @sector="ui.waterSector = $event"
-        @view="setWaterView"
-        @scenario="ui.waterScenario = $event"
-        @bound="ui.waterBound = $event"
-      />
+      <!-- Wide: one card down the left with the brand on top, the controls down the right,
+           and the legend and timeline as one island between them (SPEC §8.1). -->
+      <div
+        v-if="isWide"
+        ref="panelCard"
+        class="glass pointer-events-auto relative z-10 flex w-[22rem] shrink-0 flex-col overflow-hidden rounded-2xl shadow-float"
+      >
+        <AppHeader inline class="shrink-0 px-4 pt-4" />
+        <SidePanel
+          v-if="layer && step !== null"
+          class="min-h-0 flex-1"
+          :file="layer"
+          :config="config"
+          :copy="copy"
+          :step="step"
+          :format="valueFormatter"
+          :region="selected"
+          :water="waterState"
+          :projection="projection"
+          :region-projection="regionProjection"
+          @close="ui.regionId = null"
+          @sector="ui.waterSector = $event"
+          @view="setWaterView"
+          @scenario="ui.waterScenario = $event"
+          @bound="ui.waterBound = $event"
+        />
+      </div>
       <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
-        <div ref="bottomBar" class="relative z-10 flex items-end justify-center gap-3">
+        <div ref="bottomBar" class="relative z-10 flex justify-center">
           <TimeSlider
             v-if="axis && layer"
             v-model="timeModel"
             v-model:playing="ui.playing"
-            class="max-w-2xl min-w-0 flex-1"
+            class="w-full max-w-xl min-w-0"
             :axis="axis"
             :scenario="timelineScenario"
-          />
+          >
+            <MapLegend v-bind="legendProps" class="pb-2" />
+          </TimeSlider>
         </div>
       </div>
-      <aside
+      <div
         v-if="isWide"
-        ref="layersCard"
-        class="glass pointer-events-auto relative z-10 max-h-full shrink-0 self-start overflow-y-auto rounded-2xl shadow-float"
-        :class="layersHidden ? 'p-2' : 'p-3 lg:w-64 xl:w-72'"
-        :aria-label="t.home.layers"
+        ref="controlsColumn"
+        class="pointer-events-auto relative z-10 flex max-h-full shrink-0 flex-col items-end gap-3 self-start"
       >
-        <LayerList
-          v-model="ui.layer"
-          :layers="layerChoices"
-          :label="t.home.layers"
-          :compact="layersHidden"
+        <aside
+          class="glass max-h-full overflow-y-auto rounded-2xl shadow-float"
+          :class="layersHidden ? 'p-2' : 'p-3 lg:w-64 xl:w-72'"
+          :aria-label="t.home.layers"
         >
-          <template v-if="isDesktop" #action>
-            <button
-              type="button"
-              class="-my-1.5 flex size-7 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
-              :aria-expanded="!layersHidden"
-              :aria-label="layersHidden ? t.home.showLayers : t.home.hideLayers"
-              :title="layersHidden ? t.home.showLayers : t.home.hideLayers"
-              @click="layersCollapsed = !layersCollapsed"
-            >
-              <svg
-                viewBox="0 0 16 16"
-                class="size-4"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="1.5"
-                aria-hidden="true"
+          <LayerList
+            v-model="ui.layer"
+            :layers="layerChoices"
+            :label="t.home.layers"
+            :compact="layersHidden"
+          >
+            <template v-if="isDesktop" #action>
+              <button
+                type="button"
+                class="-my-1.5 flex size-7 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                :aria-expanded="!layersHidden"
+                :aria-label="layersHidden ? t.home.showLayers : t.home.hideLayers"
+                :title="layersHidden ? t.home.showLayers : t.home.hideLayers"
+                @click="layersCollapsed = !layersCollapsed"
               >
-                <path
-                  :d="layersHidden ? 'M2.5 4h11M2.5 8h11M2.5 12h11' : 'M4 4l8 8M12 4l-8 8'"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-              </svg>
-            </button>
-          </template>
-        </LayerList>
-      </aside>
+                <svg
+                  viewBox="0 0 16 16"
+                  class="size-4"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  aria-hidden="true"
+                >
+                  <path
+                    :d="layersHidden ? 'M2.5 4h11M2.5 8h11M2.5 12h11' : 'M4 4l8 8M12 4l-8 8'"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </button>
+            </template>
+          </LayerList>
+        </aside>
+        <div
+          class="glass flex gap-0.5 rounded-2xl p-1 shadow-float"
+          :class="{ 'flex-col': layersHidden }"
+        >
+          <LanguageMenu :button-class="menuButtonClass" icon-only />
+          <ThemeMenu :button-class="menuButtonClass" icon-only />
+        </div>
+      </div>
       <SidePanel
         v-if="!isWide && layer && step !== null"
         ref="sheet"
@@ -632,14 +667,12 @@ const tooltip = computed(() => {
         @bound="ui.waterBound = $event"
       />
     </main>
-    <!-- Wide: the credits and the legend in a solid strip along the bottom of the window. -->
-    <div
+    <!-- Wide: the credits in small print in the bottom right corner, as on a map. -->
+    <AppFooter
       v-if="isWide"
-      class="relative z-10 -mx-3 flex items-center gap-6 border-t border-line bg-surface px-3 py-1"
-    >
-      <AppFooter :basemap="basemap" class="min-w-0 flex-1" />
-      <MapLegend v-if="layer" v-bind="legendProps" class="shrink-0" />
-    </div>
+      :basemap="basemap"
+      class="glass fixed right-0 bottom-0 z-10 max-w-[50%] rounded-tl-lg px-2 py-0.5 text-[10px]"
+    />
     <AppFooter v-else :basemap="basemap" class="px-2 pb-1" />
   </div>
 </template>

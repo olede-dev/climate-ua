@@ -13,6 +13,7 @@ import { useLocale } from '../../composables/useLocale'
 import { geometryBounds } from '../../lib/geometry'
 import type { ColorScale } from '../../lib/scale'
 import type { RegionsFile } from '../../types'
+import { useTheme } from '../../composables/useTheme'
 import { basemapStyle, type BasemapKind } from './basemap'
 import {
   addRegionLayers,
@@ -54,6 +55,8 @@ const props = defineProps<{
    * but its own timeline.
    */
   insets?: Required<PaddingOptions>
+  /** Where the zoom buttons sit, from the top right corner, when panels float over the map. */
+  controls?: { top: number; right: number }
 }>()
 const emit = defineEmits<{
   basemap: [kind: BasemapKind]
@@ -80,6 +83,7 @@ const MARKER_FRAME = { lon: 2.4, lat: 1.5 }
 const NO_POINTS: FeatureCollection<Point> = { type: 'FeatureCollection', features: [] }
 
 const { locale, t } = useLocale()
+const { theme } = useTheme()
 const container = useTemplateRef<HTMLDivElement>('container')
 
 // MapLibre objects stay outside Vue reactivity: proxies break them.
@@ -98,10 +102,10 @@ let styleReady = false
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
-/** Basemap for the label language. */
+/** Basemap for the label language and the page theme. */
 function applyStyle() {
   const own = ++styleRequest
-  void basemapStyle(locale.value).then(({ style, kind }) => {
+  void basemapStyle(locale.value, theme.value).then(({ style, kind }) => {
     if (!map || own !== styleRequest) return
     styleReady = false
     map.setStyle(style, { diff: false })
@@ -220,8 +224,8 @@ function redraw() {
 /** (Re)builds the data layers: on the first style and after every basemap swap. */
 function installRegions() {
   if (!map || !props.regions || !styleReady) return
-  addRegionLayers(map, props.regions, props.scale)
-  addStationLayers(map, props.markers ?? NO_POINTS, props.scale)
+  addRegionLayers(map, props.regions, props.scale, theme.value)
+  addStationLayers(map, props.markers ?? NO_POINTS, props.scale, theme.value)
   setFutureHatch(map, props.future)
   redraw()
 }
@@ -308,7 +312,7 @@ onBeforeUnmount(() => {
   map = undefined
 })
 
-watch(locale, applyStyle)
+watch([locale, theme], applyStyle)
 watch(
   () => props.regions,
   (regions) => {
@@ -357,7 +361,10 @@ watch(
   <div
     class="relative size-full"
     :style="
-      insets && { '--controls-top': `${insets.top}px`, '--controls-right': `${insets.right}px` }
+      controls && {
+        '--controls-top': `${controls.top}px`,
+        '--controls-right': `${controls.right}px`,
+      }
     "
   >
     <div ref="container" class="size-full" role="region" :aria-label="t.home.map"></div>

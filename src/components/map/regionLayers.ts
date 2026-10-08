@@ -1,6 +1,7 @@
 import type { FeatureCollection, Point } from 'geojson'
 import type { ExpressionSpecification, Map as MaplibreMap } from 'maplibre-gl'
 
+import type { Theme } from '../../composables/useTheme'
 import { mapColorExpression, type ColorScale } from '../../lib/scale'
 import type { RegionsFile } from '../../types'
 
@@ -22,13 +23,29 @@ const FILL_OPACITY = 0.9
 /** While a region is hovered, the rest dim (SPEC §7). */
 const DIMMED_OPACITY = 0.45
 
+/** Lines over the regions in each theme: hatching, borders, the outline and the dot rings. */
+const INK: Record<Theme, { hatch: string; border: string; outline: string; ring: string }> = {
+  dark: {
+    hatch: 'rgba(255, 255, 255, 0.16)',
+    border: 'rgba(235, 238, 245, 0.32)',
+    outline: '#f5f5f7',
+    ring: '#1a1a19',
+  },
+  light: {
+    hatch: 'rgba(0, 0, 0, 0.18)',
+    border: 'rgba(255, 255, 255, 0.7)',
+    outline: '#1d1d1f',
+    ring: '#ffffff',
+  },
+}
+
 /** Thin diagonal strokes over the fill: the future is an estimate (SPEC §7). */
-function hatchImage(): ImageData {
+function hatchImage(theme: Theme): ImageData {
   const size = 16
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = size
   const ctx = canvas.getContext('2d')!
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
+  ctx.strokeStyle = INK[theme].hatch
   ctx.lineWidth = 1.5
   // Three strokes so the pattern tiles without a seam at the corners.
   for (const offset of [-size, 0, size]) {
@@ -41,10 +58,16 @@ function hatchImage(): ImageData {
 }
 
 /** Fill, future hatching, borders and the hover/selection outline, under the place labels. */
-export function addRegionLayers(map: MaplibreMap, data: RegionsFile, scale: ColorScale) {
+export function addRegionLayers(
+  map: MaplibreMap,
+  data: RegionsFile,
+  scale: ColorScale,
+  theme: Theme,
+) {
+  const ink = INK[theme]
   if (map.getSource(REGION_SOURCE)) return
   map.addSource(REGION_SOURCE, { type: 'geojson', data, promoteId: 'id' })
-  if (!map.hasImage(HATCH_IMAGE)) map.addImage(HATCH_IMAGE, hatchImage(), { pixelRatio: 2 })
+  if (!map.hasImage(HATCH_IMAGE)) map.addImage(HATCH_IMAGE, hatchImage(theme), { pixelRatio: 2 })
   // Over roads and the basemap's borders (no occupation line shows through), under place names.
   const layers = map.getStyle().layers
   const beforeId = (
@@ -79,7 +102,7 @@ export function addRegionLayers(map: MaplibreMap, data: RegionsFile, scale: Colo
       id: REGION_LINE,
       type: 'line',
       source: REGION_SOURCE,
-      paint: { 'line-color': 'rgba(235, 238, 245, 0.32)', 'line-width': 0.6 },
+      paint: { 'line-color': ink.border, 'line-width': 0.6 },
     },
     beforeId,
   )
@@ -89,7 +112,7 @@ export function addRegionLayers(map: MaplibreMap, data: RegionsFile, scale: Colo
       type: 'line',
       source: REGION_SOURCE,
       paint: {
-        'line-color': '#f5f5f7',
+        'line-color': ink.outline,
         'line-width': ['case', SELECTED, 2.2, HOVER, 1.6, 0],
         'line-opacity': ['case', SELECTED, 1, HOVER, 0.85, 0],
       },
@@ -103,7 +126,9 @@ export function addStationLayers(
   map: MaplibreMap,
   data: FeatureCollection<Point>,
   scale: ColorScale,
+  theme: Theme,
 ) {
+  const ink = INK[theme]
   if (map.getSource(STATION_SOURCE)) return
   map.addSource(STATION_SOURCE, { type: 'geojson', data, promoteId: 'id' })
   const beforeId = map
@@ -117,8 +142,8 @@ export function addStationLayers(
       paint: {
         'circle-radius': ['case', SELECTED, 9, HOVER, 8.5, 7],
         'circle-color': mapColorExpression(scale, VALUE),
-        // A dark ring keeps the dots apart from the regions under them.
-        'circle-stroke-color': ['case', SELECTED, '#f5f5f7', HOVER, '#f5f5f7', '#1a1a19'],
+        // A ring of the background keeps the dots apart from the regions under them.
+        'circle-stroke-color': ['case', SELECTED, ink.outline, HOVER, ink.outline, ink.ring],
         'circle-stroke-width': ['case', SELECTED, 2.5, HOVER, 2, 1.5],
       },
     },

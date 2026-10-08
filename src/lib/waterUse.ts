@@ -168,7 +168,6 @@ export function waterUseCopy(t: Messages, view: WaterUseView, sector: WaterSecto
     story: Object.fromEntries(
       Object.entries(copy.story).map(([key, text]) => [key, fill(text)]),
     ) as LayerCopy['story'],
-    futureNote: t.waterUse.note,
   }
 }
 

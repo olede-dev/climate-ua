@@ -34,7 +34,7 @@ import {
   waterUseScale,
 } from '../lib/waterUse'
 import { useUiStore } from '../stores/ui'
-import type { LayerFile, RegionsFile, WaterView } from '../types'
+import type { LayerFile, LayerId, RegionsFile, WaterView } from '../types'
 
 useUrlSync()
 const { locale, t } = useLocale()
@@ -112,6 +112,17 @@ watch(layer, (file) => {
 const sliderAxis = computed(() =>
   axis.value && step.value !== null ? shownAxis(axis.value, step.value) : null,
 )
+
+/**
+ * A layer picked from the list opens on its history: the projection is something to step into,
+ * not a mode carried from one layer to the next. Links and the browser history keep theirs.
+ */
+function pickLayer(id: LayerId) {
+  ui.playing = false
+  ui.layer = id
+  if (ui.waterView === 'future') ui.waterView = 'gap'
+  if (ui.time !== null && isFuture(ui.time)) ui.time = null
+}
 
 /** The side panel's switch between the observed years and the projection periods. */
 function setFuture(on: boolean) {
@@ -226,12 +237,14 @@ const legend = computed(() => {
   }
 })
 
+/** A projection is on screen: the water scenarios or a future climate period. */
+const inFuture = computed(() => waterFuture.value || (step.value !== null && isFuture(step.value)))
+
+// Water picks its scenario in the side panel, so the timeline does not repeat it.
 const timelineScenario = computed(() =>
-  waterFuture.value
-    ? t.value.waterUse.scenarios[ui.waterScenario].name
-    : step.value !== null && isFuture(step.value)
-      ? (layer.value?.scenario ?? null)
-      : null,
+  !waterFuture.value && step.value !== null && isFuture(step.value)
+    ? (layer.value?.scenario ?? null)
+    : null,
 )
 
 const legendProps = computed(() => ({
@@ -439,7 +452,10 @@ const tooltip = computed(() => {
        cards on the canvas, separated by one gutter (gap and padding). -->
   <div
     class="flex flex-col bg-canvas"
-    :class="isWide ? 'h-dvh overflow-hidden p-3' : 'min-h-dvh gap-2 p-2 sm:gap-3 sm:p-3'"
+    :class="[
+      isWide ? 'h-dvh overflow-hidden p-3' : 'min-h-dvh gap-2 p-2 sm:gap-3 sm:p-3',
+      { 'is-future': inFuture },
+    ]"
   >
     <AppHeader v-if="!isWide">
       <button
@@ -475,7 +491,12 @@ const tooltip = computed(() => {
           class="absolute top-2 right-2 bottom-2 w-[min(20rem,calc(100vw-3rem))] overflow-y-auto rounded-2xl bg-surface p-3 shadow-float"
           :aria-label="t.home.layers"
         >
-          <LayerList v-model="ui.layer" :layers="layerChoices" :label="t.home.layers">
+          <LayerList
+            :model-value="ui.layer"
+            :layers="layerChoices"
+            :label="t.home.layers"
+            @update:model-value="pickLayer"
+          >
             <template #action>
               <button
                 v-focus
@@ -637,10 +658,11 @@ const tooltip = computed(() => {
           :aria-label="t.home.layers"
         >
           <LayerList
-            v-model="ui.layer"
+            :model-value="ui.layer"
             :layers="layerChoices"
             :label="t.home.layers"
             :compact="layersHidden"
+            @update:model-value="pickLayer"
           >
             <template v-if="isDesktop" #footer>
               <button

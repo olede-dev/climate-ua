@@ -24,6 +24,8 @@
   --ui-accent: #0071e3;
   --ui-accent-hover: #0062c4;
   --ui-accent-ink: #0066cc;
+  /* Marks the projection: the future button and the panel outlines while a future step is shown. */
+  --ui-future: #7c3aed;
   /* Warnings: a caveat that changes how the data reads. Ink is 7:1 on the fill. */
   --ui-warn: #f59e0b;
   --ui-warn-fill: #fff7e6;
@@ -50,6 +52,7 @@
   --ui-accent: #0a84ff;
   --ui-accent-hover: #2b95ff;
   --ui-accent-ink: #4da3ff;
+  --ui-future: #a78bfa;
   --ui-warn: #fbbf24;
   --ui-warn-fill: rgb(251 191 36 / 0.14);
   --ui-warn-ink: #fcd58a;
@@ -75,6 +78,7 @@
   --color-accent: var(--ui-accent);
   --color-accent-hover: var(--ui-accent-hover);
   --color-accent-ink: var(--ui-accent-ink);
+  --color-future: var(--ui-future);
   --color-warn: var(--ui-warn);
   --color-warn-fill: var(--ui-warn-fill);
   --color-warn-ink: var(--ui-warn-ink);
@@ -204,4 +208,21 @@
 
 .dark .maplibregl-ctrl-group button .maplibregl-ctrl-icon {
   filter: invert(1);
+}
+
+/* While a future step is shown, the accent turns to the projection colour across the interface. */
+.is-future {
+  --ui-accent: #7c3aed;
+  --ui-accent-hover: #6d28d9;
+  --ui-accent-ink: #6d28d9;
+}
+.dark .is-future {
+  --ui-accent: #8b5cf6;
+  --ui-accent-hover: #a78bfa;
+  --ui-accent-ink: #a78bfa;
+}
+
+/* The way into the projection: blue (the past's accent) fading into violet (the future's). */
+.future-gradient {
+  background-image: linear-gradient(135deg, var(--ui-accent), var(--ui-future));
 }

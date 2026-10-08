@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import { useLocale } from '../../composables/useLocale'
 import type { LayerConfig } from '../../config/layers'
 import type { Messages } from '../../i18n'
-import { plural, type ValueFormat } from '../../lib/format'
+import type { ValueFormat } from '../../lib/format'
 import { summaryStory, type StoryInput } from '../../lib/narrative'
 import { summaryRows } from '../../lib/summary'
 import type { RegionLabel } from '../../lib/regions'
@@ -60,7 +60,7 @@ const emit = defineEmits<{
   future: [boolean]
 }>()
 
-const { locale, t } = useLocale()
+const { t } = useLocale()
 
 /** Where the side panel offers the future: the water gap view, or any layer with periods. */
 const futureOn = computed(() =>
@@ -156,13 +156,6 @@ const rows = computed(() =>
 const regionSeries = computed(() =>
   props.region ? props.file.regions[props.region.id] : undefined,
 )
-
-const futureNote = computed(() => {
-  const models = props.file.models
-  if (models === undefined) return props.copy.futureNote
-  const counted = plural(models, locale.value, props.copy.models).replace('{n}', String(models))
-  return props.copy.futureNote.replace('{models}', counted)
-})
 
 const pickHint = computed(
   () =>
@@ -266,57 +259,44 @@ function onKeydown(event: KeyboardEvent) {
           :format="format"
         />
         <p v-if="pickHint" class="text-xs leading-relaxed text-ink-muted">{{ pickHint }}</p>
-        <button
-          v-if="futureOffered"
-          type="button"
-          class="group flex w-full items-center gap-3 rounded-xl bg-accent/15 px-3 py-3 text-left ring-1 ring-accent/50 transition-colors hover:bg-accent/25 focus-ring"
-          @click="openFuture(true)"
-        >
-          <!-- A telescope: looking ahead. -->
-          <span
-            class="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-white"
-            aria-hidden="true"
-          >
-            <svg
-              class="size-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.75"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <path d="M3 13l12-6 2 4-12 6z M15 7l3-1.5 2 4-3 1.5 M9 16l-2 5 M11 15l2 6" />
-            </svg>
-          </span>
-          <span class="min-w-0 flex-1">
-            <span class="block text-xs font-semibold tracking-wide text-accent-ink uppercase">{{
-              t.waterUse.future
-            }}</span>
-            <span class="block text-xs text-ink">{{ futureHint }}</span>
-          </span>
-          <span
-            aria-hidden="true"
-            class="text-lg text-accent-ink transition-transform group-hover:translate-x-0.5"
-            >→</span
-          >
-        </button>
-        <!-- The scenario and the method, out of the way until asked for. -->
-        <details class="group text-xs text-ink-muted">
-          <summary
-            class="cursor-pointer list-none rounded font-medium text-ink-muted hover:text-ink focus-ring"
-          >
-            <span class="inline-block transition-transform group-open:rotate-90">›</span>
-            {{ t.panel.aboutData }}
-          </summary>
-          <p class="mt-2 leading-relaxed">
-            <template v-if="file.scenario === 'SSP2-4.5'"
-              >{{ t.scenarios[file.scenario] }}
-            </template>
-            {{ futureNote }}
-          </p>
-        </details>
       </div>
+    </div>
+    <!-- Pinned under the scroll, so the way into the projection is always in reach. -->
+    <div v-if="futureOffered" class="shrink-0 px-4 pb-4">
+      <button
+        type="button"
+        class="group flex w-full items-center gap-3 future-gradient rounded-xl px-3 py-3 text-left text-white shadow-card transition-[filter] hover:brightness-110 focus-ring"
+        @click="openFuture(true)"
+      >
+        <!-- A telescope: looking ahead. -->
+        <span
+          class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-white"
+          aria-hidden="true"
+        >
+          <svg
+            class="size-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 13l12-6 2 4-12 6z M15 7l3-1.5 2 4-3 1.5 M9 16l-2 5 M11 15l2 6" />
+          </svg>
+        </span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-xs font-semibold tracking-wide text-white uppercase">{{
+            t.waterUse.future
+          }}</span>
+          <span class="block text-xs text-white/90">{{ futureHint }}</span>
+        </span>
+        <span
+          aria-hidden="true"
+          class="text-lg text-white transition-transform group-hover:translate-x-0.5"
+          >→</span
+        >
+      </button>
     </div>
   </aside>
 </template>

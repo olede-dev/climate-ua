@@ -154,14 +154,10 @@ export const en: Messages = {
     /** `{delta}`. */
     moreThanUsual: '{delta} more than usual',
     lessThanUsual: '{delta} less than usual',
-    aboutData: 'About the projection and data',
     pickRegion: 'Click a region to see its history and projection.',
     pickStation: 'Click a point on a river to see its history.',
     close: 'Close the region card',
     loading: 'Loading the chart',
-  },
-  scenarios: {
-    'SSP2-4.5': 'Projections follow scenario SSP2-4.5: the world cuts emissions slowly.',
   },
   story: {
     country: 'in Ukraine',
@@ -292,7 +288,6 @@ export const en: Messages = {
     low: 'Little',
     high: 'A lot',
     norm: '1990–2019 average',
-    note: 'The PCR-GLOBWB model (Utrecht University, World Water Map): 1980–2019 and the water gap projected to 2050. Volumes are for the part of each subbasin inside Ukraine.',
   },
   layers: {
     water: {
@@ -313,9 +308,6 @@ export const en: Messages = {
         below: 'less than the 1990–2019 average',
         same: 'in line with the 1990–2019 average',
       },
-      futureNote:
-        'The PCR-GLOBWB model (Utrecht University, World Water Map): 1980–2019 and the gap projected to 2050, the mean of the climate models.',
-      models: { one: '{n} climate model', other: '{n} climate models' },
     },
     temp: {
       name: 'Temperature',
@@ -335,9 +327,6 @@ export const en: Messages = {
         below: '{delta} below the norm',
         same: 'in line with the norm',
       },
-      futureNote:
-        'The future is a 20-year average, not a forecast for any one year: the median of {models}; the brackets give the range 80% of the models fall in.',
-      models: { one: '{n} climate model', other: '{n} climate models' },
     },
     heat: {
       name: 'Extreme heat',
@@ -357,9 +346,6 @@ export const en: Messages = {
         below: '{delta} fewer than the norm',
         same: 'in line with the norm',
       },
-      futureNote:
-        'The future is a 20-year average, not a forecast for any one year: the median of {models}; the brackets give the range 80% of the models fall in.',
-      models: { one: '{n} climate model', other: '{n} climate models' },
     },
     frost: {
       name: 'Frost',
@@ -379,9 +365,6 @@ export const en: Messages = {
         below: '{delta} fewer than the norm',
         same: 'in line with the norm',
       },
-      futureNote:
-        'The future is a 20-year average, not a forecast for any one year: the median of {models}; the brackets give the range 80% of the models fall in.',
-      models: { one: '{n} climate model', other: '{n} climate models' },
     },
     drought: {
       name: 'Drought',
@@ -401,9 +384,6 @@ export const en: Messages = {
         below: '{delta} fewer than the norm',
         same: 'in line with the norm',
       },
-      futureNote:
-        'The future is a 20-year average, not a forecast for any one year: the median of {models}; the brackets give the range 80% of the models fall in.',
-      models: { one: '{n} climate model', other: '{n} climate models' },
     },
     rivers: {
       name: 'Rivers',
@@ -428,9 +408,6 @@ export const en: Messages = {
         below: '{delta} fewer than on average',
         same: 'in line with the average',
       },
-      futureNote:
-        'A low-flow day is one with less water in the river than on 9 in 10 of the same calendar days in 1997–2020 (GloFAS v4 modelled discharge).',
-      models: { one: '{n} model', other: '{n} models' },
     },
   },
   tooltip: {

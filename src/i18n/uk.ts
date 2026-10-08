@@ -157,11 +157,17 @@ export const uk = {
       less: 'на {delta} менше за норму',
       same: 'На рівні норми',
       usual: 'норма',
-      min: 'мін.',
-      max: 'макс.',
+      /** The track's ends: the lowest and highest year on record. */
+      low: 'найменше',
+      high: 'найбільше',
+      lowTemp: 'найхолодніший рік',
+      highTemp: 'найтепліший рік',
+      noteToggle: 'Що таке норма?',
       /** `{norm}`, `{record}`. */
-      note: 'Норма — середнє за {norm}, за стандартом ВМО. Мін. і макс. — за {record}.',
+      note: 'Норма — середнє за {norm}, за стандартом ВМО. Краї шкали — найменше і найбільше значення за {record}.',
     },
+    /** The big number's caption on a climate layer: `{title}`, `{when}`, `{delta}`. */
+    headline: '{title} у {when} — {delta}.',
     normNote: 'Норма — середнє за {period}: {value}.',
     /** `{delta}`. */
     moreThanUsual: 'на {delta} більше за норму',
@@ -333,7 +339,7 @@ export const uk = {
       meanPeriod: 'Середня за період',
       normValue: 'норма',
       unit: '°C',
-      chartTitle: 'Відхилення середньої температури року від норми і прогноз до 2100',
+      chartTitle: 'Як змінювалась температура і що чекає далі',
       story: {
         observed: 'У {year} році середня температура {where} була {value}, {delta}.',
         future: 'У {period} очікується {value}{range}, {delta}.',

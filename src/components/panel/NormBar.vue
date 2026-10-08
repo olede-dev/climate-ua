@@ -54,17 +54,12 @@ const gradient = computed(() => {
   return `linear-gradient(to right, ${stops.join(', ')})`
 })
 
-const delta = computed(() => {
-  const value = shown.value?.value
-  if (value == null) return null
-  const places = props.config.decimals
-  const difference = Number(value.toFixed(places)) - Number(norm.value.toFixed(places))
-  const text = props.format(Math.abs(difference))
-  if (text === props.format(0)) return t.value.panel.normBar.same
-  return `${difference > 0 ? '↑' : '↓'} ${(difference > 0
-    ? t.value.panel.normBar.more
-    : t.value.panel.normBar.less
-  ).replace('{delta}', text)}`
+/** The track's ends, named for what they mean: the coldest and warmest year for temperature. */
+const ends = computed(() => {
+  const bar = t.value.panel.normBar
+  return props.config.id === 'temp'
+    ? { low: bar.lowTemp, high: bar.highTemp }
+    : { low: bar.low, high: bar.high }
 })
 const when = computed(() => {
   const step = shown.value?.when
@@ -82,19 +77,17 @@ const labelAt = (value: number) => {
 </script>
 
 <template>
-  <figure v-if="shown?.value != null" class="space-y-1" aria-hidden="true">
-    <p
-      class="text-[13px] font-medium text-ink"
-      :style="valueColor ? { color: `color-mix(in oklab, ${valueColor} 75%, var(--ui-ink))` } : {}"
-    >
-      {{ delta }}
-    </p>
-    <div class="relative mx-1.5 h-4 text-[11px] text-ink-muted">
+  <figure v-if="shown?.value != null" class="space-y-1">
+    <div class="relative mx-1.5 h-4 text-[11px] text-ink-muted" aria-hidden="true">
       <span class="absolute bottom-0 -translate-x-1/2" :style="labelAt(shown.value)">{{
         when
       }}</span>
     </div>
-    <div class="relative mx-1.5 h-2 rounded-full" :style="{ background: gradient }">
+    <div
+      aria-hidden="true"
+      class="relative mx-1.5 h-2 rounded-full"
+      :style="{ background: gradient }"
+    >
       <span
         class="absolute top-1/2 h-4 w-0.5 -translate-1/2 rounded-full bg-ink"
         :style="{ left: at(norm) }"
@@ -104,25 +97,31 @@ const labelAt = (value: number) => {
         :style="{ left: at(shown.value), backgroundColor: valueColor ?? 'var(--ui-ink)' }"
       ></span>
     </div>
-    <div class="relative mx-1.5 h-4 text-[11px] text-ink-muted tabular-nums">
-      <span class="absolute top-0.5 left-0">{{ t.panel.normBar.min }} {{ format(span.low) }}</span>
-      <span class="absolute top-0.5 right-0"
-        >{{ t.panel.normBar.max }} {{ format(span.high) }}</span
-      >
-    </div>
-    <div class="relative mx-1.5 h-4 text-[11px] tabular-nums">
+    <div class="relative mx-1.5 h-4 text-[11px] tabular-nums" aria-hidden="true">
       <span
-        class="absolute top-0 -translate-x-1/2 font-medium whitespace-nowrap text-ink"
+        class="absolute top-0.5 -translate-x-1/2 font-medium whitespace-nowrap text-ink"
         :style="labelAt(norm)"
         >{{ t.panel.normBar.usual }} {{ format(norm) }}</span
       >
     </div>
-    <p class="pt-1 text-[11px] leading-snug text-ink-muted">
-      {{
-        t.panel.normBar.note
-          .replace('{norm}', formatPeriod(`${file.norm.from}-${file.norm.to}`))
-          .replace('{record}', `${file.history.from}–${file.history.to}`)
-      }}
-    </p>
+    <div
+      class="flex justify-between pt-1 text-[11px] leading-tight text-ink-muted tabular-nums"
+      aria-hidden="true"
+    >
+      <span>{{ format(span.low) }}<br />{{ ends.low }}</span>
+      <span class="text-right">{{ format(span.high) }}<br />{{ ends.high }}</span>
+    </div>
+    <details class="pt-1 text-[11px] leading-snug text-ink-muted">
+      <summary class="cursor-pointer select-none hover:text-ink focus-ring">
+        ⓘ {{ t.panel.normBar.noteToggle }}
+      </summary>
+      <p class="mt-1">
+        {{
+          t.panel.normBar.note
+            .replace('{norm}', formatPeriod(`${file.norm.from}-${file.norm.to}`))
+            .replace('{record}', `${file.history.from}–${file.history.to}`)
+        }}
+      </p>
+    </details>
   </figure>
 </template>

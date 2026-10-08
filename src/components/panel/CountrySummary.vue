@@ -24,6 +24,8 @@ const props = defineProps<{
   focus?: 'observed' | 'future'
   /** A line under the caption, e.g. the region's place among the rest. */
   note?: string | null
+  /** The gap from the norm as a chip beside the number, and one sentence for the caption. */
+  headline?: boolean
 }>()
 
 const { t } = useLocale()
@@ -47,6 +49,7 @@ const delta = computed(() => {
   const up = difference > 0
   return {
     arrow: up ? '↑' : '↓',
+    signed: `${up ? '+' : '−'}${text}`,
     sentence: (up ? t.value.panel.moreThanUsual : t.value.panel.lessThanUsual).replace(
       '{delta}',
       text,
@@ -63,6 +66,16 @@ const normNote = computed(() =>
         .replace('{value}', props.format(norm.value.value)),
 )
 
+/** «Середня температура року у 2025 — на 1,2 °C більше за норму.» */
+const caption = computed(() => {
+  const when = focused.value?.when
+  if (!props.headline || !delta.value || when == null) return props.copy.legendTitle
+  return t.value.panel.headline
+    .replace('{title}', props.copy.legendTitle)
+    .replace('{when}', typeof when === 'number' ? String(when) : formatPeriod(when))
+    .replace('{delta}', delta.value.sentence)
+})
+
 /** The big number's colour: the one passed, or where it sits on the map's scale. */
 const bigColor = computed(
   () =>
@@ -74,13 +87,23 @@ const bigColor = computed(
 <template>
   <div class="space-y-2" aria-hidden="true">
     <div>
-      <p
-        class="text-4xl leading-none font-semibold text-ink tabular-nums"
+      <div
+        class="flex items-baseline gap-2.5"
         :style="bigColor ? { color: `color-mix(in oklab, ${bigColor} 75%, var(--ui-ink))` } : {}"
       >
-        {{ focused?.value == null ? '—' : format(focused.value) }}
-      </p>
-      <p class="mt-1.5 text-[13px] leading-snug text-ink-muted">{{ copy.legendTitle }}</p>
+        <p
+          class="text-4xl leading-none font-semibold tabular-nums"
+          :class="!bigColor && 'text-ink'"
+        >
+          {{ focused?.value == null ? '—' : format(focused.value) }}
+        </p>
+        <span
+          v-if="headline && delta"
+          class="rounded-full bg-fill px-2 py-0.5 text-sm font-semibold whitespace-nowrap tabular-nums"
+          >{{ delta.signed }}</span
+        >
+      </div>
+      <p class="mt-1.5 text-[13px] leading-snug text-ink-muted">{{ caption }}</p>
       <p v-if="note" class="mt-1 text-[13px] font-medium text-ink">{{ note }}</p>
       <p v-if="delta && !compact" class="mt-1 text-[13px] font-medium text-ink">
         {{ delta.arrow }} {{ delta.sentence }}

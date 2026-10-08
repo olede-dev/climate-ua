@@ -154,7 +154,8 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
         :compact="compact || climate"
         :value-color="valueColor"
         :focus="focus"
-        :note="rank"
+        :note="climate ? null : rank"
+        :headline="climate"
       />
       <NormBar
         v-if="climate"

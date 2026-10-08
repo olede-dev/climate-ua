@@ -49,7 +49,7 @@ const layer = computed<LayerFile | undefined>(() => {
   if (ui.layer !== 'water') return layerQuery.data.value
   const file = waterUseQuery.data.value
   if (!file) return undefined
-  if (ui.waterView === 'future') return waterProjectionLayer(file, ui.waterScenario)
+  if (ui.waterView === 'future') return waterProjectionLayer(file, ui.waterScenario, ui.waterBound)
   const history = waterUseLayer(file, ui.waterView, ui.waterSector)
   // A zero gap is a real value (renewable water covers the demand), not missing data; so is
   // zero irrigation, as in the wet west where fields are not watered.
@@ -124,10 +124,13 @@ const mapValues = computed<Record<string, number | null>>(() =>
   ),
 )
 
+// The projection is of the total gap only, so the future view names no other sector.
 const copy = computed(() =>
-  ui.layer === 'water'
-    ? waterUseCopy(t.value, ui.waterView === 'future' ? 'gap' : ui.waterView, ui.waterSector)
-    : t.value.layers[config.value.id],
+  ui.layer !== 'water'
+    ? t.value.layers[config.value.id]
+    : ui.waterView === 'future'
+      ? waterUseCopy(t.value, 'gap', 'total')
+      : waterUseCopy(t.value, ui.waterView, ui.waterSector),
 )
 const waterState = computed(() =>
   ui.layer === 'water' ? { view: ui.waterView, sector: ui.waterSector } : null,
@@ -138,6 +141,7 @@ const projection = computed(() => {
   if (!waterFuture.value || !file) return null
   return {
     scenario: ui.waterScenario,
+    bound: ui.waterBound,
     band: file.projection.scenarios[ui.waterScenario].country,
     observed: { series: file.views.gap.sectors.total.country, year: file.history.to },
   }
@@ -471,6 +475,7 @@ const tooltip = computed(() => {
                 @sector="ui.waterSector = $event"
                 @view="setWaterView"
                 @scenario="ui.waterScenario = $event"
+                @bound="ui.waterBound = $event"
               />
               <!-- The legend in the corner above the timeline (SPEC §7). -->
               <MapLegend
@@ -553,6 +558,7 @@ const tooltip = computed(() => {
         @sector="ui.waterSector = $event"
         @view="setWaterView"
         @scenario="ui.waterScenario = $event"
+        @bound="ui.waterBound = $event"
       />
     </main>
     <AppFooter :basemap="basemap" />

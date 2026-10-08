@@ -3,6 +3,7 @@ import type {
   LayerFile,
   LayerId,
   RegionSeries,
+  WaterBound,
   WaterScenario,
   WaterSector,
   WaterUseFile,
@@ -45,16 +46,21 @@ export function waterUseLayer(
 }
 
 /**
- * The projected total gap of one scenario as a layer of years: the models' mean by year from
- * `projection.from`, against the observed 1990–2019 norm. Demand and the sectors have none.
+ * The projected total gap of one scenario as a layer of years: the models' lowest or highest
+ * value by year from `projection.from`, against the observed 1990–2019 norm. Demand and the
+ * sectors have none.
  */
-export function waterProjectionLayer(file: WaterUseFile, scenario: WaterScenario): LayerFile {
+export function waterProjectionLayer(
+  file: WaterUseFile,
+  scenario: WaterScenario,
+  bound: WaterBound,
+): LayerFile {
   const { from, to, unit, scenarios } = file.projection
   const observed = file.views.gap.sectors.total
   const { country, regions } = scenarios[scenario]
-  const series = (mean: number[], norm: number): RegionSeries => ({
+  const series = (values: number[], norm: number): RegionSeries => ({
     norm,
-    history: mean,
+    history: values,
     future: {},
   })
   return {
@@ -65,11 +71,11 @@ export function waterProjectionLayer(file: WaterUseFile, scenario: WaterScenario
     norm: file.norm,
     history: { from, to },
     futurePeriods: [],
-    country: series(country.mean, observed.country.norm),
+    country: series(country[bound], observed.country.norm),
     regions: Object.fromEntries(
       Object.entries(regions).map(([id, band]) => [
         id,
-        series(band.mean, observed.regions[id]?.norm ?? 0),
+        series(band[bound], observed.regions[id]?.norm ?? 0),
       ]),
     ),
     source: file.source,

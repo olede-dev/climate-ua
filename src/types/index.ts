@@ -115,6 +115,8 @@ export interface LayerFile {
 /** The views of the water layer (SPEC §4.1): demand and gap by year, or the stress projection. */
 /** The World Water Map's projection scenarios: sustainable, nationalist, fossil-powered. */
 export type WaterScenario = 'SSP1-2.6' | 'SSP3-7.0' | 'SSP5-8.5'
+/** Which end of the models' range the projection shows. */
+export type WaterBound = 'min' | 'max'
 export type WaterView = 'gap' | 'demand' | 'future'
 export type WaterUseView = Exclude<WaterView, 'future'>
 export type WaterSector = 'total' | 'irrigation' | 'domestic' | 'industrial'

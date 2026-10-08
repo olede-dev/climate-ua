@@ -6,9 +6,13 @@ import type { ValueFormat } from '../../lib/format'
 import { valueAt } from '../../lib/series'
 import { isFuture, type TimeStep } from '../../lib/time'
 import { countryColor } from '../../lib/waterUse'
-import type { LayerFile, RegionSeries, WaterBand, WaterScenario } from '../../types'
+import WaterTabs from '../map/WaterTabs.vue'
+import type { LayerFile, RegionSeries, WaterBand, WaterBound, WaterScenario } from '../../types'
 
-/** The projected water gap of Ukraine in the year on screen: a sentence, the number, the past. */
+/**
+ * The projected water gap of Ukraine in the year on screen: a sentence, the number, and a switch
+ * between the models' lowest and highest value, which the map follows too.
+ */
 const props = defineProps<{
   file: LayerFile
   step: TimeStep
@@ -20,35 +24,35 @@ const props = defineProps<{
   observed: { series: RegionSeries; year: number }
 }>()
 
+const bound = defineModel<WaterBound>('bound', { required: true })
+
 const { t } = useLocale()
 
 const year = computed(() => (isFuture(props.step) ? props.file.history.to : props.step))
 const value = computed(() => valueAt(props.file.country, props.file.history, year.value)?.median)
 const index = computed(() => year.value - props.file.history.from)
-const range = computed(() => {
-  const low = props.band.min[index.value]
-  const high = props.band.max[index.value]
-  return low === undefined || high === undefined
-    ? null
-    : t.value.waterUse.futureCard.range
-        .replace('{low}', props.format(low))
-        .replace('{high}', props.format(high))
-})
-const past = computed(() => {
-  const { series, year: last } = props.observed
-  const observed = series.history[series.history.length - 1]
-  return observed == null
-    ? null
-    : t.value.waterUse.futureCard.past
-        .replace('{year}', String(last))
-        .replace('{value}', props.format(observed))
-})
+/** An arrow down or up, coloured as the map's scale: green for less gap, red for more. */
+const BOUND_MARKS: Record<WaterBound, { icon: string; tone: string }> = {
+  min: { icon: 'M8 2.5v11M3.5 9 8 13.5 12.5 9', tone: 'text-emerald-600 dark:text-emerald-400' },
+  max: { icon: 'M8 13.5v-11M3.5 7 8 2.5 12.5 7', tone: 'text-red-600 dark:text-red-400' },
+}
+/** Мін and Макс, each with the models' value for the year. */
+const bounds = computed(() =>
+  (['min', 'max'] as const).map((id) => {
+    const value = props.band[id][index.value]
+    const name = t.value.waterUse.futureCard.bounds[id]
+    return {
+      id,
+      label: value === undefined ? name : `${name} · ${props.format(value)}`,
+      ...BOUND_MARKS[id],
+    }
+  }),
+)
 const color = computed(() =>
   value.value == null
     ? null
     : `color-mix(in oklab, ${countryColor(props.observed.series, value.value)} 75%, var(--ui-ink))`,
 )
-const scenario = computed(() => t.value.waterUse.scenarios[props.scenario])
 </script>
 
 <template>
@@ -63,12 +67,10 @@ const scenario = computed(() => t.value.waterUse.scenarios[props.scenario])
       <p class="text-4xl font-semibold tracking-tight tabular-nums" :style="color ? { color } : {}">
         {{ format(value) }}
       </p>
-      <p v-if="range" class="mt-1 text-xs text-ink-muted">{{ range }}</p>
-      <p v-if="past" class="text-xs text-ink-muted">{{ past }}</p>
     </div>
-    <p class="text-xs leading-relaxed text-ink-muted">
-      <span class="font-semibold text-ink">{{ scenario.name }} ({{ props.scenario }}).</span>
-      {{ scenario.about }}
-    </p>
+    <div class="space-y-1.5">
+      <WaterTabs v-model="bound" block :views="bounds" :label="t.waterUse.futureCard.boundsLabel" />
+      <p class="text-xs leading-relaxed text-ink-muted">{{ t.waterUse.futureCard.boundsHint }}</p>
+    </div>
   </div>
 </template>

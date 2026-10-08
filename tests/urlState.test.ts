@@ -11,6 +11,7 @@ describe('parseUrlState', () => {
       waterView: 'gap',
       waterSector: 'total',
       waterScenario: 'SSP1-2.6',
+      waterBound: 'max',
     })
     expect(parseUrlState({ t: '1987' }).time).toBe(1987)
   })
@@ -50,6 +51,7 @@ describe('toUrlQuery', () => {
       waterView: 'demand',
       waterSector: 'irrigation',
       waterScenario: 'SSP5-8.5',
+      waterBound: 'min',
     }
     expect(parseUrlState(toUrlQuery(state))).toEqual(state)
   })
@@ -60,6 +62,8 @@ describe('toUrlQuery', () => {
       waterScenario: 'SSP5-8.5',
     })
     expect(parseUrlState({ sc: 'SSP2-4.5' }).waterScenario).toBe('SSP1-2.6')
+    expect(parseUrlState({ b: 'min' }).waterBound).toBe('min')
+    expect(parseUrlState({ b: 'mean' }).waterBound).toBe('max')
     // Links shared before the views keep opening the projection.
     expect(parseUrlState({ t: '2050' })).toMatchObject({ time: 2050, waterView: 'future' })
     expect(parseUrlState({ hot: '1' }).waterView).toBe('future')

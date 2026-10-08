@@ -15,6 +15,7 @@ import type {
   LayerId,
   RegionSeries,
   WaterBand,
+  WaterBound,
   WaterScenario,
   WaterSector,
   WaterView,
@@ -39,6 +40,7 @@ const props = defineProps<{
   /** The water projection's scenario, the country's model range and its observed gap. */
   projection?: {
     scenario: WaterScenario
+    bound: WaterBound
     band: WaterBand
     observed: { series: RegionSeries; year: number }
   } | null
@@ -50,6 +52,7 @@ const emit = defineEmits<{
   sector: [WaterSector]
   view: [WaterView]
   scenario: [WaterScenario]
+  bound: [WaterBound]
 }>()
 
 const { locale, t } = useLocale()
@@ -92,6 +95,7 @@ const scenarioViews = computed(() =>
   WATER_SCENARIOS.map((id) => ({
     id,
     label: t.value.waterUse.scenarios[id].name,
+    about: `${id}. ${t.value.waterUse.scenarios[id].about}`,
     ...SCENARIO_MARKS[id],
   })),
 )
@@ -218,8 +222,10 @@ function onKeydown(event: KeyboardEvent) {
           :step="step"
           :format="format"
           :scenario="projection.scenario"
+          :bound="projection.bound"
           :band="projection.band"
           :observed="projection.observed"
+          @update:bound="emit('bound', $event)"
         />
         <CountrySummary
           v-else

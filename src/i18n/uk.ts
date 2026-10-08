@@ -220,7 +220,9 @@ export const uk = {
     futureCard: {
       lead: 'У {year} році дефіцит води в Україні становитиме',
       past: 'У {year} році становив {value}',
-      range: 'Моделі дають від {low} до {high}',
+      boundsLabel: 'Розкид кліматичних моделей',
+      bounds: { min: 'Мін', max: 'Макс' },
+      boundsHint: 'Найменше чи найбільше значення серед кліматичних моделей; мапа показує вибране.',
     },
     scenarios: {
       'SSP1-2.6': {
@@ -270,7 +272,7 @@ export const uk = {
     /** `{use}`: a sector's `use`. */
     gap: {
       legendTitle: 'Дефіцит води {use}',
-      chartTitle: 'Дефіцит води {use} по роках, км³',
+      chartTitle: 'Дефіцит води, км³',
       story: {
         observed: 'У {year} році дефіцит води {use} {where} становив {value}, {delta}.',
         future: '{period}: —.',
@@ -281,7 +283,7 @@ export const uk = {
     },
     demand: {
       legendTitle: 'Попит на воду {use}',
-      chartTitle: 'Попит на воду {use} по роках, км³',
+      chartTitle: 'Попит на воду, км³',
       story: {
         observed: 'У {year} році попит на воду {use} {where} становив {value}, {delta}.',
         future: '{period}: —.',

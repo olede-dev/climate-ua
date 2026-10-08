@@ -209,7 +209,10 @@ export const en: Messages = {
     futureCard: {
       lead: 'In {year}, the water gap in Ukraine will be',
       past: 'In {year} it was {value}',
-      range: 'The models give {low} to {high}',
+      boundsLabel: 'Climate model range',
+      bounds: { min: 'Min', max: 'Max' },
+      boundsHint:
+        'The lowest or highest value among the climate models; the map shows the one chosen.',
     },
     scenarios: {
       'SSP1-2.6': {
@@ -261,7 +264,7 @@ export const en: Messages = {
     /** `{use}`: a sector's `use`. */
     gap: {
       legendTitle: 'Water gap {use}',
-      chartTitle: 'Water gap {use} by year, km³',
+      chartTitle: 'Water gap, km³',
       story: {
         observed: 'In {year}, the water gap {use} {where} was {value}, {delta}.',
         future: '{period}: —.',
@@ -272,7 +275,7 @@ export const en: Messages = {
     },
     demand: {
       legendTitle: 'Water demand {use}',
-      chartTitle: 'Water demand {use} by year, km³',
+      chartTitle: 'Water demand, km³',
       story: {
         observed: 'In {year}, water demand {use} {where} was {value}, {delta}.',
         future: '{period}: —.',

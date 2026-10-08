@@ -26,32 +26,31 @@ const ICONS: Record<LayerId, string> = {
 
 <template>
   <fieldset>
-    <div
-      class="flex items-center gap-2 pb-2"
-      :class="compact ? 'justify-center' : 'justify-between'"
-    >
+    <div class="flex items-center justify-between gap-2 pb-2">
       <legend
         class="float-left px-1 text-xs font-medium text-ink-muted"
         :class="{ 'sr-only': compact }"
       >
         {{ label }}
       </legend>
-      <!-- A control beside the title, such as the button that folds the list away;
-           the folded column moves it below the icons instead. -->
+      <!-- A control beside the title, such as the drawer's close button. -->
       <slot v-if="!compact" name="action" />
     </div>
-    <div :class="compact ? 'grid gap-1' : 'grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1'">
+    <div
+      :class="
+        compact ? 'group/rail grid gap-1' : 'grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1'
+      "
+    >
       <!-- The selected look follows the model, not `:checked`: Chromium does not restyle
            `:has(:checked)` when the URL, not a click, changes the layer. -->
       <label
         v-for="layer in layers"
         :key="layer.id"
-        class="group flex cursor-pointer items-center rounded-xl transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
+        class="group relative flex cursor-pointer items-center rounded-xl transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-accent"
         :class="[
           model === layer.id ? 'bg-accent text-white' : 'text-ink hover:bg-accent hover:text-white',
           compact ? 'justify-center p-2' : 'gap-3 px-3 py-2.5',
         ]"
-        :title="compact ? layer.name : undefined"
       >
         <input v-model="model" type="radio" name="layer" :value="layer.id" class="sr-only" />
         <svg
@@ -66,7 +65,27 @@ const ICONS: Record<LayerId, string> = {
         >
           <path :d="ICONS[layer.id]" />
         </svg>
-        <span v-if="compact" class="sr-only">{{ layer.name }}</span>
+        <template v-if="compact">
+          <span class="sr-only">{{ layer.name }}</span>
+          <!-- Left of the rail: the active layer's name stays, any other icon names itself and
+               what it shows on hover or focus; the active name steps aside meanwhile. -->
+          <span
+            v-if="model === layer.id"
+            aria-hidden="true"
+            class="pointer-events-none absolute top-1/2 right-full mr-3 -translate-y-1/2 rounded-lg bg-accent px-2.5 py-1 text-xs font-semibold whitespace-nowrap text-white shadow-float transition-opacity group-hover/rail:opacity-0 group-hover:opacity-0"
+          >
+            {{ layer.name }}
+          </span>
+          <span
+            aria-hidden="true"
+            class="pointer-events-none invisible absolute top-1/2 right-full mr-3 w-56 -translate-y-1/2 rounded-xl bg-surface px-3 py-2 text-ink opacity-0 shadow-float ring-1 ring-line transition-opacity group-hover:visible group-hover:opacity-100 group-has-focus-visible:visible group-has-focus-visible:opacity-100"
+          >
+            <span class="block text-sm font-semibold">{{ layer.name }}</span>
+            <span class="mt-0.5 block text-xs leading-snug text-ink-muted">{{
+              layer.description
+            }}</span>
+          </span>
+        </template>
         <span v-else class="min-w-0">
           <span class="block text-sm font-semibold">{{ layer.name }}</span>
           <span
@@ -80,8 +99,9 @@ const ICONS: Record<LayerId, string> = {
         </span>
       </label>
     </div>
-    <div v-if="compact && $slots.action" class="mt-1 border-t border-line pt-1">
-      <slot name="action" />
+    <!-- A control under the list, such as the button that folds it away or back. -->
+    <div v-if="$slots.footer" class="mt-1 border-t border-line pt-1">
+      <slot name="footer" />
     </div>
   </fieldset>
 </template>

@@ -335,11 +335,12 @@ onBeforeUnmount(() => insetObserver.disconnect())
 /** Tailwind's `lg`: the layers are a column beside the map that can be folded away. */
 const isDesktop = useMediaQuery('(min-width: 64rem)')
 const LAYERS_KEY = 'climate-ua:layers-collapsed'
+/** Folded unless the reader unfolded it: a layer is picked once, the map needs the room. */
 function readCollapsed(): boolean {
   try {
-    return localStorage.getItem(LAYERS_KEY) === '1'
+    return localStorage.getItem(LAYERS_KEY) !== '0'
   } catch {
-    return false
+    return true
   }
 }
 const layersCollapsed = ref(readCollapsed())
@@ -617,8 +618,8 @@ const tooltip = computed(() => {
         class="pointer-events-auto relative z-10 flex max-h-full shrink-0 flex-col items-end gap-3 self-start"
       >
         <aside
-          class="glass max-h-full overflow-y-auto rounded-2xl shadow-float"
-          :class="layersHidden ? 'p-2' : 'p-3 lg:w-64 xl:w-72'"
+          class="glass max-h-full rounded-2xl shadow-float"
+          :class="layersHidden ? 'p-2' : 'overflow-y-auto p-3 lg:w-64 xl:w-72'"
           :aria-label="t.home.layers"
         >
           <LayerList
@@ -627,11 +628,10 @@ const tooltip = computed(() => {
             :label="t.home.layers"
             :compact="layersHidden"
           >
-            <template v-if="isDesktop" #action>
+            <template v-if="isDesktop" #footer>
               <button
                 type="button"
-                class="flex items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
-                :class="layersHidden ? 'h-10 w-full' : '-my-1.5 size-7'"
+                class="flex h-10 w-full items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
                 :aria-expanded="!layersHidden"
                 :aria-label="layersHidden ? t.home.showLayers : t.home.hideLayers"
                 :title="layersHidden ? t.home.showLayers : t.home.hideLayers"
@@ -639,7 +639,7 @@ const tooltip = computed(() => {
               >
                 <svg
                   viewBox="0 0 16 16"
-                  :class="layersHidden ? 'size-5' : 'size-4'"
+                  class="size-5"
                   fill="none"
                   stroke="currentColor"
                   stroke-width="1.5"

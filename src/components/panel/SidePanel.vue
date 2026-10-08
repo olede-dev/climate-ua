@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
 import type { LayerConfig } from '../../config/layers'
-import type { Messages } from '../../i18n'
+import type { LayerCopy } from '../../i18n'
 import type { ValueFormat } from '../../lib/format'
 import { summaryStory, type StoryInput } from '../../lib/narrative'
 import { BOUNDS } from '../../lib/series'
@@ -13,7 +13,6 @@ import { isFuture, type TimeStep } from '../../lib/time'
 import { countryColor, WATER_SCENARIOS, WATER_SECTORS, WATER_USE_VIEWS } from '../../lib/waterUse'
 import type {
   LayerFile,
-  LayerId,
   Sectors,
   ProjectionBound,
   WaterScenario,
@@ -29,7 +28,7 @@ import WaterSectors from './WaterSectors.vue'
 const props = defineProps<{
   file: LayerFile
   config: LayerConfig
-  copy: Messages['layers'][LayerId]
+  copy: LayerCopy
   step: TimeStep
   format: ValueFormat
   /** The open region; null shows the summary for all of Ukraine (SPEC §8.2). */
@@ -223,7 +222,6 @@ function onKeydown(event: KeyboardEvent) {
         <template v-if="water && water.view !== 'future'">
           <WaterTabs
             :model-value="water.view"
-            block
             :views="waterViews"
             :label="t.waterUse.viewsLabel"
             @update:model-value="emit('view', $event)"

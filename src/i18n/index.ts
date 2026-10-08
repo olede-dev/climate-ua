@@ -1,7 +1,11 @@
+import type { LayerId } from '../types'
 import { en } from './en'
 import { uk, type Messages } from './uk'
 
 export type { Messages }
+
+/** What a layer's sentences, legend and chart need; the water layer's comes from `waterUseCopy`. */
+export type LayerCopy = Messages['layers'][Exclude<LayerId, 'water'>]
 
 export type Locale = 'uk' | 'en'
 

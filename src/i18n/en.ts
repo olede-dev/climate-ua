@@ -90,6 +90,7 @@ export const en: Messages = {
     limits: [
       'All data are modelled. Conditions in a particular town or village may differ from the mean of its region or subbasin.',
       'Climate models have a resolution of about 100 km: a small region is covered by only 1–3 cells.',
+      'Water demand in the model is gross: it includes the water that returns to the rivers, power plant cooling among it. It can therefore be well above the withdrawals in official statistics; compare changes and regions with each other, not absolute volumes.',
       'The Kakhovka Reservoir was destroyed in June 2023. The water data (to 2019) and the World Water Map projection do not reflect this; the cards of the lower Dnipro subbasins carry a note.',
       'There are no ground observations from the temporarily occupied territories, but every source is a gridded model, so the map covers all of Ukraine, Crimea included.',
     ],
@@ -160,16 +161,13 @@ export const en: Messages = {
     /** Over the bound tabs, climate and water alike. */
     boundsTitle: 'What the map shows',
     normBar: {
-      more: '{delta} above the norm',
-      less: '{delta} below the norm',
-      same: 'At the norm',
       usual: 'norm',
       low: 'lowest',
       high: 'highest',
       lowTemp: 'coldest year',
       highTemp: 'warmest year',
       noteToggle: 'What is the norm?',
-      note: 'The norm is the {norm} average, the WMO standard. The ends of the bar are the lowest and highest values over {record}.',
+      note: 'The norm is the {norm} average, the WMO standard. The ends of the bar are the lowest and highest values over {record}, or the projection where it reaches past them.',
     },
     headline: '{title} in {when}: {delta}.',
     normNote: 'The norm is the {period} average: {value}.',
@@ -192,7 +190,6 @@ export const en: Messages = {
   },
   chart: {
     now: 'Now',
-    norm: 'norm',
     aria: '{title}: bars by year {from}–{to}, then projections by period up to {end}.',
     ariaHistory: '{title}: bars by year {from}–{to}.',
   },
@@ -308,30 +305,15 @@ export const en: Messages = {
       },
     },
     units: { gap: 'km³', demand: 'km³' },
+    mean: 'Year',
+    meanPeriod: 'Period',
     low: 'Little',
     high: 'A lot',
     norm: '1990–2019 average',
   },
   layers: {
-    water: {
-      name: 'Water',
-      legendTitle: 'Water stress: the share of available water people withdraw',
-      low: 'Low',
-      high: 'Extremely high',
-      norm: '1990–2019 mean',
-      mean: 'Year',
-      meanPeriod: 'Period',
-      normValue: '1990–2019 mean',
-      unit: '%',
-      chartTitle: 'Share of the available water people withdraw, with projections to 2080',
-      story: {
-        observed: 'In {year}, people {where} withdrew {value} of the available water, {delta}.',
-        future: 'For {period}, the model median is {value}{range}, {delta}.',
-        above: 'more than the 1990–2019 average',
-        below: 'less than the 1990–2019 average',
-        same: 'in line with the 1990–2019 average',
-      },
-    },
+    /** The rest of the water copy is `waterUse`, per view and sector (`waterUseCopy`). */
+    water: { name: 'Water' },
     temp: {
       name: 'Temperature',
       legendTitle: 'Mean annual temperature',
@@ -442,7 +424,5 @@ export const en: Messages = {
     play: 'Play the changes over time',
     pause: 'Pause',
     forecast: 'projection',
-    observed: 'observed',
-    future: 'Future',
   },
 }

@@ -87,7 +87,7 @@ export interface RegionSeries {
   future: Partial<Record<FuturePeriod, FutureValue>>
 }
 
-/** Shares (0–1) of the water demand by use in the last observed year; water layer only. */
+/** Shares (0–1) of a basin's water demand by use in one observed year (`regionSectors`). */
 export interface Sectors {
   irrigation: number
   domestic: number
@@ -111,7 +111,7 @@ export interface LayerFile {
   models?: number
   /** The whole of Ukraine, for the summary sentence. */
   country: RegionSeries
-  regions: Record<string, RegionSeries & { sectors?: Sectors }>
+  regions: Record<string, RegionSeries>
   source: string
 }
 

@@ -30,12 +30,16 @@ const shown = computed(
     props.rows.find((row) => row.kind === 'observed'),
 )
 
+/** The observed record's lowest and highest value. */
+const record = computed(() => {
+  const values = props.series.history.filter((value): value is number => value !== null)
+  return { low: Math.min(...values), high: Math.max(...values) }
+})
 /** The record's span, widened to take the norm and the value on screen (a projection may leave it). */
 const span = computed(() => {
-  const values = props.series.history.filter((value): value is number => value !== null)
+  const values = [record.value.low, record.value.high, norm.value]
   const value = shown.value?.value
   if (value != null) values.push(value)
-  values.push(norm.value)
   const low = Math.min(...values)
   const high = Math.max(...values)
   return { low, high: high > low ? high : low + 1 }
@@ -54,16 +58,25 @@ const gradient = computed(() => {
   return `linear-gradient(to right, ${stops.join(', ')})`
 })
 
-/** The track's ends, named for what they mean: the coldest and warmest year for temperature. */
-const ends = computed(() => {
-  const bar = t.value.panel.normBar
-  return props.config.id === 'temp'
-    ? { low: bar.lowTemp, high: bar.highTemp }
-    : { low: bar.low, high: bar.high }
-})
 const when = computed(() => {
   const step = shown.value?.when
   return step == null ? '' : typeof step === 'number' ? String(step) : formatPeriod(step)
+})
+/**
+ * The track's ends, named for what they are: the record's lowest and highest year (the coldest
+ * and warmest for temperature), or the projection where it reaches past the record.
+ */
+const ends = computed(() => {
+  const bar = t.value.panel.normBar
+  const named =
+    props.config.id === 'temp'
+      ? { low: bar.lowTemp, high: bar.highTemp }
+      : { low: bar.low, high: bar.high }
+  const projection = `${t.value.timeline.forecast} ${when.value}`
+  return {
+    low: span.value.low < record.value.low ? projection : named.low,
+    high: span.value.high > record.value.high ? projection : named.high,
+  }
 })
 const valueColor = computed(() => {
   const mapValue = shown.value?.mapValue

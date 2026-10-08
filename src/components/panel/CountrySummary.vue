@@ -3,18 +3,18 @@ import { computed } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
 import type { LayerConfig } from '../../config/layers'
-import type { Messages } from '../../i18n'
+import type { LayerCopy } from '../../i18n'
 import { formatPeriod, type ValueFormat } from '../../lib/format'
 import { colorAt } from '../../lib/scale'
 import type { SummaryRow } from '../../lib/summary'
-import type { LayerFile, LayerId } from '../../types'
+import type { LayerFile } from '../../types'
 
 /** The country at a glance (SPEC §8.2): one big number, its gap from the norm, and what the norm is. */
 const props = defineProps<{
   rows: SummaryRow[]
   file: LayerFile
   config: LayerConfig
-  copy: Messages['layers'][LayerId]
+  copy: LayerCopy
   format: ValueFormat
   /** Only the big number and its title: no change against the norm, no columns. */
   compact?: boolean

@@ -51,6 +51,7 @@ import {
   waterUseLayer,
   waterUseScale,
 } from '../lib/waterUse'
+import type { LayerCopy } from '../i18n'
 import { useUiStore } from '../stores/ui'
 import type { LayerFile, LayerId, RegionsFile, WaterView } from '../types'
 
@@ -192,13 +193,13 @@ const mapValues = computed<Record<string, number | null>>(() =>
 )
 
 // The projection is of the total gap only, so the future view names no other sector.
-const copy = computed(() =>
-  ui.layer !== 'water'
-    ? t.value.layers[config.value.id]
-    : ui.waterView === 'future'
-      ? waterUseCopy(t.value, 'gap', 'total')
-      : waterUseCopy(t.value, ui.waterView, ui.waterSector),
-)
+const copy = computed<LayerCopy>(() => {
+  const id = ui.layer
+  if (id !== 'water') return t.value.layers[id]
+  return ui.waterView === 'future'
+    ? waterUseCopy(t.value, 'gap', 'total')
+    : waterUseCopy(t.value, ui.waterView, ui.waterSector)
+})
 const waterState = computed(() =>
   ui.layer === 'water' ? { view: ui.waterView, sector: ui.waterSector } : null,
 )
@@ -383,8 +384,7 @@ watchEffect((onCleanup) => {
 })
 onBeforeUnmount(() => insetObserver.disconnect())
 
-/** Tailwind's `lg`: the layers are a column beside the map that can be folded away. */
-const isDesktop = useMediaQuery('(min-width: 64rem)')
+/** Wide: the layers are a column beside the map that can be folded away. */
 const LAYERS_KEY = 'climate-ua:layers-collapsed'
 /** Folded unless the reader unfolded it: a layer is picked once, the map needs the room. */
 function readCollapsed(): boolean {
@@ -402,7 +402,7 @@ watch(layersCollapsed, (collapsed) => {
     // Storage is a convenience; the toggle still works without it.
   }
 })
-const layersHidden = computed(() => isDesktop.value && layersCollapsed.value)
+const layersHidden = computed(() => isWide.value && layersCollapsed.value)
 
 /** On narrow screens the layers live in a drawer from the right, opened from the header. */
 const layersOpen = ref(false)
@@ -484,7 +484,6 @@ const tooltip = computed(() => {
   >
     <AppHeader v-if="!isWide">
       <button
-        v-if="!isWide"
         type="button"
         class="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:bg-fill focus-ring"
         :aria-expanded="layersOpen"
@@ -691,7 +690,7 @@ const tooltip = computed(() => {
             :compact="layersHidden"
             @update:model-value="pickLayer"
           >
-            <template v-if="isDesktop" #footer>
+            <template #footer>
               <button
                 type="button"
                 class="flex h-10 w-full items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"

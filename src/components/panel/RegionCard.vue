@@ -3,12 +3,12 @@ import { computed, defineAsyncComponent, h, onMounted, useTemplateRef } from 'vu
 
 import { useLocale } from '../../composables/useLocale'
 import type { LayerConfig } from '../../config/layers'
-import type { Messages } from '../../i18n'
+import type { LayerCopy } from '../../i18n'
 import type { ValueFormat } from '../../lib/format'
 import { colorAt } from '../../lib/scale'
 import { rankAt, summaryRows } from '../../lib/summary'
 import { isFuture, type TimeStep } from '../../lib/time'
-import type { LayerFile, LayerId, RegionSeries, Sectors } from '../../types'
+import type { LayerFile, RegionSeries, Sectors } from '../../types'
 import ClimateAnalog from './ClimateAnalog.vue'
 import CountrySummary from './CountrySummary.vue'
 import NormBar from './NormBar.vue'
@@ -22,17 +22,17 @@ const props = defineProps<{
   /** Note that the data predate the loss of the Kakhovka Reservoir (SPEC §13.7). */
   kakhovka?: boolean
   file: LayerFile
-  series: RegionSeries & { sectors?: Sectors }
+  series: RegionSeries
   config: LayerConfig
   step: TimeStep
   format: ValueFormat
   /** What the chart measures; the legend title of the layer. */
   chartTitle: string
   /** The layer's copy, for the big number's caption. */
-  copy: Messages['layers'][LayerId]
+  copy: LayerCopy
   /** The water history views: the big number alone, without the norm and projection lines. */
   compact?: boolean
-  /** The split between the uses in the year on screen; the series' own split otherwise. */
+  /** The water basin's split between the uses in the year on screen. */
   sectors?: Sectors | null
   /** Shown instead of the chart when every value is zero, e.g. a basin with no water gap. */
   zeroNote?: string | null
@@ -160,7 +160,6 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
         :focus="focus"
       />
       <SectorBar v-else-if="sectors && typeof step === 'number'" :sectors="sectors" :year="step" />
-      <SectorBar v-else-if="series.sectors" :sectors="series.sectors" :year="file.history.to" />
     </template>
 
     <p

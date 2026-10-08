@@ -1,7 +1,6 @@
-import type { Messages } from '../i18n'
+import type { LayerCopy, Messages } from '../i18n'
 import type {
   LayerFile,
-  LayerId,
   RegionSeries,
   Sectors,
   WaterPeriod,
@@ -14,7 +13,7 @@ import type {
 import { colorAt, type ColorScale } from './scale'
 
 /** Grey, so a basin without data does not read as the ramp's dark «little». */
-export const WATER_NO_DATA = '#6e6e73'
+const WATER_NO_DATA = '#6e6e73'
 
 export const WATER_SECTORS: readonly WaterSector[] = [
   'total',
@@ -143,17 +142,15 @@ export function waterUseScale(layer: LayerFile): ColorScale {
   return { stops, noData: WATER_NO_DATA }
 }
 
-/** What a layer's sentences, legend and chart need, as `Messages['layers']` holds it. */
-export type LayerCopy = Messages['layers'][LayerId]
-
 /** The copy of one view and sector, in the shape of a layer's, with the sector worded in. */
 export function waterUseCopy(t: Messages, view: WaterUseView, sector: WaterSector): LayerCopy {
   const use = t.waterUse.sectors[sector].use
   const fill = (text: string) => text.replace('{use}', use)
   const copy = t.waterUse[view]
   return {
-    ...t.layers.water,
     name: t.waterUse.views[view],
+    mean: t.waterUse.mean,
+    meanPeriod: t.waterUse.meanPeriod,
     legendTitle: fill(copy.legendTitle),
     chartTitle: fill(copy.chartTitle),
     low: t.waterUse.low,

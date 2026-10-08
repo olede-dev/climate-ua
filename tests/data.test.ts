@@ -90,17 +90,6 @@ describe.each(Object.entries(layers))('%s', (_path, layer) => {
     expect(Object.keys(layer.regions).sort()).toEqual(ids)
   })
 
-  it('splits demand into sector shares that add up to one, on the water layer only', () => {
-    for (const [id, region] of Object.entries(layer.regions)) {
-      if (layer.layer !== 'water') {
-        expect(region.sectors, id).toBeUndefined()
-        continue
-      }
-      const { irrigation, domestic, industrial } = region.sectors!
-      expect(irrigation + domestic + industrial, id).toBeCloseTo(1, 2)
-    }
-  })
-
   it.each(series)('%s: one finite value per year and per future period', (_id, region) => {
     expect(region.history).toHaveLength(years)
     for (const value of [region.norm, ...region.history]) {

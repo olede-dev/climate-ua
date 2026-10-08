@@ -36,19 +36,20 @@ def annual(monthly: xr.DataArray, how: str) -> xr.DataArray:
 
     `dry_months` counts the months a cell's SPEI is below `config.DRY_SPEI`, so a region's value
     is the mean count over its area: a regional mean SPEI first would smooth local droughts
-    away. A cell-year with a month the index leaves undefined is NaN, since its count would be
-    short, and `regional_mean` skips it.
+    away. A cell-year with a month without a value is NaN, whatever the measure: xarray's sum
+    would count the month as zero (and a cell with no values at all, such as the sea, as a zero
+    year), and `regional_mean` skips NaN.
     """
     years = monthly["time"].dt.year
     complete = monthly["time"].groupby(years).count() == 12
     if how == "dry_months":
         result = (monthly < config.DRY_SPEI).groupby(years).sum("time")
-        result = result.where(monthly.notnull().groupby(years).sum("time") == 12)
     elif how == "sum":
         result = monthly.groupby(years).sum("time")
     else:
         days = monthly["time"].dt.days_in_month
         result = (monthly * days).groupby(years).sum("time") / days.groupby(years).sum("time")
+    result = result.where(monthly.notnull().groupby(years).sum("time") == 12)
     return result.sel(year=complete["year"][complete])
 
 

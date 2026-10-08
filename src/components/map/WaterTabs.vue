@@ -1,14 +1,15 @@
 <script setup lang="ts" generic="T extends string">
 import RadioMark from '../ui/RadioMark.vue'
 
-/** Water gap or demand, or the scenarios, as tabs over the map (the World Water Map's switch). */
+/**
+ * One choice among a few, in the side panel: a segmented row (water gap or demand), or with
+ * `stacked` a list (the scenarios, the projection's bound).
+ */
 defineProps<{
   /** An optional icon: an SVG path on a 16-unit grid, drawn in the given text colour. `about`,
    * in a stacked group, shows under the active option. */
   views: readonly { id: T; label: string; icon?: string; tone?: string; about?: string }[]
   label: string
-  /** Fills its container's width as a segmented control in a panel, not a pill over the map. */
-  block?: boolean
   /** Stacks the options in a column, for labels too long to share one row. */
   stacked?: boolean
 }>()
@@ -21,8 +22,9 @@ const model = defineModel<T>({ required: true })
     :aria-label="label"
     class="p-1 text-[13px] font-medium"
     :class="[
-      stacked ? 'flex w-full flex-col gap-0.5 rounded-xl bg-fill' : 'rounded-full',
-      !stacked && (block ? 'flex w-full bg-fill' : 'glass inline-flex shadow-float'),
+      stacked
+        ? 'flex w-full flex-col gap-0.5 rounded-xl bg-fill'
+        : 'flex w-full rounded-full bg-fill',
     ]"
   >
     <button
@@ -37,15 +39,13 @@ const model = defineModel<T>({ required: true })
         // The pick reads at a glance: it lifts off the group and takes the accent ring (violet
         // while a projection is shown); the rest stay flat.
         model === view.id
-          ? stacked || block
-            ? 'bg-surface font-semibold text-ink shadow-card ring-[1.5px] ring-accent'
-            : 'bg-fill-strong text-ink'
+          ? 'bg-surface font-semibold text-ink shadow-card ring-[1.5px] ring-accent'
           : stacked
             ? 'text-ink-muted hover:bg-fill hover:text-ink'
             : 'text-ink-muted hover:text-ink',
         stacked ? 'flex items-start gap-2 rounded-lg text-left' : 'rounded-full',
         {
-          'min-w-0 flex-1 truncate': block && !stacked,
+          'min-w-0 flex-1 truncate': !stacked,
           'inline-flex items-center justify-center gap-1.5': view.icon && !stacked,
         },
       ]"

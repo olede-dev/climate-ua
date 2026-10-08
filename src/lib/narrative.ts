@@ -40,7 +40,7 @@ export function fill(template: string, slots: Record<string, string | Rich>): Ri
 }
 
 /** Joins sentences with a space. */
-export function joinSentences(sentences: Rich[]): Rich {
+function joinSentences(sentences: Rich[]): Rich {
   return fill(
     sentences.map((_, i) => `{${i}}`).join(' '),
     Object.fromEntries(sentences.map((sentence, i) => [i, sentence])),

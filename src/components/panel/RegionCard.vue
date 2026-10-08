@@ -19,8 +19,8 @@ const props = defineProps<{
   name: string
   /** Under the name: the oblasts a basin spans. */
   subtitle?: string | null
-  /** Note that the data predate the loss of the Kakhovka Reservoir (SPEC §13.7). */
-  kakhovka?: boolean
+  /** A caveat under the numbers, e.g. the data predate the loss of the Kakhovka Reservoir. */
+  note?: string | null
   file: LayerFile
   series: RegionSeries
   config: LayerConfig
@@ -163,7 +163,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
     </template>
 
     <p
-      v-if="kakhovka"
+      v-if="note"
       role="note"
       class="flex gap-2.5 rounded-xl border-l-4 border-warn bg-warn-fill px-3 py-2.5 text-[13px] leading-relaxed text-warn-ink"
     >
@@ -180,7 +180,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       >
         <path d="M12 3 2 20h20L12 3zM12 10v4M12 17h.01" />
       </svg>
-      <span>{{ t.basin.kakhovka }}</span>
+      <span>{{ note }}</span>
     </p>
 
     <p v-if="!hasData" class="rounded-xl bg-fill px-4 py-6 text-center text-sm text-ink-muted">

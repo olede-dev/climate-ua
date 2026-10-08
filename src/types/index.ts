@@ -43,6 +43,8 @@ export interface RiversFile {
     lon: number
     /** Days below the day's p10 discharge norm, one count per year from `years.from`. */
     lowFlowDays: number[]
+    /** Dams upstream set the flow (a reservoir cascade): the card notes it. */
+    regulated: boolean
     /** Mean of `lowFlowDays` over `norm`: about 36.5 by construction of the p10 threshold. */
     normLowFlowDays: number
   }[]

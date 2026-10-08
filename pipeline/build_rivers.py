@@ -73,6 +73,7 @@ def main() -> None:
                 "lat": station.marker[0],
                 "lon": station.marker[1],
                 "lowFlowDays": counts,
+                "regulated": station.regulated,
                 "normLowFlowDays": round(float(np.mean(counts[norm_first - first : norm_last - first + 1])), 1),
             }
         )

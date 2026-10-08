@@ -16,6 +16,7 @@ const file: RiversFile = {
       lat: 50,
       lon: 30,
       lowFlowDays: [10, 30],
+      regulated: false,
       normLowFlowDays: 20,
     },
     {
@@ -27,6 +28,7 @@ const file: RiversFile = {
       lat: 48,
       lon: 25,
       lowFlowDays: [0, 50],
+      regulated: false,
       normLowFlowDays: 25,
     },
   ],

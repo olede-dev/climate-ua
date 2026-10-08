@@ -196,7 +196,7 @@ function onKeydown(event: KeyboardEvent) {
         :key="region.id"
         :name="region.name"
         :subtitle="region.subtitle"
-        :kakhovka="region.kakhovka"
+        :note="region.note"
         :file="file"
         :series="regionSeries"
         :config="config"

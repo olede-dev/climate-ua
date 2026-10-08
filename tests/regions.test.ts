@@ -25,7 +25,7 @@ describe('basinLabel', () => {
       name: 'Басейн річки Десна',
       where: 'у басейні річки Десна',
       subtitle: 'Чернігівська область; Сумська область.',
-      kakhovka: false,
+      note: null,
     })
     expect(basinLabel(basin(), NAMES_EN, 'en', MESSAGES.en.basin).name).toBe('Desna basin')
   })
@@ -41,9 +41,9 @@ describe('basinLabel', () => {
     expect(label.where).toBe('у цьому суббасейні')
   })
 
-  it('carries the Kakhovka note flag', () => {
-    expect(basinLabel(basin({ kakhovka: true }), NAMES, 'uk', MESSAGES.uk.basin).kakhovka).toBe(
-      true,
+  it('carries the Kakhovka note', () => {
+    expect(basinLabel(basin({ kakhovka: true }), NAMES, 'uk', MESSAGES.uk.basin).note).toBe(
+      MESSAGES.uk.basin.kakhovka,
     )
   })
 })
@@ -58,7 +58,7 @@ describe('oblastLabel', () => {
       name: 'Одеська область',
       where: 'в Одеській області',
       subtitle: null,
-      kakhovka: false,
+      note: null,
     })
   })
 })
@@ -73,6 +73,7 @@ describe('stationLabel', () => {
     lat: 50.39,
     lon: 30.59,
     lowFlowDays: [1, 2],
+    regulated: false,
     normLowFlowDays: 1.5,
   }
 
@@ -82,5 +83,12 @@ describe('stationLabel', () => {
       where: 'на річці Дніпро (Київ)',
     })
     expect(stationLabel(station, 'en', MESSAGES.en.station).where).toBe('on the Dnipro at Kyiv')
+  })
+
+  it('notes a river the dams regulate', () => {
+    expect(stationLabel(station, 'uk', MESSAGES.uk.station).note).toBeNull()
+    expect(stationLabel({ ...station, regulated: true }, 'uk', MESSAGES.uk.station).note).toBe(
+      MESSAGES.uk.station.regulated,
+    )
   })
 })

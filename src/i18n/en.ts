@@ -208,6 +208,8 @@ export const en: Messages = {
   station: {
     name: '{river} at {place}',
     where: 'on the {river} at {place}',
+    regulated:
+      'A cascade of reservoirs regulates the river here: the power plants set its flow, and the GloFAS model reproduces their operation only roughly. Low-flow days at this station say less about the climate than at the others.',
   },
   koppen: {
     title: 'Köppen climate type',

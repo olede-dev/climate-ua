@@ -318,7 +318,7 @@ const labels = computed<Record<string, RegionLabel>>(() => {
 })
 
 function regionLabel(id: string): RegionLabel {
-  return labels.value[id] ?? { name: id, where: id, subtitle: null, kakhovka: false }
+  return labels.value[id] ?? { name: id, where: id, subtitle: null, note: null }
 }
 
 const selected = computed(() =>

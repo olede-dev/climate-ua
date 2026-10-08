@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FeatureCollection, MultiLineString, Point } from 'geojson'
+import type { FeatureCollection, MultiLineString, MultiPolygon, Point, Polygon } from 'geojson'
 import * as maplibregl from 'maplibre-gl'
 import type {
   LngLatBoundsLike,
@@ -154,6 +154,22 @@ function setValue(id: string, value: number | null) {
   shown[id] = value
 }
 
+/** The raster's clip, the same array while it holds: `paintGrid` keeps its mask per array. */
+let clip: { regions: RegionsFile; only: string | null; shapes: (Polygon | MultiPolygon)[] } | null =
+  null
+
+/** The polygons the raster is clipped to: in focus only the selected region, imagery around it. */
+function clipShapes(regions: RegionsFile): (Polygon | MultiPolygon)[] {
+  const only = focused() ? props.selectedId : null
+  if (clip?.regions !== regions || clip.only !== only) {
+    const shapes = regions.features
+      .filter((f) => only === null || f.properties.id === only)
+      .map((f) => f.geometry)
+    clip = { regions, only, shapes }
+  }
+  return clip.shapes
+}
+
 /** Repaints the grid raster for the current values, or removes it. */
 function applyGrid() {
   if (!map || !styleReady) return
@@ -161,16 +177,7 @@ function applyGrid() {
   if (!grid || !props.regions) {
     setGridImage(map, null)
   } else {
-    paintGrid(
-      gridCanvas,
-      grid.file,
-      grid.values,
-      props.scale,
-      // In focus only the selected region is painted; imagery shows around it.
-      props.regions.features
-        .filter((f) => !focused() || f.properties.id === props.selectedId)
-        .map((f) => f.geometry),
-    )
+    paintGrid(gridCanvas, grid.file, grid.values, props.scale, clipShapes(props.regions))
     setGridImage(map, { url: gridCanvas.toDataURL(), coordinates: gridCorners(grid.file) })
   }
   applyFillOpacity()

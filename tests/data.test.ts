@@ -147,6 +147,7 @@ describe('rivers.json', () => {
     expect(new Set(stations.map((s) => s.id)).size).toBe(stations.length)
     for (const s of stations) {
       expect(s.id).toMatch(/^[a-z0-9-]{1,40}$/)
+      expect(typeof s.regulated, s.id).toBe('boolean')
       for (const name of [s.river, s.place, s.riverEn, s.placeEn]) expect(name, s.id).not.toBe('')
       expect(s.lon).toBeGreaterThan(22)
       expect(s.lon).toBeLessThan(40.3)

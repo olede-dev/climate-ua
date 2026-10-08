@@ -286,10 +286,13 @@ class RiverStation:
     cell: tuple[float, float]
     #: Where the map draws the station: on the OpenStreetMap river line next to the cell.
     marker: tuple[float, float]
+    #: Dams upstream set the flow here (a reservoir cascade): low-flow days follow the power
+    #: plants more than the weather, and GloFAS models their operation only roughly.
+    regulated: bool = False
 
 
 RIVER_STATIONS = [
-    RiverStation("dnipro-kyiv", "Дніпро", "Київ", "Dnipro", "Kyiv", cell=(50.4, 30.52), marker=(50.3877, 30.5868)),
+    RiverStation("dnipro-kyiv", "Дніпро", "Київ", "Dnipro", "Kyiv", cell=(50.4, 30.52), marker=(50.3877, 30.5868), regulated=True),
     RiverStation("desna-chernihiv", "Десна", "Чернігів", "Desna", "Chernihiv", cell=(51.47, 31.26), marker=(51.4512, 31.2818)),
     RiverStation("desna-novhorod-siverskyi", "Десна", "Новгород-Сіверський", "Desna", "Novhorod-Siverskyi", cell=(51.95, 33.27), marker=(51.9418, 33.276)),
     RiverStation("prypiat-chornobyl", "Прип’ять", "Чорнобиль", "Prypiat", "Chornobyl", cell=(51.23, 30.28), marker=(51.2495, 30.2906)),

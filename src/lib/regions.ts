@@ -9,8 +9,11 @@ export interface RegionLabel {
   where: string
   /** Under the name: the oblasts a basin spans. */
   subtitle: string | null
-  /** The former Kakhovka Reservoir lay here (SPEC §13.7). */
-  kakhovka: boolean
+  /**
+   * A caveat the card shows under the numbers: the former Kakhovka Reservoir (SPEC §13.7), or a
+   * river whose flow the dams set; null where there is none.
+   */
+  note: string | null
 }
 
 export function oblastName(oblast: OblastProperties, locale: Locale): string {
@@ -19,7 +22,7 @@ export function oblastName(oblast: OblastProperties, locale: Locale): string {
 
 export function oblastLabel(oblast: OblastProperties, locale: Locale): RegionLabel {
   const name = oblastName(oblast, locale)
-  return { name, where: inRegion(name, locale), subtitle: null, kakhovka: false }
+  return { name, where: inRegion(name, locale), subtitle: null, note: null }
 }
 
 /**
@@ -48,7 +51,7 @@ export function basinLabel(
     name,
     where,
     subtitle: oblasts.length > 0 ? `${oblasts.join('; ')}.` : null,
-    kakhovka: basin.kakhovka,
+    note: basin.kakhovka ? copy.kakhovka : null,
   }
 }
 
@@ -62,5 +65,10 @@ export function stationLabel(
     template
       .replace('{river}', locale === 'uk' ? station.river : station.riverEn)
       .replace('{place}', locale === 'uk' ? station.place : station.placeEn)
-  return { name: slots(copy.name), where: slots(copy.where), subtitle: null, kakhovka: false }
+  return {
+    name: slots(copy.name),
+    where: slots(copy.where),
+    subtitle: null,
+    note: station.regulated ? copy.regulated : null,
+  }
 }

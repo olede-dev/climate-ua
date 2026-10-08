@@ -2,6 +2,7 @@ import {
   setWorkerUrl,
   type FilterSpecification,
   type LayerSpecification,
+  type Map as MaplibreMap,
   type StyleSpecification,
 } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -153,6 +154,19 @@ function adaptStyle(
   const at = firstLabel === -1 ? layers.length : firstLabel
   layers.splice(at, 0, ...relief.layers)
   return { ...style, sources: { ...style.sources, ...relief.sources }, layers }
+}
+
+/** Place labels over satellite imagery: light text on a dark halo, whatever the theme. */
+const IMAGERY_LABEL = { color: '#ffffff', halo: 'rgba(0, 0, 0, 0.75)' }
+
+/** Recolours the place labels for the satellite focus view, or back to the theme's. */
+export function setPlaceLabelsOnImagery(map: MaplibreMap, theme: Theme, onImagery: boolean) {
+  const { color, halo } = onImagery ? IMAGERY_LABEL : PALETTES[theme].placeLabel
+  for (const layer of map.getStyle().layers) {
+    if (layer.type !== 'symbol' || layer['source-layer'] !== 'place') continue
+    map.setPaintProperty(layer.id, 'text-color', color)
+    map.setPaintProperty(layer.id, 'text-halo-color', halo)
+  }
 }
 
 /** Label mask, or null (all labels shown) when it cannot be loaded. */

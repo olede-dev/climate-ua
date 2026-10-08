@@ -1,9 +1,9 @@
-import type { FeatureCollection, Point } from 'geojson'
+import type { FeatureCollection, MultiLineString, Point } from 'geojson'
 import type { ExpressionSpecification, Map as MaplibreMap } from 'maplibre-gl'
 
 import type { Theme } from '../../composables/useTheme'
 import { mapColorExpression, type ColorScale } from '../../lib/scale'
-import type { RegionsFile } from '../../types'
+import type { OblastsFile, RegionsFile } from '../../types'
 
 export const REGION_SOURCE = 'regions'
 export const REGION_FILL = 'region-fill'
@@ -13,6 +13,16 @@ const REGION_HIGHLIGHT = 'region-highlight'
 const HATCH_IMAGE = 'future-hatch'
 export const STATION_SOURCE = 'stations'
 export const STATION_DOT = 'station-dot'
+const FOCUS_SATELLITE = 'focus-satellite'
+const FOCUS_OBLAST_SOURCE = 'focus-oblasts'
+const FOCUS_OBLAST_LINE = 'focus-oblast-line'
+const BORDER_SOURCE = 'country-border'
+const BORDER_GLOW = 'country-border-glow'
+const BORDER_LINE = 'country-border-line'
+/** The projection's violet, as `--ui-future` in main.css. */
+const FUTURE_INK: Record<Theme, string> = { light: '#7c3aed', dark: '#a78bfa' }
+const SATELLITE_URL =
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 
 const VALUE: ExpressionSpecification = ['feature-state', 'value']
 const HOVER: ExpressionSpecification = ['boolean', ['feature-state', 'hover'], false]
@@ -22,6 +32,10 @@ const SELECTED: ExpressionSpecification = ['boolean', ['feature-state', 'selecte
 const FILL_OPACITY = 0.9
 /** While a region is hovered, the rest dim (SPEC §7). */
 const DIMMED_OPACITY = 0.45
+/** In focus the selected basin is a tint over the imagery; the hovered one stays findable. */
+const FOCUS_SELECTED_OPACITY = 0.5
+const FOCUS_HOVER_OPACITY = 0.3
+const FOCUS_FADE = { duration: 400 }
 
 /** Lines over the regions in each theme: hatching, borders, the outline and the dot rings. */
 const INK: Record<Theme, { hatch: string; border: string; outline: string; ring: string }> = {
@@ -173,12 +187,124 @@ export function setFutureHatch(map: MaplibreMap, visible: boolean) {
     map.setLayoutProperty(REGION_HATCH, 'visibility', visible ? 'visible' : 'none')
 }
 
-/** Fill opacity: a hovered region dims the rest. */
-export function setFillOpacity(map: MaplibreMap, hovering: boolean) {
+/**
+ * Satellite imagery and oblast borders for the focus view, hidden until a region is selected:
+ * without them a zoomed-in basin floats among look-alike neighbours with nothing to place it.
+ */
+export function addFocusLayers(map: MaplibreMap, oblasts: OblastsFile) {
+  if (map.getSource(FOCUS_OBLAST_SOURCE) || !map.getLayer(REGION_FILL)) return
+  map.addSource(FOCUS_SATELLITE, {
+    type: 'raster',
+    tiles: [SATELLITE_URL],
+    tileSize: 256,
+    maxzoom: 18,
+    attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
+  })
+  map.addLayer(
+    {
+      id: FOCUS_SATELLITE,
+      type: 'raster',
+      source: FOCUS_SATELLITE,
+      paint: { 'raster-opacity': 0, 'raster-opacity-transition': FOCUS_FADE },
+    },
+    REGION_FILL,
+  )
+  map.addSource(FOCUS_OBLAST_SOURCE, { type: 'geojson', data: oblasts })
+  map.addLayer(
+    {
+      id: FOCUS_OBLAST_LINE,
+      type: 'line',
+      source: FOCUS_OBLAST_SOURCE,
+      paint: {
+        'line-color': '#ffffff',
+        'line-width': 1.2,
+        'line-dasharray': [3, 2],
+        'line-opacity': 0,
+        'line-opacity-transition': FOCUS_FADE,
+      },
+    },
+    REGION_HIGHLIGHT,
+  )
+}
+
+/**
+ * Fill opacity and the focus view. A hovered region dims the rest; in focus only the
+ * selected region keeps a tint, over satellite imagery and oblast borders.
+ */
+export function setFillOpacity(
+  map: MaplibreMap,
+  hovering: boolean,
+  focused: boolean,
+  theme: Theme,
+) {
   if (!map.getLayer(REGION_FILL)) return
   map.setPaintProperty(
     REGION_FILL,
     'fill-opacity',
-    hovering ? ['case', HOVER, FILL_OPACITY, DIMMED_OPACITY] : FILL_OPACITY,
+    focused
+      ? ['case', SELECTED, FOCUS_SELECTED_OPACITY, HOVER, FOCUS_HOVER_OPACITY, 0]
+      : hovering
+        ? ['case', HOVER, FILL_OPACITY, DIMMED_OPACITY]
+        : FILL_OPACITY,
   )
+  map.setPaintProperty(REGION_LINE, 'line-opacity', focused ? 0 : 1)
+  // The theme's dark outline is lost on imagery; white reads on both.
+  map.setPaintProperty(REGION_HIGHLIGHT, 'line-color', focused ? '#ffffff' : INK[theme].outline)
+  map.setPaintProperty(
+    REGION_HIGHLIGHT,
+    'line-width',
+    focused ? ['case', SELECTED, 3, HOVER, 1.6, 0] : ['case', SELECTED, 2.2, HOVER, 1.6, 0],
+  )
+  if (map.getLayer(FOCUS_SATELLITE))
+    map.setPaintProperty(FOCUS_SATELLITE, 'raster-opacity', focused ? 1 : 0)
+  if (map.getLayer(FOCUS_OBLAST_LINE))
+    map.setPaintProperty(FOCUS_OBLAST_LINE, 'line-opacity', focused ? 0.9 : 0)
+}
+
+/**
+ * Ukraine's border in the projection's violet with a soft glow, hidden until a future step
+ * is shown: the whole map is then an estimate.
+ */
+export function addCountryBorder(map: MaplibreMap, border: MultiLineString, theme: Theme) {
+  if (map.getSource(BORDER_SOURCE) || !map.getLayer(REGION_HIGHLIGHT)) return
+  map.addSource(BORDER_SOURCE, { type: 'geojson', data: border })
+  const color = FUTURE_INK[theme]
+  const layout = { 'line-join': 'round', 'line-cap': 'round' } as const
+  map.addLayer(
+    {
+      id: BORDER_GLOW,
+      type: 'line',
+      source: BORDER_SOURCE,
+      layout,
+      paint: {
+        'line-color': color,
+        'line-width': 10,
+        'line-blur': 8,
+        'line-opacity': 0,
+        'line-opacity-transition': FOCUS_FADE,
+      },
+    },
+    REGION_HIGHLIGHT,
+  )
+  map.addLayer(
+    {
+      id: BORDER_LINE,
+      type: 'line',
+      source: BORDER_SOURCE,
+      layout,
+      paint: {
+        'line-color': color,
+        'line-width': 2.4,
+        'line-opacity': 0,
+        'line-opacity-transition': FOCUS_FADE,
+      },
+    },
+    REGION_HIGHLIGHT,
+  )
+}
+
+export function setCountryBorder(map: MaplibreMap, visible: boolean) {
+  if (map.getLayer(BORDER_GLOW))
+    map.setPaintProperty(BORDER_GLOW, 'line-opacity', visible ? 0.55 : 0)
+  if (map.getLayer(BORDER_LINE)) map.setPaintProperty(BORDER_LINE, 'line-opacity', visible ? 1 : 0)
 }

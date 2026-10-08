@@ -31,7 +31,7 @@ const about = useTemplateRef<InstanceType<typeof AboutDialog>>('about')
           target="_blank"
           rel="noopener"
           >© OpenStreetMap</a
-        >, © Esri.
+        >, © Esri, Maxar, Earthstar Geographics.
       </template>
       <template v-else>
         © Esri, HERE, Garmin,

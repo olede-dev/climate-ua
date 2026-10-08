@@ -24,6 +24,7 @@ import { basinLabel, oblastLabel, oblastName, stationLabel, type RegionLabel } f
 import { stationPoints } from '../lib/rivers'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, valueAt, type StepValue } from '../lib/series'
+import { outerBorder } from '../lib/geometry'
 import { isFuture, shownAxis, snapStep, type TimeAxis, type TimeStep } from '../lib/time'
 import {
   blankEmptyBasins,
@@ -47,6 +48,10 @@ const waterUseQuery = useWaterUse(() => ui.layer === 'water')
 // The water layer comes from water-use.json alone.
 const layerQuery = useLayer(() => (ui.layer === 'water' ? null : ui.layer))
 const oblastsQuery = useOblasts()
+const countryBorder = computed(() => {
+  const oblasts = oblastsQuery.data.value
+  return oblasts ? outerBorder(oblasts.features.map((f) => f.geometry)) : null
+})
 // Basin names list their oblasts, so the oblasts load for every layer.
 const basinsQuery = useBasins()
 const layer = computed<LayerFile | undefined>(() => {
@@ -551,6 +556,9 @@ const tooltip = computed(() => {
           :scale="config.scale"
           :future="step !== null && isFuture(step)"
           :selected-id="ui.regionId"
+          :country-border="countryBorder"
+          :projection="waterFuture || (step !== null && isFuture(step))"
+          :focus-outlines="config.geometry === 'basins' ? oblastsQuery.data.value : null"
           :insets="isWide ? insets : undefined"
           :controls="isWide ? controls : undefined"
           @basemap="basemap = $event"

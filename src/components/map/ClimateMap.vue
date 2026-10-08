@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FeatureCollection, Point } from 'geojson'
+import type { FeatureCollection, MultiLineString, Point } from 'geojson'
 import * as maplibregl from 'maplibre-gl'
 import type {
   LngLatBoundsLike,
@@ -12,14 +12,17 @@ import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
 import { useLocale } from '../../composables/useLocale'
 import { geometryBounds } from '../../lib/geometry'
 import type { ColorScale } from '../../lib/scale'
-import type { RegionsFile } from '../../types'
+import type { OblastsFile, RegionsFile } from '../../types'
 import { useTheme } from '../../composables/useTheme'
-import { basemapStyle, type BasemapKind } from './basemap'
+import { basemapStyle, setPlaceLabelsOnImagery, type BasemapKind } from './basemap'
 import {
+  addCountryBorder,
+  addFocusLayers,
   addRegionLayers,
   addStationLayers,
   REGION_FILL,
   REGION_SOURCE,
+  setCountryBorder,
   setFillOpacity,
   setFutureHatch,
   setRegionData,
@@ -49,6 +52,15 @@ const props = defineProps<{
   /** Hatch the fill: the current step is a projection. */
   future: boolean
   selectedId: string | null
+  /**
+   * Oblast borders for the focus view: when set, selecting a region swaps its neighbours for
+   * satellite imagery with these borders, so the zoomed-in region keeps its bearings.
+   */
+  focusOutlines?: OblastsFile | null
+  /** Ukraine's outer border, drawn in the projection's violet while `projection` is on. */
+  countryBorder?: MultiLineString | null
+  /** A projection is shown: a future period, or the water layer's future view (in years). */
+  projection?: boolean
   /**
    * Pixels on each side covered by the panels floating over a full-screen map; framing keeps
    * Ukraine clear of them and the zoom buttons sit inside them. Unset: nothing covers the map
@@ -80,6 +92,8 @@ const TWEEN_MS = 300
 const MARKER_HIT = 6
 /** Half the box a selected marker is framed in, degrees. */
 const MARKER_FRAME = { lon: 2.4, lat: 1.5 }
+/** Closest a selection is framed: the smallest basins still fill the free space. */
+const MAX_FRAME_ZOOM = 10
 const NO_POINTS: FeatureCollection<Point> = { type: 'FeatureCollection', features: [] }
 
 const { locale, t } = useLocale()
@@ -162,9 +176,25 @@ function setHovered(id: string | null) {
   if (hoveredId) map.setFeatureState({ source: valueSource(), id: hoveredId }, { hover: false })
   if (id) map.setFeatureState({ source: valueSource(), id }, { hover: true })
   // Regions dim around a hovered region; a hovered marker grows instead.
-  if (!props.markers && (id === null) !== (hoveredId === null)) setFillOpacity(map, id !== null)
-  map.getCanvas().style.cursor = id ? 'pointer' : ''
   hoveredId = id
+  if (!props.markers) applyFillOpacity()
+  map.getCanvas().style.cursor = id ? 'pointer' : ''
+}
+
+/** Focus view: a region is selected and oblast borders were given for it. */
+function focused(): boolean {
+  return !props.markers && !!props.focusOutlines && props.selectedId !== null
+}
+
+function applyFillOpacity() {
+  if (!map) return
+  setFillOpacity(map, hoveredId !== null, focused(), theme.value)
+}
+
+/** Switches the focus view on or off; labels follow, but not on every hover. */
+function applyFocus() {
+  applyFillOpacity()
+  if (map && styleReady) setPlaceLabelsOnImagery(map, theme.value, focused())
 }
 
 function padding(): PaddingOptions {
@@ -201,7 +231,7 @@ function frameSelection(animate: boolean) {
   const bounds = selectionBounds()
   if (!map) return
   if (!bounds) return fitUkraine(animate)
-  map.fitBounds(bounds, { padding: padding(), maxZoom: 6.5, animate })
+  map.fitBounds(bounds, { padding: padding(), maxZoom: MAX_FRAME_ZOOM, animate })
 }
 
 /**
@@ -219,6 +249,7 @@ function redraw() {
   setSelected(props.selectedId, null)
   hoveredId = null
   map.getCanvas().style.cursor = ''
+  applyFocus()
 }
 
 /** (Re)builds the data layers: on the first style and after every basemap swap. */
@@ -226,7 +257,10 @@ function installRegions() {
   if (!map || !props.regions || !styleReady) return
   addRegionLayers(map, props.regions, props.scale, theme.value)
   addStationLayers(map, props.markers ?? NO_POINTS, props.scale, theme.value)
+  if (props.focusOutlines) addFocusLayers(map, props.focusOutlines)
+  if (props.countryBorder) addCountryBorder(map, props.countryBorder, theme.value)
   setFutureHatch(map, props.future)
+  setCountryBorder(map, props.projection ?? false)
   redraw()
 }
 
@@ -333,6 +367,13 @@ watch(
     if (!viewTouched) frameSelection(false)
   },
 )
+watch(
+  () => props.focusOutlines,
+  (outlines) => {
+    if (map && outlines && styleReady) addFocusLayers(map, outlines)
+    applyFocus()
+  },
+)
 watch(() => props.values, tweenTo)
 watch(
   () => props.scale,
@@ -340,7 +381,22 @@ watch(
 )
 watch(
   () => props.future,
-  (future) => map && setFutureHatch(map, future),
+  (future) => {
+    if (!map) return
+    setFutureHatch(map, future)
+  },
+)
+watch(
+  () => props.projection,
+  (projection) => map && setCountryBorder(map, projection ?? false),
+)
+watch(
+  () => props.countryBorder,
+  (border) => {
+    if (!map || !border || !styleReady) return
+    addCountryBorder(map, border, theme.value)
+    setCountryBorder(map, props.projection ?? false)
+  },
 )
 watch(
   () => props.insets,
@@ -352,6 +408,7 @@ watch(
   () => props.selectedId,
   (id, previous) => {
     setSelected(id, previous)
+    applyFocus()
     frameSelection(true)
   },
 )

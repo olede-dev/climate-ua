@@ -163,7 +163,10 @@ function applyGrid() {
       grid.file,
       grid.values,
       props.scale,
-      props.regions.features.map((f) => f.geometry),
+      // In focus only the selected region is painted; imagery shows around it.
+      props.regions.features
+        .filter((f) => !focused() || f.properties.id === props.selectedId)
+        .map((f) => f.geometry),
     )
     setGridImage(map, { url: gridCanvas.toDataURL(), coordinates: gridCorners(grid.file) })
   }
@@ -222,7 +225,7 @@ function applyFillOpacity() {
 
 /** Switches the focus view on or off; labels follow, but not on every hover. */
 function applyFocus() {
-  applyFillOpacity()
+  applyGrid()
   if (map && styleReady) setPlaceLabelsOnImagery(map, theme.value, focused())
 }
 

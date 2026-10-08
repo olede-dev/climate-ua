@@ -151,6 +151,15 @@ export const en: Messages = {
     rank: 'Place {place} of {of} by size',
     boundsHint:
       'The map shows the low or high end of the projection: 10% of climate models give less or more.',
+    normBar: {
+      more: '{delta} above the norm',
+      less: '{delta} below the norm',
+      same: 'At the norm',
+      usual: 'norm',
+      min: 'min',
+      max: 'max',
+      note: 'The norm is the {norm} average, the WMO standard. Min and max are over {record}.',
+    },
     normNote: 'The norm is the {period} average: {value}.',
     /** `{delta}`. */
     moreThanUsual: '{delta} above the norm',
@@ -192,9 +201,7 @@ export const en: Messages = {
   },
   koppen: {
     title: 'Köppen climate type',
-    now: 'The region’s climate today: {name} ({code}).',
-    future: 'In {period}: {name} ({code}).',
-    same: 'In {period} the Köppen climate type stays the same.',
+    now: 'Now',
     note: 'Climate type after Beck et al. (2023), projected under scenario {scenario}; the class covering most of the region.',
   },
   waterUse: {

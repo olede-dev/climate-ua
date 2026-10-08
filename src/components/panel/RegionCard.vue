@@ -11,6 +11,7 @@ import { isFuture, type TimeStep } from '../../lib/time'
 import type { LayerFile, LayerId, RegionSeries, Sectors, WaterBand } from '../../types'
 import ClimateAnalog from './ClimateAnalog.vue'
 import CountrySummary from './CountrySummary.vue'
+import NormBar from './NormBar.vue'
 import SectorBar from './SectorBar.vue'
 
 const props = defineProps<{
@@ -77,6 +78,9 @@ const rank = computed(() => {
     t.value.panel.rank.replace('{place}', String(place.place)).replace('{of}', String(place.of))
   )
 })
+
+/** Climate layers draw the norm as a bar (`NormBar`) in place of the summary's two sentences. */
+const climate = computed(() => props.config.geometry === 'oblasts')
 
 const allZero = computed(
   () =>
@@ -147,12 +151,21 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
         :config="config"
         :copy="copy"
         :format="format"
-        :compact="compact"
+        :compact="compact || climate"
         :value-color="valueColor"
         :focus="focus"
         :note="rank"
       />
-      <SectorBar v-if="sectors && typeof step === 'number'" :sectors="sectors" :year="step" />
+      <NormBar
+        v-if="climate"
+        :rows="rows"
+        :file="file"
+        :series="series"
+        :config="config"
+        :format="format"
+        :focus="focus"
+      />
+      <SectorBar v-else-if="sectors && typeof step === 'number'" :sectors="sectors" :year="step" />
       <SectorBar v-else-if="series.sectors" :sectors="series.sectors" :year="file.history.to" />
     </template>
 
@@ -200,7 +213,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       />
     </figure>
 
-    <ClimateAnalog v-if="config.geometry === 'oblasts'" :region-id="id" />
+    <ClimateAnalog v-if="climate" :region-id="id" />
 
     <SectorBar
       v-if="hasData && projection && series.sectors"

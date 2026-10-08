@@ -33,6 +33,9 @@ const SELECTED: ExpressionSpecification = ['boolean', ['feature-state', 'selecte
 const FILL_OPACITY = 0.9
 /** While a region is hovered, the rest dim (SPEC §7). */
 const DIMMED_OPACITY = 0.45
+/** The grid raster in focus: the gradient still reads, fields and towns show through. */
+const FOCUS_GRID_OPACITY = 0.75
+
 /** In focus the selected basin is a tint over the imagery; the hovered one stays findable. */
 const FOCUS_SELECTED_OPACITY = 0.5
 const FOCUS_HOVER_OPACITY = 0.3
@@ -206,7 +209,13 @@ export function addFocusLayers(map: MaplibreMap, oblasts: OblastsFile) {
       id: FOCUS_SATELLITE,
       type: 'raster',
       source: FOCUS_SATELLITE,
-      paint: { 'raster-opacity': 0, 'raster-opacity-transition': FOCUS_FADE },
+      // Muted: the fields' own colour and contrast would drown the grid's gradient over them.
+      paint: {
+        'raster-opacity': 0,
+        'raster-opacity-transition': FOCUS_FADE,
+        'raster-saturation': -0.6,
+        'raster-contrast': -0.3,
+      },
     },
     REGION_FILL,
   )
@@ -251,6 +260,10 @@ export function setFillOpacity(
           ? ['case', HOVER, FILL_OPACITY, DIMMED_OPACITY]
           : FILL_OPACITY,
   )
+  // In focus the raster is clipped to the selected region and laid over the imagery,
+  // so the differences inside the region stay readable.
+  if (map.getLayer(GRID))
+    map.setPaintProperty(GRID, 'raster-opacity', focused ? FOCUS_GRID_OPACITY : FILL_OPACITY)
   map.setPaintProperty(REGION_LINE, 'line-opacity', focused ? 0 : 1)
   // The theme's dark outline is lost on imagery; white reads on both.
   map.setPaintProperty(REGION_HIGHLIGHT, 'line-color', focused ? '#ffffff' : INK[theme].outline)

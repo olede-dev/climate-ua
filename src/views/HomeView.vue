@@ -581,7 +581,7 @@ const tooltip = computed(() => {
           :selected-id="ui.regionId"
           :country-border="countryBorder"
           :projection="waterFuture || (step !== null && isFuture(step))"
-          :focus-outlines="config.geometry === 'basins' ? oblastsQuery.data.value : null"
+          :focus-outlines="config.geometry === 'stations' ? null : oblastsQuery.data.value"
           :insets="isWide ? insets : undefined"
           :controls="isWide ? controls : undefined"
           @basemap="basemap = $event"

@@ -204,14 +204,6 @@ function onKeydown(event: KeyboardEvent) {
         @close="emit('close')"
       />
       <div v-else class="space-y-3">
-        <button
-          v-if="futureOn"
-          type="button"
-          class="text-xs font-medium text-accent-ink hover:underline focus-ring"
-          @click="openFuture(false)"
-        >
-          ← {{ t.waterUse.back }}
-        </button>
         <WaterTabs
           v-if="water?.view === 'future' && projection"
           :model-value="projection.scenario"
@@ -279,8 +271,24 @@ function onKeydown(event: KeyboardEvent) {
         </div>
       </div>
     </div>
-    <!-- Pinned under the scroll, so the way into the projection is always in reach. -->
-    <div v-if="futureOffered" class="shrink-0 px-4 pb-4">
+    <!-- Pinned under the scroll, so the way into the projection, and back, is always in reach. -->
+    <div v-if="futureOn" class="shrink-0 px-4 pb-4">
+      <button
+        type="button"
+        class="group flex w-full items-center gap-3 rounded-xl bg-accent px-3 py-3 text-left text-white shadow-card transition-colors hover:bg-accent-hover focus-ring"
+        @click="openFuture(false)"
+      >
+        <span
+          aria-hidden="true"
+          class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg text-white transition-transform group-hover:-translate-x-0.5"
+          >←</span
+        >
+        <span class="text-xs font-semibold tracking-wide text-white uppercase">{{
+          t.waterUse.back
+        }}</span>
+      </button>
+    </div>
+    <div v-else-if="futureOffered" class="shrink-0 px-4 pb-4">
       <button
         type="button"
         class="group flex w-full items-center gap-3 future-gradient rounded-xl px-3 py-3 text-left text-white shadow-card transition-[filter] hover:brightness-110 focus-ring"

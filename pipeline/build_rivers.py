@@ -55,6 +55,7 @@ def low_flow_days(days: list[str], discharge: list[float | None], norm: np.ndarr
 
 def main() -> None:
     first, last = config.RIVERS_YEARS
+    norm_first, norm_last = config.RIVERS_NORM
     stations = []
     for station in config.RIVER_STATIONS:
         daily = json.loads((config.RIVERS_DIR / f"{station.id}.json").read_text())["daily"]
@@ -72,7 +73,7 @@ def main() -> None:
                 "lat": station.marker[0],
                 "lon": station.marker[1],
                 "lowFlowDays": counts,
-                "normLowFlowDays": round(sum(counts) / len(counts), 1),
+                "normLowFlowDays": round(float(np.mean(counts[norm_first - first : norm_last - first + 1])), 1),
             }
         )
         print(f"  {station.id:26} mean {stations[-1]['normLowFlowDays']:5.1f}, range {min(counts)}–{max(counts)}")

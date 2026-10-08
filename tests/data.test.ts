@@ -131,8 +131,10 @@ describe('rivers.json', () => {
         expect(days).toBeGreaterThanOrEqual(0)
         expect(days).toBeLessThanOrEqual(366)
       }
-      const mean = s.lowFlowDays.reduce((a, b) => a + b, 0) / s.lowFlowDays.length
-      expect(s.normLowFlowDays).toBeCloseTo(mean, 1)
+      // The norm covers 1997–2020 (pipeline RIVERS_NORM), where p10 days average about 36.5 a year.
+      const norm = s.lowFlowDays.slice(0, 2020 - years.from + 1)
+      const mean = norm.reduce((a, b) => a + b, 0) / norm.length
+      expect(s.normLowFlowDays, s.id).toBeCloseTo(mean, 1)
     }
   })
 })

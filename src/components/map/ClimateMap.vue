@@ -48,8 +48,12 @@ const props = defineProps<{
   /** Hatch the fill: the current step is a projection. */
   future: boolean
   selectedId: string | null
-  /** Pixels on the left covered by a panel; framing keeps Ukraine clear of it. */
-  insetLeft?: number
+  /**
+   * Pixels on each side covered by the panels floating over a full-screen map; framing keeps
+   * Ukraine clear of them and the zoom buttons sit inside them. Unset: nothing covers the map
+   * but its own timeline.
+   */
+  insets?: Required<PaddingOptions>
 }>()
 const emit = defineEmits<{
   basemap: [kind: BasemapKind]
@@ -63,6 +67,8 @@ const UKRAINE_BOUNDS: LngLatBoundsLike = [
 ]
 /** Room for the zoom buttons above and the timeline below. */
 const PADDING = { top: 48, bottom: 96, left: 16, right: 56 }
+/** Gap between Ukraine and the panels around it; the right one leaves room for the zoom buttons. */
+const INSET_GAP = { top: 16, bottom: 16, left: 16, right: 56 }
 /** Shown until the basemap style arrives. */
 const EMPTY_STYLE: StyleSpecification = { version: 8, sources: {}, layers: [] }
 /** Colours slide between timeline steps (SPEC §7). */
@@ -158,7 +164,14 @@ function setHovered(id: string | null) {
 }
 
 function padding(): PaddingOptions {
-  return { ...PADDING, left: PADDING.left + (props.insetLeft ?? 0) }
+  const insets = props.insets
+  if (!insets) return PADDING
+  return {
+    top: insets.top + INSET_GAP.top,
+    bottom: insets.bottom + INSET_GAP.bottom,
+    left: insets.left + INSET_GAP.left,
+    right: insets.right + INSET_GAP.right,
+  }
 }
 
 function fitUkraine(animate: boolean) {
@@ -326,7 +339,7 @@ watch(
   (future) => map && setFutureHatch(map, future),
 )
 watch(
-  () => props.insetLeft,
+  () => props.insets,
   () => {
     if (!viewTouched) frameSelection(false)
   },
@@ -341,8 +354,21 @@ watch(
 </script>
 
 <template>
-  <div class="relative size-full">
+  <div
+    class="relative size-full"
+    :style="
+      insets && { '--controls-top': `${insets.top}px`, '--controls-right': `${insets.right}px` }
+    "
+  >
     <div ref="container" class="size-full" role="region" :aria-label="t.home.map"></div>
     <slot />
   </div>
 </template>
+
+<style scoped>
+/* The zoom buttons sit in the corner left free by the panels over the map. */
+:deep(.maplibregl-ctrl-top-right) {
+  top: var(--controls-top, 0);
+  right: var(--controls-right, 0);
+}
+</style>

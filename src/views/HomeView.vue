@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import type { PaddingOptions } from 'maplibre-gl'
+import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch, watchEffect } from 'vue'
 
 import AppFooter from '../components/layout/AppFooter.vue'
 import AppHeader from '../components/layout/AppHeader.vue'
@@ -200,6 +201,19 @@ const legend = computed(() => {
   }
 })
 
+const timelineScenario = computed(() =>
+  waterFuture.value
+    ? t.value.waterUse.scenarios[ui.waterScenario].name
+    : (layer.value?.scenario ?? null),
+)
+
+const legendProps = computed(() => ({
+  title: copy.value.legendTitle,
+  gradient: gradient.value,
+  min: legend.value.min,
+  max: legend.value.max,
+}))
+
 const stepLabel = computed(() => {
   if (step.value === null) return ''
   if (waterFuture.value) {
@@ -258,10 +272,44 @@ const tableCaption = computed(
   () => `${copy.value.legendTitle} · ${stepLabel.value}. ${t.value.table.hint}`,
 )
 
-/** Tailwind's `md`: the panel floats over the map; below it, a card under the map. */
+/** Tailwind's `md`: the map fills the window under floating panels; below it, the panel is a
+ * card under the map. */
 const isWide = useMediaQuery('(min-width: 48rem)')
-/** The panel's width (`w-[22rem]`) and the gutter beside it. */
-const PANEL_INSET = 352 + 12
+
+/** The panels around the full-screen map, measured so the map frames Ukraine between them. */
+const headerBar = useTemplateRef<InstanceType<typeof AppHeader>>('headerBar')
+const panel = useTemplateRef<InstanceType<typeof SidePanel>>('panel')
+const layersCard = useTemplateRef<HTMLElement>('layersCard')
+const bottomBar = useTemplateRef<HTMLElement>('bottomBar')
+const insets = ref<Required<PaddingOptions>>({ top: 0, bottom: 0, left: 0, right: 0 })
+
+function measureInsets() {
+  const rect = (el: unknown) => (el instanceof HTMLElement ? el.getBoundingClientRect() : null)
+  const width = window.innerWidth
+  const height = window.innerHeight
+  const next = {
+    top: Math.round(rect(headerBar.value?.$el)?.bottom ?? 0),
+    left: Math.round(rect(panel.value?.$el)?.right ?? 0),
+    right: Math.round(width - (rect(layersCard.value)?.left ?? width)),
+    bottom: Math.round(height - (rect(bottomBar.value)?.top ?? height)),
+  }
+  const now = insets.value
+  // A new object reframes the map, so only a real change makes one.
+  if ((Object.keys(next) as (keyof PaddingOptions)[]).some((k) => next[k] !== now[k])) {
+    insets.value = next
+  }
+}
+const insetObserver = new ResizeObserver(measureInsets)
+watchEffect((onCleanup) => {
+  const els = [headerBar.value?.$el, panel.value?.$el, layersCard.value, bottomBar.value]
+  for (const el of els) if (el instanceof HTMLElement) insetObserver.observe(el)
+  window.addEventListener('resize', measureInsets)
+  onCleanup(() => {
+    insetObserver.disconnect()
+    window.removeEventListener('resize', measureInsets)
+  })
+})
+onBeforeUnmount(() => insetObserver.disconnect())
 
 /** Tailwind's `lg`: the layers are a column beside the map that can be folded away. */
 const isDesktop = useMediaQuery('(min-width: 64rem)')
@@ -349,9 +397,15 @@ const tooltip = computed(() => {
 </script>
 
 <template>
-  <!-- Every block is a rounded card on the canvas, separated by one gutter (gap and padding). -->
-  <div class="flex min-h-dvh flex-col gap-2 bg-canvas p-2 sm:gap-3 sm:p-3 md:h-dvh">
-    <AppHeader>
+  <!-- Wide: the map fills the window and every other block floats over it. Narrow: rounded
+       cards on the canvas, separated by one gutter (gap and padding). -->
+  <div
+    class="flex flex-col bg-canvas"
+    :class="
+      isWide ? 'h-dvh gap-3 overflow-hidden px-3 pt-3' : 'min-h-dvh gap-2 p-2 sm:gap-3 sm:p-3'
+    "
+  >
+    <AppHeader ref="headerBar">
       <button
         v-if="!isWide"
         type="button"
@@ -411,9 +465,17 @@ const tooltip = computed(() => {
         </aside>
       </div>
     </Teleport>
-    <main class="flex flex-1 flex-col gap-2 sm:gap-3 md:min-h-0 lg:flex-row">
+    <main
+      class="flex flex-1"
+      :class="isWide ? 'pointer-events-none min-h-0 gap-3' : 'flex-col gap-2 sm:gap-3'"
+    >
       <section
-        class="relative isolate h-[62dvh] min-w-0 shrink-0 overflow-hidden rounded-2xl shadow-card md:h-auto md:flex-1"
+        class="isolate min-w-0"
+        :class="
+          isWide
+            ? 'pointer-events-auto fixed inset-0 z-0'
+            : 'relative h-[62dvh] shrink-0 overflow-hidden rounded-2xl shadow-card'
+        "
         :aria-label="t.home.map"
       >
         <RegionTable
@@ -432,7 +494,7 @@ const tooltip = computed(() => {
           :scale="config.scale"
           :future="step !== null && isFuture(step)"
           :selected-id="ui.regionId"
-          :inset-left="isWide ? PANEL_INSET : 0"
+          :insets="isWide ? insets : undefined"
           @basemap="basemap = $event"
           @hover="hover = $event"
           @select="ui.regionId = $event"
@@ -456,56 +518,65 @@ const tooltip = computed(() => {
             :gradient="gradient"
             :position="tooltip.position"
           />
-          <!-- The panel on the left above the timeline, which spans the map (SPEC §8.1). -->
-          <div class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3">
-            <div class="flex min-h-0 flex-1 items-end justify-between gap-3">
-              <SidePanel
-                v-if="isWide && layer && step !== null"
-                class="glass pointer-events-auto max-h-full w-[22rem] self-start rounded-2xl shadow-float"
-                :file="layer"
-                :config="config"
-                :copy="copy"
-                :step="step"
-                :format="valueFormatter"
-                :region="selected"
-                :water="waterState"
-                :projection="projection"
-                :region-projection="regionProjection"
-                @close="ui.regionId = null"
-                @sector="ui.waterSector = $event"
-                @view="setWaterView"
-                @scenario="ui.waterScenario = $event"
-                @bound="ui.waterBound = $event"
-              />
-              <!-- The legend in the corner above the timeline (SPEC §7). -->
-              <MapLegend
-                v-if="layer"
-                class="pointer-events-auto ml-auto"
-                :title="copy.legendTitle"
-                :gradient="gradient"
-                :low="copy.low"
-                :high="copy.high"
-                :min="legend.min"
-                :max="legend.max"
-                :middle="config.display === 'anomaly' ? copy.norm : undefined"
-              />
-            </div>
+          <!-- Narrow: the timeline over the bottom of the map card. -->
+          <div
+            v-if="!isWide"
+            class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3"
+          >
             <TimeSlider
               v-if="axis && layer"
               v-model="timeModel"
               v-model:playing="ui.playing"
               :axis="axis"
-              :scenario="waterFuture ? t.waterUse.scenarios[ui.waterScenario].name : layer.scenario"
+              :scenario="timelineScenario"
             />
           </div>
         </ClimateMap>
       </section>
-      <!-- The layers in a card of their own: a column right of the map on wide screens;
-           under the map on narrower ones. -->
+      <!-- Narrow: the legend in a card right under the map (SPEC §7). -->
+      <MapLegend
+        v-if="!isWide && layer"
+        v-bind="legendProps"
+        class="rounded-2xl bg-surface px-3 py-2 shadow-card"
+      />
+      <!-- Wide: the panel on the left, the layers on the right, the timeline
+           between them at the bottom (SPEC §8.1). -->
+      <SidePanel
+        v-if="isWide && layer && step !== null"
+        ref="panel"
+        class="glass pointer-events-auto relative z-10 max-h-full w-[22rem] shrink-0 self-start rounded-2xl shadow-float"
+        :file="layer"
+        :config="config"
+        :copy="copy"
+        :step="step"
+        :format="valueFormatter"
+        :region="selected"
+        :water="waterState"
+        :projection="projection"
+        :region-projection="regionProjection"
+        @close="ui.regionId = null"
+        @sector="ui.waterSector = $event"
+        @view="setWaterView"
+        @scenario="ui.waterScenario = $event"
+        @bound="ui.waterBound = $event"
+      />
+      <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
+        <div ref="bottomBar" class="relative z-10 flex items-end justify-center gap-3">
+          <TimeSlider
+            v-if="axis && layer"
+            v-model="timeModel"
+            v-model:playing="ui.playing"
+            class="max-w-2xl min-w-0 flex-1"
+            :axis="axis"
+            :scenario="timelineScenario"
+          />
+        </div>
+      </div>
       <aside
         v-if="isWide"
-        class="shrink-0 rounded-2xl bg-surface shadow-card"
-        :class="layersHidden ? 'p-2 lg:overflow-y-auto' : 'p-3 lg:w-64 lg:overflow-y-auto xl:w-72'"
+        ref="layersCard"
+        class="glass pointer-events-auto relative z-10 max-h-full shrink-0 self-start overflow-y-auto rounded-2xl shadow-float"
+        :class="layersHidden ? 'p-2' : 'p-3 lg:w-64 xl:w-72'"
         :aria-label="t.home.layers"
       >
         <LayerList
@@ -561,6 +632,14 @@ const tooltip = computed(() => {
         @bound="ui.waterBound = $event"
       />
     </main>
-    <AppFooter :basemap="basemap" />
+    <!-- Wide: the credits and the legend in a solid strip along the bottom of the window. -->
+    <div
+      v-if="isWide"
+      class="relative z-10 -mx-3 flex items-center gap-6 border-t border-line bg-surface px-3 py-1"
+    >
+      <AppFooter :basemap="basemap" class="min-w-0 flex-1" />
+      <MapLegend v-if="layer" v-bind="legendProps" class="shrink-0" />
+    </div>
+    <AppFooter v-else :basemap="basemap" class="px-2 pb-1" />
   </div>
 </template>

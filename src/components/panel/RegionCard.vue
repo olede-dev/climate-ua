@@ -7,7 +7,7 @@ import type { Messages } from '../../i18n'
 import type { ValueFormat } from '../../lib/format'
 import { colorAt } from '../../lib/scale'
 import { rankAt, summaryRows } from '../../lib/summary'
-import type { TimeStep } from '../../lib/time'
+import { isFuture, type TimeStep } from '../../lib/time'
 import type { LayerFile, LayerId, RegionSeries, Sectors, WaterBand } from '../../types'
 import ClimateAnalog from './ClimateAnalog.vue'
 import CountrySummary from './CountrySummary.vue'
@@ -64,8 +64,10 @@ const rows = computed(() =>
     props.config.display,
   ),
 )
+/** On a projection period the big number is the projection, as in the country summary. */
+const focus = computed(() => (isFuture(props.step) ? 'future' : 'observed'))
 const valueColor = computed(() => {
-  const mapValue = rows.value.find((row) => row.kind === 'observed')?.mapValue
+  const mapValue = rows.value.find((row) => row.kind === focus.value)?.mapValue
   return mapValue != null ? colorAt(props.config.scale, mapValue) : null
 })
 const rank = computed(() => {
@@ -147,6 +149,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
         :format="format"
         :compact="compact"
         :value-color="valueColor"
+        :focus="focus"
         :note="rank"
       />
       <SectorBar v-if="sectors && typeof step === 'number'" :sectors="sectors" :year="step" />

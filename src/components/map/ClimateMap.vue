@@ -18,7 +18,13 @@ import type { MapMark } from '../../lib/river/marks'
 import { markerRadius, stationPoints } from '../../lib/rivers'
 import type { GridFile, OblastsFile, RegionsFile, RiverLinesFile, Station } from '../../types'
 import { useTheme } from '../../composables/useTheme'
-import { basemapStyle, setPlaceLabelsOnImagery, type BasemapKind } from './basemap'
+import {
+  applyLabelFilters,
+  basemapStyle,
+  setPlaceLabelsOnImagery,
+  type BasemapKind,
+  type LabelFilter,
+} from './basemap'
 import {
   addCountryBorder,
   addFocusLayers,
@@ -116,6 +122,8 @@ let animator: ReturnType<typeof createStationAnimator> | undefined
 /** Stations whose markers the source holds, and the station whose river reach is outlined. */
 let shownStations: Station[] | null = null
 let riverFocus: string | null = null
+/** The label masks of the style being loaded, applied once it is in. */
+let labelFilters: LabelFilter[] = []
 
 const gridCanvas = document.createElement('canvas')
 
@@ -123,8 +131,9 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
 function applyStyle() {
   const own = ++styleRequest
-  void basemapStyle(locale.value, theme.value).then(({ style, kind }) => {
+  void basemapStyle(locale.value, theme.value).then(({ style, kind, labelFilters: filters }) => {
     if (!map || own !== styleRequest) return
+    labelFilters = filters
     // A tween mid-flight would write feature state into a style that is still loading;
     // `installRegions` redraws the current values once the new one is in.
     cancelAnimationFrame(tweenFrame)
@@ -422,6 +431,8 @@ onMounted(async () => {
     shownStations = null
     riverFocus = null
     installRegions()
+    const own = styleRequest
+    if (map) applyLabelFilters(map, labelFilters, () => own === styleRequest)
   })
   map.on('sourcedata', (event) => {
     if (

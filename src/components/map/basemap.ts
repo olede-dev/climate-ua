@@ -96,6 +96,7 @@ function adaptStyle(
   locale: Locale,
   theme: Theme,
   hiddenLabels: HiddenLabelsFile | null,
+  labelFilters: LabelFilter[],
 ): StyleSpecification {
   const { water, placeLabel } = PALETTES[theme]
   const label = ['coalesce', ['get', `name:${locale}`], ['get', 'name:latin'], ['get', 'name']]
@@ -109,9 +110,14 @@ function adaptStyle(
     }
     if (layer.type === 'symbol' && layer.layout?.['text-field'] !== undefined) {
       const outside = hiddenLabels && (['!', ['within', hiddenLabels]] as FilterSpecification)
-      const filter = outside
-        ? ((layer.filter ? ['all', layer.filter, outside] : outside) as FilterSpecification)
-        : layer.filter
+      // The mask is thousands of points; in every label layer at once it would block a phone's
+      // main thread on the style load. The labels start hidden and get it one layer per task.
+      if (outside)
+        labelFilters.push([
+          layer.id,
+          (layer.filter ? ['all', layer.filter, outside] : outside) as FilterSpecification,
+        ])
+      const filter = outside ? HIDDEN : layer.filter
       const paint =
         layer['source-layer'] === 'place'
           ? {
@@ -164,10 +170,33 @@ async function loadHiddenLabels(): Promise<HiddenLabelsFile | null> {
 
 export type BasemapKind = 'openfreemap' | 'esri'
 
+/** A label layer and the filter, mask included, it gets after the style loads. */
+export type LabelFilter = [layerId: string, filter: FilterSpecification]
+
+const HIDDEN: FilterSpecification = ['boolean', false]
+
+/**
+ * Gives the label layers their masked filters, one layer per task so no task runs long.
+ * `current` turns false once a newer style replaces this one.
+ */
+export function applyLabelFilters(
+  map: MaplibreMap,
+  filters: LabelFilter[],
+  current: () => boolean,
+) {
+  const next = (i: number) => {
+    if (i >= filters.length || !current()) return
+    const [id, filter] = filters[i]!
+    if (map.getLayer(id)) map.setFilter(id, filter, NO_VALIDATE)
+    setTimeout(() => next(i + 1), 0)
+  }
+  next(0)
+}
+
 export async function basemapStyle(
   locale: Locale,
   theme: Theme,
-): Promise<{ style: StyleSpecification; kind: BasemapKind }> {
+): Promise<{ style: StyleSpecification; kind: BasemapKind; labelFilters: LabelFilter[] }> {
   try {
     const [response, hiddenLabels] = await Promise.all([
       fetch(PALETTES[theme].styleUrl),
@@ -175,9 +204,11 @@ export async function basemapStyle(
     ])
     if (!response.ok) throw new Error(`OpenFreeMap style: HTTP ${response.status}`)
     const style = (await response.json()) as StyleSpecification
-    return { style: adaptStyle(style, locale, theme, hiddenLabels), kind: 'openfreemap' }
+    const labelFilters: LabelFilter[] = []
+    const adapted = adaptStyle(style, locale, theme, hiddenLabels, labelFilters)
+    return { style: adapted, kind: 'openfreemap', labelFilters }
   } catch (error) {
     console.warn('Vector basemap failed to load; switching to Esri Gray Canvas', error)
-    return { style: esriStyle(theme), kind: 'esri' }
+    return { style: esriStyle(theme), kind: 'esri', labelFilters: [] }
   }
 }

@@ -7,6 +7,8 @@ import type {
   KoppenFile,
   LayerFile,
   OblastsFile,
+  RiverLinesFile,
+  RiverNormsFile,
   RiversFile,
   WaterUseFile,
 } from '../src/types'
@@ -29,6 +31,19 @@ const [oblastsText] = Object.values(
 )
 const [rivers] = Object.values(
   import.meta.glob<RiversFile>('../public/data/rivers.json', { eager: true, import: 'default' }),
+)
+const [riverNorms] = Object.values(
+  import.meta.glob<RiverNormsFile>('../public/data/river-norms.json', {
+    eager: true,
+    import: 'default',
+  }),
+)
+const [riverLinesText] = Object.values(
+  import.meta.glob<string>('../public/data/river-lines.geojson', {
+    eager: true,
+    import: 'default',
+    query: '?raw',
+  }),
 )
 const [koppen] = Object.values(
   import.meta.glob<KoppenFile>('../public/data/koppen.json', { eager: true, import: 'default' }),
@@ -148,10 +163,16 @@ describe('rivers.json', () => {
       expect(s.id).toMatch(/^[a-z0-9-]{1,40}$/)
       expect(typeof s.regulated, s.id).toBe('boolean')
       for (const name of [s.river, s.place, s.riverEn, s.placeEn]) expect(name, s.id).not.toBe('')
-      expect(s.lon).toBeGreaterThan(22)
-      expect(s.lon).toBeLessThan(40.3)
-      expect(s.lat).toBeGreaterThan(44.3)
-      expect(s.lat).toBeLessThan(52.4)
+      expect(rivers!.basins, s.id).toContain(s.basin)
+      for (const { lat, lon } of [s.cell, s.marker]) {
+        expect(lon, s.id).toBeGreaterThan(22)
+        expect(lon, s.id).toBeLessThan(40.3)
+        expect(lat, s.id).toBeGreaterThan(44.3)
+        expect(lat, s.id).toBeLessThan(52.4)
+      }
+      // A GloFAS cell is about 5 km; a marker farther away sits on another river.
+      expect(Math.abs(s.cell.lat - s.marker.lat), s.id).toBeLessThan(0.1)
+      expect(Math.abs(s.cell.lon - s.marker.lon), s.id).toBeLessThan(0.1)
       expect(s.lowFlowDays, s.id).toHaveLength(years.to - years.from + 1)
       for (const days of s.lowFlowDays) {
         expect(Number.isInteger(days)).toBe(true)
@@ -166,6 +187,65 @@ describe('rivers.json', () => {
       const mean = norm.reduce((a, b) => a + b, 0) / norm.length
       expect(s.normLowFlowDays, s.id).toBeCloseTo(mean, 1)
     }
+  })
+})
+
+describe('river-norms.json', () => {
+  const stationIds = (rivers?.stations ?? []).map((s) => s.id).sort()
+
+  it('has ordered percentiles for all 365 days of every registry station', () => {
+    expect(riverNorms).toBeDefined()
+    expect(Object.keys(riverNorms!.stations).sort()).toEqual(stationIds)
+    for (const [id, { meanAnnual, doy }] of Object.entries(riverNorms!.stations)) {
+      expect(meanAnnual, id).toBeGreaterThan(0)
+      expect(doy, id).toHaveLength(365)
+      for (const [i, d] of doy.entries()) {
+        const ordered = [d.p10, d.p25, d.median, d.p75, d.p90]
+        expect(ordered, `${id} day ${i + 1}`).toEqual([...ordered].sort((a, b) => a - b))
+        expect(d.p10, `${id} day ${i + 1}`).toBeGreaterThanOrEqual(0)
+      }
+    }
+  })
+
+  it('lists the same low-flow days that rivers.json counts', () => {
+    // The station card counts day lists, the map counts rivers.json: they must not disagree.
+    expect(riverNorms!.years).toEqual(rivers!.years)
+    for (const s of rivers!.stations) {
+      const { lowFlowDays, meanAnnual } = riverNorms!.stations[s.id]!
+      expect(
+        lowFlowDays.map((days) => days.length),
+        s.id,
+      ).toEqual(s.lowFlowDays)
+      expect(meanAnnual, s.id).toBe(s.meanAnnual)
+      for (const days of lowFlowDays) {
+        for (const day of days) {
+          expect(day).toBeGreaterThanOrEqual(1)
+          expect(day).toBeLessThanOrEqual(365)
+        }
+      }
+    }
+  })
+})
+
+describe('river-lines.geojson', () => {
+  const lines = JSON.parse(riverLinesText ?? '{"features":[]}') as RiverLinesFile
+
+  it('are line strings, each a main river or a tributary', () => {
+    expect(lines.features.length).toBeGreaterThan(50)
+    for (const { properties, geometry } of lines.features) {
+      expect(geometry.type).toBe('LineString')
+      expect(geometry.coordinates.length).toBeGreaterThanOrEqual(2)
+      expect(typeof properties.major).toBe('boolean')
+    }
+  })
+
+  it('tints runs only by registry stations, every station tinting one, in four fade steps', () => {
+    const tinted = lines.features.filter((f) => f.properties.tintId !== undefined)
+    const plain = lines.features.filter((f) => f.properties.tintId === undefined)
+    const stationIds = (rivers?.stations ?? []).map((s) => s.id).sort()
+    expect([...new Set(tinted.map((f) => f.properties.tintId))].sort()).toEqual(stationIds)
+    expect([0, 1, 2, 3]).toEqual(expect.arrayContaining(tinted.map((f) => f.properties.tintStep)))
+    expect(plain.filter((f) => f.properties.tintStep !== undefined)).toEqual([])
   })
 })
 

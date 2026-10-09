@@ -70,10 +70,15 @@ describe('stationLabel', () => {
     place: 'Київ',
     riverEn: 'Dnipro',
     placeEn: 'Kyiv',
-    lat: 50.39,
-    lon: 30.59,
-    lowFlowDays: [1, 2],
+    basin: 'dnipro',
+    focus: true,
+    cell: { lat: 50.4, lon: 30.52 },
+    marker: { lat: 50.39, lon: 30.59 },
     regulated: false,
+    meanAnnual: 977,
+    meanChangePct: -14,
+    lowSeasonChangePct: -46,
+    lowFlowDays: [1, 2],
     normLowFlowDays: 1.5,
   }
 

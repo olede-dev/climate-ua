@@ -1,4 +1,4 @@
-import type { FeatureCollection, MultiPolygon, Polygon } from 'geojson'
+import type { FeatureCollection, LineString, MultiPolygon, Polygon } from 'geojson'
 
 export interface OblastProperties {
   id: string
@@ -20,24 +20,84 @@ export interface BasinProperties {
 
 export type BasinsFile = FeatureCollection<Polygon | MultiPolygon, BasinProperties>
 
+/** `pipeline/config.py` RIVER_BASINS. */
+export type RiverBasin = 'dnipro' | 'dnister' | 'danube' | 'pivdennyi-buh' | 'don'
+
+export interface LatLon {
+  lat: number
+  lon: number
+}
+
+/** The station registry, built from `pipeline/config.py` RIVER_STATIONS. */
 export interface RiversFile {
   years: { from: number; to: number }
   norm: { from: number; to: number }
+  /** Periods of the trend: `meanChangePct` compares `recent` with `baseline`. */
+  baseline: { from: number; to: number }
+  recent: { from: number; to: number }
+  /** Basin filter order. */
+  basins: RiverBasin[]
   stations: {
     id: string
     river: string
     place: string
     riverEn: string
     placeEn: string
-    lat: number
-    lon: number
-    lowFlowDays: number[]
+    basin: RiverBasin
+    /** Prypiat, Desna and Upper Dnipro: listed first. */
+    focus: boolean
+    /** GloFAS cell that discharge is queried at. */
+    cell: LatLon
+    /** Where the map draws the station: on the river line near the cell. */
+    marker: LatLon
     regulated: boolean
+    /** Mean discharge over `norm`, m³/s. */
+    meanAnnual: number
+    /** Mean discharge change, whole percent, for the year and for July–October. */
+    meanChangePct: number
+    lowSeasonChangePct: number
+    lowFlowDays: number[]
     /** Mean of `lowFlowDays` over `norm`: about 36.5 by construction of the p10 threshold. */
     normLowFlowDays: number
   }[]
   source: string
 }
+
+export interface RiverNormDay {
+  p10: number
+  p25: number
+  median: number
+  p75: number
+  p90: number
+}
+
+/** Day-of-year discharge norms; loaded only in the rivers layer. */
+export interface RiverNormsFile {
+  period: { from: number; to: number }
+  smoothingWindowDays: number
+  years: { from: number; to: number }
+  stations: Record<
+    string,
+    {
+      meanAnnual: number
+      /** 365 entries; index 0 is 1 January (29 February counts as 28 February). */
+      doy: RiverNormDay[]
+      /** Days of year below the p10 norm, one list per year of `years`. */
+      lowFlowDays: number[][]
+    }
+  >
+  source: string
+}
+
+export interface RiverLineProperties {
+  /** A Natural Earth main river line; otherwise a European supplement tributary. */
+  major: boolean
+  /** Station whose water state tints this run, and the fade step away from it (0 nearest). */
+  tintId?: string
+  tintStep?: number
+}
+
+export type RiverLinesFile = FeatureCollection<LineString, RiverLineProperties>
 
 export type Station = RiversFile['stations'][number]
 

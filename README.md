@@ -67,8 +67,9 @@ uv run python build_basins.py      # → public/data/basins.geojson
 uv run python build_water_use.py   # → public/data/water-use.json
 uv run python fetch_koppen.py      # Köppen–Geiger maps (~130 MB)
 uv run python build_koppen.py      # → public/data/koppen.json
-uv run python fetch_rivers.py      # GloFAS v4 via Open-Meteo
-uv run python build_rivers.py      # → public/data/rivers.json
+uv run python fetch_rivers.py      # GloFAS v4 via Open-Meteo; fails if a cell holds the wrong river
+uv run python build_rivers.py      # → public/data/{rivers,river-norms}.json
+uv run python build_river_lines.py # → public/data/river-lines.geojson (after build_oblasts.py)
 ```
 
 Raw downloads are stored in `pipeline/data/raw/` and are not committed.

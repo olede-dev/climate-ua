@@ -40,7 +40,7 @@ export function stationPoints(file: RiversFile): FeatureCollection<Point, { id: 
     features: file.stations.map((s): Feature<Point, { id: string }> => ({
       type: 'Feature',
       properties: { id: s.id },
-      geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
+      geometry: { type: 'Point', coordinates: [s.marker.lon, s.marker.lat] },
     })),
   }
 }

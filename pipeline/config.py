@@ -240,6 +240,10 @@ KOPPEN_CLASSES = [
 ]
 KOPPEN_PATH = PUBLIC_DATA / "koppen.json"
 
+#: Basins of the station list's filter, in its order.
+RIVER_BASINS = ("dnipro", "dnister", "danube", "pivdennyi-buh", "don")
+
+
 @dataclass(frozen=True)
 class RiverStation:
     id: str
@@ -247,26 +251,35 @@ class RiverStation:
     place: str
     river_en: str
     place_en: str
+    basin: str
+    #: Prypiat, Desna and Upper Dnipro: the stations listed first.
+    focus: bool
+    #: Gauged long-term mean discharge, m³/s, as an order of magnitude: `fetch_rivers.py` fails
+    #: when the cell's 2010–2019 mean falls outside ×0.3…×3 of it (the wrong river in the cell).
+    expected_mean_range: tuple[float, float]
     #: GloFAS cell (lat, lon) whose mean discharge matches the gauged river, not the town centre.
     cell: tuple[float, float]
+    #: Where the map draws the station: the point on the OpenStreetMap river line nearest to the cell.
     marker: tuple[float, float]
     #: Dams upstream set the flow here (a reservoir cascade): low-flow days follow the power
     #: plants more than the weather, and GloFAS models their operation only roughly.
     regulated: bool = False
 
 
+# fmt: off
 RIVER_STATIONS = [
-    RiverStation("dnipro-kyiv", "Дніпро", "Київ", "Dnipro", "Kyiv", cell=(50.4, 30.52), marker=(50.3877, 30.5868), regulated=True),
-    RiverStation("desna-chernihiv", "Десна", "Чернігів", "Desna", "Chernihiv", cell=(51.47, 31.26), marker=(51.4512, 31.2818)),
-    RiverStation("desna-novhorod-siverskyi", "Десна", "Новгород-Сіверський", "Desna", "Novhorod-Siverskyi", cell=(51.95, 33.27), marker=(51.9418, 33.276)),
-    RiverStation("prypiat-chornobyl", "Прип’ять", "Чорнобиль", "Prypiat", "Chornobyl", cell=(51.23, 30.28), marker=(51.2495, 30.2906)),
-    RiverStation("dnister-zalishchyky", "Дністер", "Заліщики", "Dniester", "Zalishchyky", cell=(48.64, 25.78), marker=(48.6406, 25.7469)),
-    RiverStation("prut-chernivtsi", "Прут", "Чернівці", "Prut", "Chernivtsi", cell=(48.26, 25.98), marker=(48.276, 26.0118)),
-    RiverStation("tysa-vylok", "Тиса", "Вилок", "Tisza", "Vylok", cell=(48.1, 22.78), marker=(48.1095, 22.7734)),
-    RiverStation("danube-izmail", "Дунай", "Ізмаїл", "Danube", "Izmail", cell=(45.34, 28.89), marker=(45.3159, 28.8726)),
-    RiverStation("pivdennyi-buh-pervomaisk", "Південний Буг", "Первомайськ", "Southern Bug", "Pervomaisk", cell=(48.04, 30.85), marker=(48.0438, 30.8414)),
-    RiverStation("siverskyi-donets-izium", "Сіверський Донець", "Ізюм", "Siverskyi Donets", "Izium", cell=(49.16, 37.26), marker=(49.1595, 37.2641)),
+    RiverStation("dnipro-kyiv", "Дніпро", "Київ", "Dnipro", "Kyiv", "dnipro", True, (1000, 1500), cell=(50.4, 30.52), marker=(50.3877, 30.5868), regulated=True),
+    RiverStation("desna-chernihiv", "Десна", "Чернігів", "Desna", "Chernihiv", "dnipro", True, (250, 400), cell=(51.47, 31.26), marker=(51.4512, 31.2818)),
+    RiverStation("desna-novhorod-siverskyi", "Десна", "Новгород-Сіверський", "Desna", "Novhorod-Siverskyi", "dnipro", True, (150, 300), cell=(51.95, 33.27), marker=(51.9418, 33.276)),
+    RiverStation("prypiat-chornobyl", "Прип’ять", "Чорнобиль", "Prypiat", "Chornobyl", "dnipro", True, (350, 500), cell=(51.23, 30.28), marker=(51.2495, 30.2906)),
+    RiverStation("dnister-zalishchyky", "Дністер", "Заліщики", "Dniester", "Zalishchyky", "dnister", False, (150, 300), cell=(48.64, 25.78), marker=(48.6406, 25.7469)),
+    RiverStation("prut-chernivtsi", "Прут", "Чернівці", "Prut", "Chernivtsi", "danube", False, (50, 100), cell=(48.26, 25.98), marker=(48.276, 26.0118)),
+    RiverStation("tysa-vylok", "Тиса", "Вилок", "Tisza", "Vylok", "danube", False, (150, 250), cell=(48.1, 22.78), marker=(48.1095, 22.7734)),
+    RiverStation("danube-izmail", "Дунай", "Ізмаїл", "Danube", "Izmail", "danube", False, (5000, 7000), cell=(45.34, 28.89), marker=(45.3159, 28.8726)),
+    RiverStation("pivdennyi-buh-pervomaisk", "Південний Буг", "Первомайськ", "Southern Bug", "Pervomaisk", "pivdennyi-buh", False, (50, 120), cell=(48.04, 30.85), marker=(48.0438, 30.8414)),
+    RiverStation("siverskyi-donets-izium", "Сіверський Донець", "Ізюм", "Siverskyi Donets", "Izium", "don", False, (30, 80), cell=(49.16, 37.26), marker=(49.1595, 37.2641)),
 ]
+# fmt: on
 
 #: Open-Meteo Flood API: GloFAS v4 reanalysis, daily discharge from 1997 (earlier days are null).
 FLOOD_API_URL = "https://flood-api.open-meteo.com/v1/flood"
@@ -277,3 +290,32 @@ RIVERS_NORM_HALF_WINDOW = 3
 RIVERS_DIR = RAW_DIR / "rivers"
 RIVERS_SOURCE = "GloFAS v4 reanalysis via Open-Meteo"
 RIVERS_PATH = PUBLIC_DATA / "rivers.json"
+RIVER_NORMS_PATH = PUBLIC_DATA / "river-norms.json"
+RIVER_NORM_PERCENTILES = {"p10": 10, "p25": 25, "median": 50, "p75": 75, "p90": 90}
+#: Cell validation: the cell's mean over this period against `expected_mean_range`, with this
+#: tolerance for modelled against gauged discharge.
+RIVERS_VALIDATION_YEARS = (2010, 2019)
+RIVERS_VALIDATION_TOLERANCE = (0.3, 3.0)
+#: Trend: mean discharge change between two 14-year periods, for the year and for July–October,
+#: the summer–autumn low-water season.
+RIVERS_BASELINE = (1997, 2010)
+RIVERS_RECENT = (2012, 2025)
+RIVERS_LOW_SEASON_MONTHS = (7, 8, 9, 10)
+
+RIVER_LINES_PATH = PUBLIC_DATA / "river-lines.geojson"
+#: Cheap pre-filter [W, S, E, N] before the exact cut along the border.
+RIVER_LINES_BOX = (21.5, 43.9, 41.0, 53.0)
+#: ≈1.5 km: river pieces this close to the border on both ends are kept (border rivers).
+RIVER_LINES_BORDER_TOLERANCE = 0.015
+RIVER_LINES_TOLERANCE = 0.004
+RIVER_LINES_DIGITS = 3
+RIVER_LINES_MAX_BYTES = 300 * 1024
+#: Open-Meteo Elevation API, for the lowest loose end (outlet) of each river network; 100
+#: points per request at most.
+ELEVATION_API_URL = "https://api.open-meteo.com/v1/elevation"
+ELEVATION_BATCH = 100
+#: How far along the river a station tints it, how far its marker may sit off the line, and the
+#: number of fade steps from the station outwards.
+RIVER_REACH_KM = 120
+RIVER_SNAP_KM = 4
+RIVER_FADE_STEPS = 4

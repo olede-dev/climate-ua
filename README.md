@@ -80,3 +80,7 @@ uv run python build_rivers.py      # → public/data/rivers.json
 - **Річковий стік:** реаналіз GloFAS v4 (Copernicus Emergency Management Service) через [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api).
 - **Адміністративні межі:** [geoBoundaries](https://www.geoboundaries.org/) (© OpenStreetMap, ODbL); суходіл — [Natural Earth](https://www.naturalearthdata.com/).
 - **Базова карта:** [OpenFreeMap](https://openfreemap.org/), © OpenMapTiles, © OpenStreetMap.
+
+## Ліцензія
+
+Код поширюється за ліцензією [MIT](LICENSE). Дані в `public/data/` походять із зовнішніх джерел і поширюються за їхніми ліцензіями (див. розділ «Джерела даних»).

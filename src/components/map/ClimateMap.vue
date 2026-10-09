@@ -614,4 +614,10 @@ watch(
   bottom: 14px;
   right: var(--controls-right, 0);
 }
+/* Narrow layouts lay the timeline over the map's bottom edge, which would cover the zoom buttons; touch has pinch. */
+@media (max-width: 63.999rem) {
+  :deep(.maplibregl-ctrl-bottom-right) {
+    display: none;
+  }
+}
 </style>

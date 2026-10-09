@@ -8,7 +8,7 @@ import AboutDialog from './AboutDialog.vue'
 /** The basemap providers' credits, required by their licences, stand in for map attribution. */
 defineProps<{ basemap: BasemapKind }>()
 const { t } = useLocale()
-const link = 'rounded text-accent-ink hover:underline focus-ring'
+const link = 'rounded text-accent-ink underline underline-offset-2 focus-ring'
 const about = useTemplateRef<InstanceType<typeof AboutDialog>>('about')
 </script>
 

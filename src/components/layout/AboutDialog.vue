@@ -4,7 +4,7 @@ import { useTemplateRef } from 'vue'
 import { useLocale } from '../../composables/useLocale'
 
 const REPO_URL = 'https://github.com/olede-dev/climate-ua'
-const link = 'rounded text-accent-ink hover:underline focus-ring'
+const link = 'rounded text-accent-ink underline underline-offset-2 focus-ring'
 
 const { t } = useLocale()
 const dialog = useTemplateRef<HTMLDialogElement>('dialog')

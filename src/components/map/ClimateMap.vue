@@ -25,6 +25,7 @@ import {
   REGION_FILL,
   REGION_SOURCE,
   setCountryBorder,
+  setRiverBorder,
   setFillOpacity,
   setFutureHatch,
   setGridImage,
@@ -227,6 +228,7 @@ function syncRivers() {
   if (!map || !styleReady || !map.getLayer(REGION_FILL)) return
   const rivers = props.rivers
   setRegionsShown(map, !rivers)
+  setRiverBorder(map, !!rivers)
   if (!rivers) {
     removeRiverLayers(map)
     animator?.stop()
@@ -476,6 +478,7 @@ watch(
     if (!map || !border || !styleReady) return
     addCountryBorder(map, border, theme.value)
     setCountryBorder(map, props.projection ?? false)
+    setRiverBorder(map, !!props.rivers)
   },
 )
 watch(

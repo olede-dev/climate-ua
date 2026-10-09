@@ -18,7 +18,10 @@ const GRID = 'grid'
 const BORDER_SOURCE = 'country-border'
 const BORDER_GLOW = 'country-border-glow'
 const BORDER_LINE = 'country-border-line'
+const RIVER_BORDER_LINE = 'country-border-river'
 const FUTURE_INK: Record<Theme, string> = { light: '#7c3aed', dark: '#a78bfa' }
+/** The rivers layer has no region fill, so the border needs full contrast with the basemap. */
+const RIVER_BORDER_INK: Record<Theme, string> = { light: '#000000', dark: '#ffffff' }
 const SATELLITE_URL =
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 
@@ -263,6 +266,21 @@ export function addCountryBorder(map: MaplibreMap, border: MultiLineString, them
     },
     REGION_HIGHLIGHT,
   )
+  map.addLayer(
+    {
+      id: RIVER_BORDER_LINE,
+      type: 'line',
+      source: BORDER_SOURCE,
+      layout: { ...layout, visibility: 'none' },
+      paint: { 'line-color': RIVER_BORDER_INK[theme], 'line-width': 1.6, 'line-opacity': 0.55 },
+    },
+    REGION_HIGHLIGHT,
+  )
+}
+
+export function setRiverBorder(map: MaplibreMap, visible: boolean) {
+  if (map.getLayer(RIVER_BORDER_LINE))
+    map.setLayoutProperty(RIVER_BORDER_LINE, 'visibility', visible ? 'visible' : 'none')
 }
 
 export function setCountryBorder(map: MaplibreMap, visible: boolean) {

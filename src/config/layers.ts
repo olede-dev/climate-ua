@@ -103,11 +103,11 @@ const DROUGHT_SCALE: ColorScale = {
  */
 const RIVERS_SCALE: ColorScale = {
   stops: [
-    [0, '#6e2db6'],
-    [1, '#8a4fd7'],
-    [15, '#a86ffa'],
-    [45, '#c19dfe'],
-    [90, '#dbcafe'],
+    [0, '#43a047'],
+    [1, '#9ccc65'],
+    [15, '#fbc02d'],
+    [45, '#f57c00'],
+    [90, '#c62828'],
   ],
   noData: '#6e6e73',
   stepped: true,

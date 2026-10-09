@@ -1,6 +1,16 @@
 <script setup lang="ts">
 import type { PaddingOptions } from 'maplibre-gl'
-import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch, watchEffect } from 'vue'
+import {
+  computed,
+  defineAsyncComponent,
+  h,
+  nextTick,
+  onBeforeUnmount,
+  ref,
+  useTemplateRef,
+  watch,
+  watchEffect,
+} from 'vue'
 
 import AppFooter from '../components/layout/AppFooter.vue'
 import AppHeader from '../components/layout/AppHeader.vue'
@@ -15,7 +25,9 @@ import RiverLegend from '../components/map/RiverLegend.vue'
 import RiverTimeline from '../components/map/RiverTimeline.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
 import LayerList from '../components/panel/LayerList.vue'
+import StationsPanel from '../components/panel/river/StationsPanel.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
+import LoadingSkeleton from '../components/ui/LoadingSkeleton.vue'
 import { LAYER_IDS, layerConfig, waterUseConfig } from '../config/layers'
 import {
   useBasins,
@@ -36,6 +48,7 @@ import { basinLabel, oblastLabel, oblastName, stationLabel, type RegionLabel } f
 import { OUTLOOK_DAYS } from '../lib/river/anomaly'
 import { todayKyiv } from '../lib/river/dates'
 import { riverLegend, riverMarks } from '../lib/river/marks'
+import { dischargeErrorMessage, snapshotNotice } from '../lib/river/messages'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, atBound, valueAt, type StepValue } from '../lib/series'
 import { outerBorder } from '../lib/geometry'
@@ -64,6 +77,14 @@ import type { LayerFile, LayerId, RegionsFile, WaterView } from '../types'
 
 useUrlSync()
 const { locale, t } = useLocale()
+
+// Chart.js, its date adapter and the station card load only when a station opens.
+const StationCard = defineAsyncComponent({
+  loader: () => import('../components/panel/river/StationCard.vue'),
+  loadingComponent: () =>
+    h(LoadingSkeleton, { label: t.value.river.details.loading, class: 'h-96' }),
+  delay: 100,
+})
 const ui = useUiStore()
 const basemap = ref<BasemapKind>('openfreemap')
 
@@ -105,6 +126,23 @@ const riversQuery = useRivers(isRivers)
 const riverLinesQuery = useRiverLines(isRivers)
 const mapDate = ref(todayKyiv())
 const stations = useStationsState(isRivers, mapDate)
+const inBasin = (s: { basin: string }) => ui.basin === 'all' || s.basin === ui.basin
+const shownStations = computed(() => riversQuery.data.value?.stations.filter(inBasin) ?? [])
+const listStates = computed(() => stations.states.value.filter((s) => inBasin(s.station)))
+watch(riversQuery.data, (file) => {
+  if (file && ui.basin !== 'all' && !file.basins.includes(ui.basin)) ui.basin = 'all'
+})
+const riverError = computed(() =>
+  stations.discharge.isError.value
+    ? dischargeErrorMessage(stations.discharge.error.value, t.value.river.errors)
+    : null,
+)
+const riverNotice = computed(() =>
+  snapshotNotice(stations.discharge.data.value?.source, t.value.river.errors, locale.value),
+)
+const selectedStation = computed(() =>
+  isRivers.value ? (stations.states.value.find((s) => s.station.id === ui.regionId) ?? null) : null,
+)
 // The timelapse belongs to the state view; any other view shows today again.
 watch([isRivers, () => ui.riverView], () => (mapDate.value = stations.today))
 const regionsFile = computed<RegionsFile | undefined>(() => geometryQuery.value.data.value)
@@ -186,7 +224,12 @@ const riverMap = computed<RiverMapData | null>(() => {
     years: file.years,
     year: typeof step.value === 'number' ? step.value : null,
   })
-  return { stations: file.stations, lines: riverLinesQuery.data.value ?? null, marks }
+  // A station outside the basin filter keeps its mark, untinted, so its reach turns plain again.
+  for (const station of file.stations) {
+    const mark = marks.get(station.id)
+    if (mark && !inBasin(station)) marks.set(station.id, { ...mark, tint: null, pulse: false })
+  }
+  return { stations: shownStations.value, lines: riverLinesQuery.data.value ?? null, marks }
 })
 const riverLegendContent = computed(() =>
   isRivers.value ? riverLegend(ui.riverView, t.value.river, riversQuery.data.value) : null,
@@ -582,6 +625,7 @@ const tooltip = computed(() => {
         :aria-label="t.home.map"
       >
         <RegionTable
+          v-if="!isRivers"
           :rows="tableRows"
           :caption="tableCaption"
           :region-column="t.table[config.geometry]"
@@ -688,7 +732,38 @@ const tooltip = computed(() => {
           @future="setFuture"
           @scenario="ui.waterScenario = $event"
           @bound="ui.bound = $event"
-        />
+        >
+          <template v-if="selectedStation && selected" #card>
+            <StationCard
+              :key="selectedStation.station.id"
+              :state="selectedStation"
+              :label="selected"
+              :rivers="riversQuery.data.value"
+              :norms="stations.norms.data.value"
+              :series="stations.discharge.data.value?.series.get(selectedStation.station.id)"
+              :today="stations.today"
+              :status="stations.discharge.status.value"
+              :error-message="riverError ?? ''"
+              @close="ui.regionId = null"
+              @retry="stations.discharge.refetch()"
+            />
+          </template>
+          <template v-if="isRivers" #overview>
+            <StationsPanel
+              :states="listStates"
+              :basins="riversQuery.data.value?.basins ?? []"
+              :basin="ui.basin"
+              :selected-id="ui.regionId"
+              :pending="stations.discharge.isPending.value"
+              :error-message="riverError"
+              :notice="riverNotice"
+              :norms-error="stations.norms.isError.value"
+              @basin="ui.basin = $event"
+              @select="ui.regionId = $event"
+              @retry="stations.discharge.refetch()"
+            />
+          </template>
+        </SidePanel>
       </div>
       <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
         <div ref="bottomBar" class="relative z-10 flex flex-col items-center gap-2">
@@ -787,7 +862,38 @@ const tooltip = computed(() => {
         @future="setFuture"
         @scenario="ui.waterScenario = $event"
         @bound="ui.bound = $event"
-      />
+      >
+        <template v-if="selectedStation && selected" #card>
+          <StationCard
+            :key="selectedStation.station.id"
+            :state="selectedStation"
+            :label="selected"
+            :rivers="riversQuery.data.value"
+            :norms="stations.norms.data.value"
+            :series="stations.discharge.data.value?.series.get(selectedStation.station.id)"
+            :today="stations.today"
+            :status="stations.discharge.status.value"
+            :error-message="riverError ?? ''"
+            @close="ui.regionId = null"
+            @retry="stations.discharge.refetch()"
+          />
+        </template>
+        <template v-if="isRivers" #overview>
+          <StationsPanel
+            :states="listStates"
+            :basins="riversQuery.data.value?.basins ?? []"
+            :basin="ui.basin"
+            :selected-id="ui.regionId"
+            :pending="stations.discharge.isPending.value"
+            :error-message="riverError"
+            :notice="riverNotice"
+            :norms-error="stations.norms.isError.value"
+            @basin="ui.basin = $event"
+            @select="ui.regionId = $event"
+            @retry="stations.discharge.refetch()"
+          />
+        </template>
+      </SidePanel>
     </main>
     <AppFooter
       v-if="isWide"

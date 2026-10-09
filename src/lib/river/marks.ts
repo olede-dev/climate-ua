@@ -18,31 +18,34 @@ export interface RiverClass<T extends string> {
   tint: boolean
 }
 
-/** ColorBrewer BrBG, colour-blind safe; driest first, then no data. */
+/**
+ * Traffic-light colours by how far from normal, either way: green near the norm, yellow a step
+ * off, red at the extremes. The dry side is the darker shade of each. Driest first, then no data.
+ */
 export const ANOMALY_CLASSES: readonly RiverClass<AnomalyClass>[] = [
-  { id: 'very-low', color: '#a6611a', max: null, tint: true },
-  { id: 'low', color: '#dfc27d', max: null, tint: true },
-  { id: 'normal', color: '#c7c7c7', max: null, tint: false },
-  { id: 'high', color: '#80cdc1', max: null, tint: true },
-  { id: 'very-high', color: '#018571', max: null, tint: true },
+  { id: 'very-low', color: '#b71c1c', max: null, tint: true },
+  { id: 'low', color: '#f57f17', max: null, tint: true },
+  { id: 'normal', color: '#43a047', max: null, tint: false },
+  { id: 'high', color: '#fbc02d', max: null, tint: true },
+  { id: 'very-high', color: '#e53935', max: null, tint: true },
   { id: 'no-data', color: null, max: null, tint: false },
 ]
 
 export type TrendClass = 'strong-decrease' | 'decrease' | 'stable' | 'increase' | 'strong-increase'
 export type LowFlowClass = 'none' | 'few' | 'some' | 'many' | 'extreme'
 
-/** Mean discharge change, %; the same BrBG ramp as the water state, driest first. */
+/** Mean discharge change, %; the same traffic-light colours as the water state, driest first. */
 export const TREND_CLASSES: readonly RiverClass<TrendClass>[] = [
-  { id: 'strong-decrease', color: '#a6611a', max: -30, tint: true },
-  { id: 'decrease', color: '#dfc27d', max: -10, tint: true },
-  { id: 'stable', color: '#c7c7c7', max: 10, tint: false },
-  { id: 'increase', color: '#80cdc1', max: 30, tint: true },
-  { id: 'strong-increase', color: '#018571', max: null, tint: true },
+  { id: 'strong-decrease', color: '#b71c1c', max: -30, tint: true },
+  { id: 'decrease', color: '#f57f17', max: -10, tint: true },
+  { id: 'stable', color: '#43a047', max: 10, tint: false },
+  { id: 'increase', color: '#fbc02d', max: 30, tint: true },
+  { id: 'strong-increase', color: '#e53935', max: null, tint: true },
 ]
 
 const lowFlowColor = (i: number) => layerConfig('rivers').scale.stops[i]![1]
 
-/** Low-flow days a year; the rivers layer's own violet steps, which share these bounds. */
+/** Low-flow days a year; the rivers layer's own green-to-red steps, which share these bounds. */
 export const LOW_FLOW_CLASSES: readonly RiverClass<LowFlowClass>[] = [
   { id: 'none', color: lowFlowColor(0), max: 0, tint: false },
   { id: 'few', color: lowFlowColor(1), max: 14, tint: false },

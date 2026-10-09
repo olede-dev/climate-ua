@@ -57,9 +57,9 @@ describe('riverMarks', () => {
       ],
       context,
     )
-    expect(marks.get('a')).toMatchObject({ fill: '#a6611a', tint: '#a6611a', pulse: true })
+    expect(marks.get('a')).toMatchObject({ fill: '#b71c1c', tint: '#b71c1c', pulse: true })
     // Near normal keeps the plain river colour.
-    expect(marks.get('b')).toMatchObject({ fill: '#c7c7c7', tint: null, pulse: false })
+    expect(marks.get('b')).toMatchObject({ fill: '#43a047', tint: null, pulse: false })
     expect(marks.get('c')).toMatchObject({ fill: UNCLASSIFIED_FILL, tint: null })
   })
 
@@ -71,7 +71,7 @@ describe('riverMarks', () => {
   it('classifies the trend and the low-flow days of the chosen year', () => {
     const states = [state('a', {}, { meanChangePct: -35, lowFlowDays: [0, 50] })]
     expect(riverMarks('trend', states, context).get('a')).toMatchObject({
-      fill: '#a6611a',
+      fill: '#b71c1c',
       detail: 'тренд стоку −35%',
     })
     expect(riverMarks('lowFlow', states, context).get('a')).toMatchObject({

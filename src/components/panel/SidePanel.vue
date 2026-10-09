@@ -178,8 +178,9 @@ function onKeydown(event: KeyboardEvent) {
 <template>
   <aside class="flex flex-col" :aria-label="t.home.panel" @keydown="onKeydown">
     <div class="min-h-0 flex-1 overflow-y-auto p-4">
+      <slot v-if="region && $slots.card" name="card" />
       <RegionCard
-        v-if="region && regionSeries"
+        v-else-if="region && regionSeries"
         :id="region.id"
         :key="region.id"
         :name="region.name"
@@ -249,6 +250,7 @@ function onKeydown(event: KeyboardEvent) {
           :value-color="countryValueColor"
           :focus="futureOn ? 'future' : 'observed'"
         />
+        <slot name="overview" />
         <section v-if="projectionRange" class="space-y-1.5">
           <h3 class="px-1 text-[13px] font-semibold text-ink">{{ t.panel.boundsTitle }}</h3>
           <WaterTabs

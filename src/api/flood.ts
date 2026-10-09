@@ -101,3 +101,24 @@ export async function fetchDischarge<T extends LatLon & { id: string }>(
     }),
   )
 }
+
+/** Discharge only, between two dates inclusive. */
+export interface DischargeHistory {
+  time: string[]
+  discharge: DailyValues
+}
+
+/** Reanalysis and operational discharge at one point over a date range (no ensemble). */
+export async function fetchDischargeHistory(
+  point: LatLon,
+  range: { startDate: string; endDate: string },
+  options?: RequestOptions,
+): Promise<DischargeHistory> {
+  const url = buildUrl([point], {
+    daily: 'river_discharge',
+    start_date: range.startDate,
+    end_date: range.endDate,
+  })
+  const [location] = toLocations(await getJson(url, options), 1)
+  return { time: location!.daily.time, discharge: readVariable(location!, 'river_discharge') }
+}

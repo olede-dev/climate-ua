@@ -13,8 +13,6 @@ const series: DischargeSeries = {
   discharge: [100, 200, 300, 400, 500],
   ensemble: {
     median: forecastOnly,
-    min: forecastOnly,
-    max: forecastOnly,
     p25: forecastOnly,
     p75: forecastOnly,
   },

@@ -21,7 +21,6 @@ import ClimateMap, { type RegionHover, type RiverMapData } from '../components/m
 import MapLegend from '../components/map/MapLegend.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
 import RegionTable, { type RegionRow } from '../components/map/RegionTable.vue'
-import RiverLegend from '../components/map/RiverLegend.vue'
 import RiverTimeline from '../components/map/RiverTimeline.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
 import LayerList from '../components/panel/LayerList.vue'
@@ -232,7 +231,9 @@ const riverMap = computed<RiverMapData | null>(() => {
   return { stations: shownStations.value, lines: riverLinesQuery.data.value ?? null, marks }
 })
 const riverLegendContent = computed(() =>
-  isRivers.value ? riverLegend(ui.riverView, t.value.river, riversQuery.data.value) : null,
+  isRivers.value
+    ? riverLegend(ui.riverView, t.value.river, riversQuery.data.value, locale.value)
+    : null,
 )
 
 const mapValues = computed<Record<string, number | null>>(() =>
@@ -314,12 +315,15 @@ const legend = computed(() => {
 
 const inFuture = computed(() => waterFuture.value || (step.value !== null && isFuture(step.value)))
 
-const legendProps = computed(() => ({
-  title: copy.value.legendTitle,
-  gradient: gradient.value,
-  min: legend.value.min,
-  max: legend.value.max,
-}))
+const legendProps = computed(
+  () =>
+    riverLegendContent.value ?? {
+      title: copy.value.legendTitle,
+      gradient: gradient.value,
+      min: legend.value.min,
+      max: legend.value.max,
+    },
+)
 
 const stepLabel = computed(() => {
   if (step.value === null) return ''
@@ -490,6 +494,7 @@ function riverTooltip(at: RegionHover) {
       : ui.riverView === 'trend'
         ? (riverLegendContent.value?.note ?? '')
         : stepLabel.value
+  const scale = riverLegendContent.value
   const discharge =
     state.current === null
       ? null
@@ -500,8 +505,8 @@ function riverTooltip(at: RegionHover) {
     when,
     value: discharge,
     details,
-    gradient: '',
-    position: null,
+    gradient: scale?.gradient ?? '',
+    position: mark?.position ?? null,
   }
 }
 
@@ -690,13 +695,8 @@ const tooltip = computed(() => {
           </div>
         </ClimateMap>
       </section>
-      <RiverLegend
-        v-if="!isWide && riverLegendContent"
-        :content="riverLegendContent"
-        class="rounded-2xl bg-surface px-3 py-2 shadow-card"
-      />
       <MapLegend
-        v-else-if="!isWide && layer"
+        v-if="!isWide && layer"
         v-bind="legendProps"
         class="rounded-2xl bg-surface px-3 py-2 shadow-card"
       />
@@ -767,22 +767,21 @@ const tooltip = computed(() => {
       </div>
       <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
         <div ref="bottomBar" class="relative z-10 flex flex-col items-center gap-2">
-          <div
-            v-if="riverLegendContent && ui.riverView !== 'lowFlow'"
-            class="pointer-events-auto flex w-full max-w-xl min-w-0 flex-col gap-2"
+          <RiverTimeline
+            v-if="isRivers && ui.riverView === 'state'"
+            v-model="mapDate"
+            class="w-full max-w-xl min-w-0"
+            :today="stations.today"
+            :past-days="DISCHARGE_WINDOW.pastDays"
+            :future-days="OUTLOOK_DAYS"
           >
-            <RiverTimeline
-              v-if="ui.riverView === 'state'"
-              v-model="mapDate"
-              :today="stations.today"
-              :past-days="DISCHARGE_WINDOW.pastDays"
-              :future-days="OUTLOOK_DAYS"
-            />
-            <RiverLegend
-              :content="riverLegendContent"
-              class="glass rounded-2xl px-3 py-2 shadow-float"
-            />
-          </div>
+            <MapLegend v-bind="legendProps" />
+          </RiverTimeline>
+          <MapLegend
+            v-else-if="isRivers && ui.riverView === 'trend'"
+            v-bind="legendProps"
+            class="glass pointer-events-auto w-full max-w-xl min-w-0 rounded-2xl px-3 py-2.5 shadow-float"
+          />
           <TimeSlider
             v-else-if="sliderAxis && layer"
             v-model="timeModel"
@@ -790,8 +789,7 @@ const tooltip = computed(() => {
             class="w-full max-w-xl min-w-0"
             :axis="sliderAxis"
           >
-            <RiverLegend v-if="riverLegendContent" :content="riverLegendContent" />
-            <MapLegend v-else v-bind="legendProps" />
+            <MapLegend v-bind="legendProps" />
           </TimeSlider>
         </div>
       </div>

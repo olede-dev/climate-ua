@@ -11,7 +11,7 @@ An interactive map of changes in Ukraine's climate and water resources: observat
 - Six thematic layers at the level of oblasts, sub-basins and river gauging stations.
 - A single timeline covering both the historical period and the projections.
 - Region card: a past–present–projection comparison, a chart for the full period, and the Köppen–Geiger climate type today and in the future.
-- River mode: 10 GloFAS stations coloured by today's water state, the long-term flow trend or yearly low-flow days, with a daily timelapse; a sortable station list with a basin filter; a station card with the discharge chart, the 7-month ensemble forecast, a forecast badge, precipitation and CSV export.
+- River mode: 10 GloFAS stations coloured by today's water state, the long-term flow trend or yearly low-flow days, with a daily timelapse; a sortable station list with a basin filter; a station card with the discharge chart, the 7-month ensemble forecast, a forecast badge and precipitation.
 - Interface state (layer, period, region, station, basin, chart settings) is stored in the URL.
 - Ukrainian and English interface.
 

@@ -5,8 +5,6 @@ export const FLOOD_API_URL = 'https://flood-api.open-meteo.com/v1/flood'
 
 const ENSEMBLE_VARIABLES = {
   median: 'river_discharge_median',
-  min: 'river_discharge_min',
-  max: 'river_discharge_max',
   p25: 'river_discharge_p25',
   p75: 'river_discharge_p75',
 } as const
@@ -86,8 +84,6 @@ export async function fetchDischarge<T extends LatLon & { id: string }>(
       const location = locations[i]
       const ensemble = {
         median: readVariable(location, ENSEMBLE_VARIABLES.median),
-        min: readVariable(location, ENSEMBLE_VARIABLES.min),
-        max: readVariable(location, ENSEMBLE_VARIABLES.max),
         p25: readVariable(location, ENSEMBLE_VARIABLES.p25),
         p75: readVariable(location, ENSEMBLE_VARIABLES.p75),
       }

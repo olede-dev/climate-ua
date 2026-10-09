@@ -28,10 +28,10 @@ const meanOver = (range: YearRange) =>
 
 <template>
   <section class="space-y-3" aria-labelledby="climate-heading">
-    <h3 id="climate-heading" class="text-[15px] font-semibold tracking-tight text-ink">
+    <h3 id="climate-heading" class="px-1 text-[13px] leading-snug font-semibold text-ink">
       {{ copy.heading }}
     </h3>
-    <LoadingSkeleton v-if="!periods || !summary" :label="copy.loading" class="h-44" />
+    <LoadingSkeleton v-if="!periods || !summary" :label="copy.loading" class="h-48" />
     <template v-else>
       <dl class="divide-y divide-line rounded-xl bg-group text-ink">
         <StatRow :label="copy.meanChange" :value="formatPct(summary.meanChangePct, locale)" />
@@ -53,7 +53,7 @@ const meanOver = (range: YearRange) =>
             .replace('{baseline}', formatYearRange(periods.baseline))
         }}
       </p>
-      <h4 class="pt-1 text-[13px] font-semibold text-ink">
+      <h4 class="px-1 pt-1 text-[13px] leading-snug font-semibold text-ink">
         {{ copy.chartHeading.replace('{date}', formatDayMonth(today, locale)) }}
       </h4>
       <LowFlowChart
@@ -68,11 +68,11 @@ const meanOver = (range: YearRange) =>
           {{ formatYearRange(periods.baseline) }}
         </li>
         <li class="flex items-center gap-1.5">
-          <span class="inline-block size-2.5 rounded-[3px] bg-[#ec7014] dark:bg-[#f59e0b]"></span>
+          <span class="inline-block size-2.5 rounded-[3px] bg-[#b07022] dark:bg-[#c38c45]"></span>
           {{ formatYearRange(periods.recent) }}
         </li>
         <li v-if="summary.thisYear !== null" class="flex items-center gap-1.5">
-          <span class="inline-block size-2.5 rounded-[3px] bg-[#8c2d04] dark:bg-[#fdba74]"></span>
+          <span class="inline-block size-2.5 rounded-[3px] bg-[#5f3209] dark:bg-[#fdba74]"></span>
           {{ currentYear }}
         </li>
         <li class="flex items-center gap-1.5">

@@ -19,7 +19,7 @@ import type { ValueFormat } from '../../lib/format'
 import { colorAt } from '../../lib/scale'
 import { isFuture, periodRange, type TimeStep } from '../../lib/time'
 import type { LayerFile, RegionSeries } from '../../types'
-import './chartDefaults'
+import { CHART_INK } from './chartDefaults'
 
 ChartJS.register(BarController, BarElement, LinearScale, Tooltip, annotationPlugin)
 
@@ -33,18 +33,8 @@ const props = defineProps<{
 }>()
 
 const PALETTES = {
-  light: {
-    text: '#5c5c61',
-    grid: 'rgba(0, 0, 0, 0.06)',
-    reference: '#6e6e73',
-    mark: '#1d1d1f',
-  },
-  dark: {
-    text: '#b0b0b5',
-    grid: 'rgba(255, 255, 255, 0.08)',
-    reference: '#a1a1a6',
-    mark: '#f5f5f7',
-  },
+  light: { ...CHART_INK.light, mark: '#1d1d1f' },
+  dark: { ...CHART_INK.dark, mark: '#f5f5f7' },
 }
 const YEAR_TICK = 25
 const SHORT_YEAR_TICK = 10

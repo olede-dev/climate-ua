@@ -9,8 +9,6 @@ const series: DischargeSeries = {
   discharge: [100, 200, 300],
   ensemble: {
     median: [null, null, 120],
-    min: [null, null, 1],
-    max: [null, null, 9],
     p25: [null, null, 2],
     p75: [null, null, 8],
   },

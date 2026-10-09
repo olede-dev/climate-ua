@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
 import { formatDayMonth } from '../../lib/format'
 import { addDays, daysBetween } from '../../lib/river/dates'
 
+/**
+ * The rivers layer's day slider, in the look of `TimeSlider`: observed days on the solid track,
+ * the forecast hatched like the projection periods, the legend in the default slot.
+ */
 const props = defineProps<{
   today: string
   /** Days before and after today the slider covers. */
@@ -18,13 +22,47 @@ const FRAME_MS = 140
 
 const { locale, t } = useLocale()
 const copy = computed(() => t.value.river.timeline)
+const track = useTemplateRef<HTMLDivElement>('track')
+
 const start = computed(() => addDays(props.today, -props.pastDays))
 const total = computed(() => props.pastDays + props.futureDays)
 const index = computed({
   get: () => daysBetween(start.value, date.value),
-  set: (value: number) => (date.value = addDays(start.value, value)),
+  set: (value: number) =>
+    (date.value = addDays(start.value, Math.min(total.value, Math.max(0, value)))),
 })
 const isForecast = computed(() => date.value > props.today)
+const at = (day: number) => day / total.value
+const thumb = computed(() => at(index.value))
+const todayAt = computed(() => at(props.pastDays))
+const label = computed(() => formatDayMonth(date.value, locale.value))
+const valueText = computed(() =>
+  isForecast.value ? `${label.value}, ${copy.value.forecast}` : label.value,
+)
+
+const monthFormat = computed(
+  () =>
+    new Intl.DateTimeFormat(locale.value === 'uk' ? 'uk-UA' : 'en-GB', {
+      month: 'short',
+      timeZone: 'UTC',
+    }),
+)
+/** The first day of each month in the window, labelled with the month's short name. */
+const months = computed(() => {
+  const out: { day: number; label: string }[] = []
+  for (let day = 1; day <= total.value; day++) {
+    const d = addDays(start.value, day)
+    if (d.endsWith('-01')) {
+      out.push({ day, label: monthFormat.value.format(new Date(`${d}T00:00:00Z`)) })
+    }
+  }
+  return out
+})
+/** Month names under the observed part only, clear of the today and forecast labels. */
+const LABEL_GAP_DAYS = 12
+const labelled = computed(() =>
+  months.value.filter((month) => month.day <= props.pastDays - LABEL_GAP_DAYS),
+)
 
 const playing = ref(false)
 let timer: ReturnType<typeof setInterval> | undefined
@@ -46,9 +84,9 @@ function toggle() {
   }, FRAME_MS)
 }
 
-function backToToday() {
+function moveTo(day: number) {
   stop()
-  date.value = props.today
+  index.value = day
 }
 
 // A drag on the slider takes over from playback.
@@ -56,78 +94,229 @@ watch(date, (value, previous) => {
   if (playing.value && daysBetween(previous, value) !== 1) stop()
 })
 onBeforeUnmount(stop)
+
+function onKeydown(event: KeyboardEvent) {
+  const targets: Record<string, number> = {
+    ArrowLeft: index.value - 1,
+    ArrowDown: index.value - 1,
+    ArrowRight: index.value + 1,
+    ArrowUp: index.value + 1,
+    PageDown: index.value - 7,
+    PageUp: index.value + 7,
+    Home: 0,
+    End: total.value,
+  }
+  if (!(event.key in targets)) return
+  event.preventDefault()
+  moveTo(targets[event.key]!)
+}
+
+const hoverAt = ref<number | null>(null)
+const dragging = ref(false)
+
+function dayAt(event: PointerEvent): number | null {
+  const rect = track.value?.getBoundingClientRect()
+  if (!rect || rect.width === 0) return null
+  const share = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width))
+  return Math.round(share * total.value)
+}
+
+function pick(event: PointerEvent) {
+  const day = dayAt(event)
+  if (day !== null) moveTo(day)
+}
+
+function onPointerDown(event: PointerEvent) {
+  if (event.button !== 0) return
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  dragging.value = true
+  pick(event)
+}
+
+function onPointerMove(event: PointerEvent) {
+  if (event.pointerType !== 'touch') hoverAt.value = dayAt(event)
+  if ((event.currentTarget as HTMLElement).hasPointerCapture(event.pointerId)) pick(event)
+}
+
+const preview = computed(() => {
+  if (hoverAt.value === null || dragging.value) return null
+  return {
+    label: formatDayMonth(addDays(start.value, hoverAt.value), locale.value),
+    at: at(hoverAt.value),
+  }
+})
+
+const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 </script>
 
 <template>
-  <div
-    class="glass pointer-events-auto flex items-center gap-2 rounded-2xl px-2.5 py-2 shadow-float sm:gap-3 sm:px-3"
-  >
-    <button
-      type="button"
-      class="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover focus-ring"
-      :aria-label="playing ? copy.pause : copy.play"
-      :aria-pressed="playing"
-      @click="toggle"
-    >
-      <svg v-if="playing" viewBox="0 0 16 16" class="size-4" fill="currentColor" aria-hidden="true">
-        <rect x="3" y="2" width="3.5" height="12" rx="1" />
-        <rect x="9.5" y="2" width="3.5" height="12" rx="1" />
-      </svg>
-      <svg v-else viewBox="0 0 16 16" class="size-4" fill="currentColor" aria-hidden="true">
-        <path d="M4 2.5v11a1 1 0 0 0 1.5.86l9-5.5a1 1 0 0 0 0-1.72l-9-5.5A1 1 0 0 0 4 2.5Z" />
-      </svg>
-    </button>
-    <div class="flex min-w-0 flex-1 flex-col gap-1">
-      <div class="flex items-baseline justify-between gap-2 text-xs">
-        <span class="flex items-baseline gap-1.5">
-          <span class="font-semibold text-ink tabular-nums">
-            {{ formatDayMonth(date, locale) }}
-          </span>
+  <div class="glass pointer-events-auto rounded-2xl px-2.5 py-2 shadow-float sm:px-3">
+    <div class="flex items-center gap-2 sm:gap-3">
+      <button
+        type="button"
+        class="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover focus-ring"
+        :aria-label="playing ? copy.pause : copy.play"
+        :aria-pressed="playing"
+        @click="toggle"
+      >
+        <svg
+          v-if="playing"
+          viewBox="0 0 16 16"
+          class="size-4"
+          fill="currentColor"
+          aria-hidden="true"
+        >
+          <rect x="3" y="2" width="3.5" height="12" rx="1" />
+          <rect x="9.5" y="2" width="3.5" height="12" rx="1" />
+        </svg>
+        <svg v-else viewBox="0 0 16 16" class="size-4" fill="currentColor" aria-hidden="true">
+          <path d="M4 2.5v11a1 1 0 0 0 1.5.86l9-5.5a1 1 0 0 0 0-1.72l-9-5.5A1 1 0 0 0 4 2.5Z" />
+        </svg>
+      </button>
+
+      <div class="flex shrink-0 items-center text-ink" aria-hidden="true">
+        <button
+          type="button"
+          tabindex="-1"
+          class="flex size-6 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink disabled:opacity-0"
+          :disabled="index <= 0"
+          @click="moveTo(index - 1)"
+        >
+          <svg
+            viewBox="0 0 16 16"
+            class="size-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.25"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M10 3.5 5.5 8l4.5 4.5" />
+          </svg>
+        </button>
+        <span class="min-w-[6.5rem] text-center text-base font-semibold tabular-nums">{{
+          label
+        }}</span>
+        <button
+          type="button"
+          tabindex="-1"
+          class="flex size-6 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink disabled:opacity-0"
+          :disabled="index >= total"
+          @click="moveTo(index + 1)"
+        >
+          <svg
+            viewBox="0 0 16 16"
+            class="size-4"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.25"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M6 3.5 10.5 8 6 12.5" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="flex min-w-0 flex-1 flex-col sm:pt-3.5">
+        <div
+          ref="track"
+          class="relative h-6 touch-none rounded-full select-none focus-ring"
+          role="slider"
+          tabindex="0"
+          :aria-label="copy.label"
+          :aria-valuemin="0"
+          :aria-valuemax="total"
+          :aria-valuenow="index"
+          :aria-valuetext="valueText"
+          @keydown="onKeydown"
+          @pointerdown="onPointerDown"
+          @pointermove="onPointerMove"
+          @pointerup="dragging = false"
+          @pointercancel="dragging = false"
+          @pointerleave="hoverAt = null"
+        >
+          <span
+            class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-fill-strong"
+            :style="{ left: 0, width: percent(todayAt) }"
+          ></span>
+          <span
+            class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-accent"
+            :style="{ left: 0, width: percent(Math.min(thumb, todayAt)) }"
+          ></span>
+          <span
+            class="hatch absolute top-1/2 h-3 -translate-y-1/2 rounded-full"
+            :class="isForecast ? 'bg-accent text-white/40' : 'bg-fill-strong text-ink/25'"
+            :style="{
+              left: `calc(${percent(todayAt)} + 2px)`,
+              width: `calc(${percent(1 - todayAt)} - 2px)`,
+            }"
+          ></span>
+          <span
+            v-for="month in months"
+            :key="month.day"
+            class="pointer-events-none absolute top-1/2 h-2.5 w-px -translate-1/2 bg-ink/30"
+            :style="{ left: percent(at(month.day)) }"
+          ></span>
+          <template v-if="preview">
+            <span
+              class="pointer-events-none absolute top-1/2 size-2.5 -translate-1/2 rounded-full bg-ink/50"
+              :style="{ left: percent(preview.at) }"
+            ></span>
+            <span
+              class="pointer-events-none absolute bottom-full mb-1 -translate-x-1/2 rounded-md bg-ink px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-canvas tabular-nums"
+              :style="{ left: percent(preview.at) }"
+              >{{ preview.label }}</span
+            >
+          </template>
+          <span
+            class="pointer-events-none absolute top-1/2 size-5 -translate-1/2 rounded-full bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_1px_4px_rgb(0_0_0/0.3)] transition-[left,transform] duration-150 ease-out motion-reduce:transition-none"
+            :class="{ 'scale-125': dragging }"
+            :style="{ left: percent(thumb) }"
+          ></span>
+          <span
+            v-if="dragging"
+            class="pointer-events-none absolute bottom-full mb-1.5 -translate-x-1/2 rounded-md bg-accent px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-white tabular-nums"
+            :style="{ left: percent(thumb) }"
+            >{{ label }}</span
+          >
+        </div>
+
+        <div
+          class="relative hidden h-3.5 text-[10px] leading-none text-ink-muted tabular-nums sm:block"
+        >
+          <span
+            v-for="month in labelled"
+            :key="month.day"
+            class="absolute -translate-x-1/2"
+            :style="{ left: percent(at(month.day)) }"
+            >{{ month.label }}</span
+          >
           <button
-            v-if="date !== today"
             type="button"
-            class="rounded font-medium text-accent-ink hover:underline focus-ring"
+            class="absolute -translate-x-1/2 rounded font-semibold text-accent-ink hover:underline focus-ring"
+            :style="{ left: percent(todayAt) }"
             :aria-label="copy.todayLabel"
-            @click="backToToday"
+            @click="moveTo(pastDays)"
           >
             {{ copy.today }}
           </button>
-        </span>
-        <span
-          class="grid rounded-full px-2 py-0.5 text-center text-[11px] font-medium"
-          :class="
-            isForecast
-              ? 'bg-violet-500/15 text-violet-800 dark:text-violet-200'
-              : 'bg-fill text-ink-muted'
-          "
-        >
-          <!-- Both labels share one grid cell so the badge keeps the wider one's width. -->
-          <span class="col-start-1 row-start-1" :class="{ invisible: isForecast }">{{
-            copy.past
-          }}</span>
-          <span class="col-start-1 row-start-1" :class="{ invisible: !isForecast }">{{
-            copy.forecast
-          }}</span>
-        </span>
+          <span
+            class="absolute -translate-x-1/2 whitespace-nowrap"
+            :style="{ left: percent((1 + todayAt) / 2) }"
+            >{{ copy.forecast }}</span
+          >
+        </div>
       </div>
-      <div class="relative">
-        <input
-          v-model.number="index"
-          type="range"
-          min="0"
-          :max="total"
-          step="1"
-          class="w-full accent-accent"
-          :aria-label="copy.label"
-          :aria-valuetext="formatDayMonth(date, locale)"
-        />
-        <!-- Today's tick: observed values to the left, the ensemble median to the right. -->
-        <span
-          class="pointer-events-none absolute top-0 h-full w-px bg-ink-muted/60"
-          :style="{ left: `${(pastDays / total) * 100}%` }"
-          aria-hidden="true"
-        ></span>
-      </div>
+    </div>
+    <div v-if="$slots.default" class="mt-1.5 border-t border-ink/10 pt-2">
+      <slot />
     </div>
   </div>
 </template>
+
+<style scoped>
+.hatch {
+  background-image: repeating-linear-gradient(-45deg, currentColor 0 1.5px, transparent 1.5px 5px);
+}
+</style>

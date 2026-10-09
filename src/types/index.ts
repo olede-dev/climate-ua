@@ -103,8 +103,6 @@ export interface DischargeSeries {
   /** Ensemble statistics; `null` for past dates. */
   ensemble: {
     median: DailyValues
-    min: DailyValues
-    max: DailyValues
     p25: DailyValues
     p75: DailyValues
   }

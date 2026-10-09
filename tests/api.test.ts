@@ -59,8 +59,6 @@ describe('fetchDischarge', () => {
       time: ['2026-10-04', '2026-10-05'],
       river_discharge: values,
       river_discharge_median: values,
-      river_discharge_min: values,
-      river_discharge_max: values,
       river_discharge_p25: values,
       river_discharge_p75: values,
     },

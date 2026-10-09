@@ -2,11 +2,8 @@
 import 'chartjs-adapter-date-fns'
 
 import {
-  BarController,
-  BarElement,
   Chart as ChartJS,
   Filler,
-  Legend,
   LinearScale,
   LineController,
   LineElement,
@@ -16,35 +13,31 @@ import {
   type ChartData,
   type ChartDataset,
   type ChartOptions,
-  type LegendItem,
   type TooltipItem,
 } from 'chart.js'
 import annotationPlugin from 'chartjs-plugin-annotation'
 import { enGB } from 'date-fns/locale/en-GB'
 import { uk } from 'date-fns/locale/uk'
-import { computed } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { Chart } from 'vue-chartjs'
 
 import { useLocale } from '../../../composables/useLocale'
 import { useTheme } from '../../../composables/useTheme'
 import type { Locale } from '../../../i18n'
 import type { ChartSeries } from '../../../lib/river/chartSeries'
-import { formatDischarge, formatPctOfNorm, formatPrecipitation } from '../../../lib/river/format'
+import { formatDischarge, formatPctOfNorm } from '../../../lib/river/format'
 import type { DailyValues } from '../../../types'
-import '../chartDefaults'
+import { CHART_INK, fixedAxisWidth } from '../chartDefaults'
 
 // Only the pieces this chart uses, so the rest of Chart.js is tree-shaken away.
 ChartJS.register(
   LineController,
   LineElement,
-  BarController,
-  BarElement,
   PointElement,
   LinearScale,
   TimeScale,
   Filler,
   Tooltip,
-  Legend,
   annotationPlugin,
 )
 
@@ -62,11 +55,9 @@ const PALETTES = {
     forecast: '#0071e3',
     forecastBand: 'rgba(0, 113, 227, 0.2)',
     past: '#1d1d1f',
-    precipitation: 'rgba(48, 176, 199, 0.75)',
     today: '#1d1d1f',
     todayText: '#ffffff',
-    text: '#6e6e73',
-    grid: 'rgba(0, 0, 0, 0.06)',
+    ...CHART_INK.light,
   },
   dark: {
     norm: '#98989d',
@@ -74,11 +65,9 @@ const PALETTES = {
     forecast: '#0a84ff',
     forecastBand: 'rgba(10, 132, 255, 0.28)',
     past: '#f5f5f7',
-    precipitation: 'rgba(100, 210, 255, 0.7)',
     today: '#f5f5f7',
     todayText: '#1d1d1f',
-    text: '#a1a1a6',
-    grid: 'rgba(255, 255, 255, 0.08)',
+    ...CHART_INK.dark,
   },
 }
 
@@ -88,13 +77,23 @@ const { isDark } = useTheme()
 const { locale, t } = useLocale()
 const colors = computed(() => (isDark.value ? PALETTES.dark : PALETTES.light))
 
-/** Typed for the mixed chart: line datasets plus the precipitation bars. */
-type Dataset = ChartDataset<'line' | 'bar', DailyValues>
+/** One entry of the HTML legend under the chart. */
+interface LegendEntry {
+  label: string
+  color: string
+  /** Band colour behind the line swatch. */
+  fill: string | null
+  dashed: boolean
+  /** Dataset the entry toggles, with its band if it has one. */
+  index: number
+}
+
+type Dataset = ChartDataset<'line', DailyValues>
 
 /**
  * A median line with an optional band around it, drawn by an invisible lower line and an
- * upper line filled down to it. The legend shows one entry per group: the line, filled with
- * the band colour, and a click hides the line and its band together.
+ * upper line filled down to it. The legend under the chart shows one entry per group: the line
+ * over the band colour, and a click hides the line and its band together.
  */
 interface Group {
   label: string
@@ -173,19 +172,6 @@ const chart = computed(() => {
     lineIndices.set(group, datasets.length)
     datasets.push(groupLine(group))
   }
-  // Bars go between the lines and the bands: drawn over the translucent bands, under the lines.
-  const precipitationIndex = series.precipitation ? datasets.length : null
-  if (series.precipitation) {
-    datasets.push({
-      type: 'bar',
-      label: labels.precipitation,
-      data: series.precipitation,
-      yAxisID: 'y2',
-      backgroundColor: COLORS.precipitation,
-      barPercentage: 0.8,
-      categoryPercentage: 1,
-    })
-  }
   for (const group of [...groups].reverse()) {
     const { band } = group
     if (!band) continue
@@ -202,17 +188,22 @@ const chart = computed(() => {
     bandIndices.set(lineIndices.get(group)!, [upperIndex, upperIndex + 1])
   }
 
-  const data: ChartData<'line' | 'bar', DailyValues, string> = { labels: series.time, datasets }
-  return { data, lowerIndices, bandIndices, precipitationIndex }
+  const data: ChartData<'line', DailyValues, string> = { labels: series.time, datasets }
+  // Top to bottom as drawn, the same order the old canvas legend listed.
+  const legend: LegendEntry[] = [...groups].reverse().map((group) => ({
+    label: group.label,
+    color: group.color,
+    fill: group.band?.fill ?? null,
+    dashed: 'borderDash' in group.style,
+    index: lineIndices.get(group)!,
+  }))
+  return { data, lowerIndices, bandIndices, legend }
 })
 
-function tooltipLabel(item: TooltipItem<'line' | 'bar'>): string {
+function tooltipLabel(item: TooltipItem<'line'>): string {
   const { datasetIndex, dataIndex, dataset } = item
-  const { lowerIndices, precipitationIndex } = chart.value
+  const { lowerIndices } = chart.value
   const value = dataset.data[dataIndex] as number | null
-  if (datasetIndex === precipitationIndex) {
-    return `${dataset.label}: ${formatPrecipitation(value, locale.value)} ${t.value.river.chart.precipitationUnit}`
-  }
   if (lowerIndices.has(datasetIndex + 1)) {
     const lower = chart.value.data.datasets[datasetIndex + 1].data[dataIndex]
     return `${dataset.label}: ${formatValue(lower)} … ${formatValue(value)}`
@@ -220,20 +211,27 @@ function tooltipLabel(item: TooltipItem<'line' | 'bar'>): string {
   return `${dataset.label}: ${formatValue(value)}`
 }
 
+const canvas = useTemplateRef<{ chart?: ChartJS }>('canvas')
+const hidden = ref(new Set<number>())
+watch(chart, () => (hidden.value = new Set()))
+
 /** Hides or shows a legend entry's line together with its band. */
-function toggleGroup(legendChart: ChartJS, item: LegendItem) {
-  const index = item.datasetIndex
-  if (index === undefined) return
-  const visible = !legendChart.isDatasetVisible(index)
+function toggle(index: number) {
+  const instance = canvas.value?.chart
+  if (!instance) return
+  const visible = hidden.value.has(index)
   for (const i of [index, ...(chart.value.bandIndices.get(index) ?? [])]) {
-    legendChart.setDatasetVisibility(i, visible)
+    instance.setDatasetVisibility(i, visible)
   }
-  legendChart.update()
+  instance.update()
+  const next = new Set(hidden.value)
+  if (visible) next.delete(index)
+  else next.add(index)
+  hidden.value = next
 }
 
-const options = computed((): ChartOptions<'line' | 'bar'> => {
-  const { lowerIndices, bandIndices, precipitationIndex } = chart.value
-  const bands = new Set([...bandIndices.values()].flat())
+const options = computed((): ChartOptions<'line'> => {
+  const { lowerIndices } = chart.value
   const COLORS = colors.value
   return {
     color: COLORS.text,
@@ -245,13 +243,15 @@ const options = computed((): ChartOptions<'line' | 'bar'> => {
     scales: {
       x: {
         type: 'time',
+        min: props.series.time[0],
+        max: props.series.time.at(-1),
         adapters: { date: { locale: DATE_LOCALES[locale.value] } },
         time: {
           minUnit: 'day',
           tooltipFormat: 'd MMMM yyyy',
           displayFormats: { day: 'd MMM', week: 'd MMM', month: 'd MMM' },
         },
-        // Bars would otherwise pad the axis by half a day and shift the lines off the edges.
+        // The precipitation chart below shares this axis; neither pads it by half a day.
         offset: false,
         ticks: { maxRotation: 0, autoSkipPadding: 12, color: COLORS.text },
         grid: { display: false },
@@ -265,38 +265,16 @@ const options = computed((): ChartOptions<'line' | 'bar'> => {
         },
         grid: { color: COLORS.grid },
         border: { color: COLORS.grid },
+        afterFit: fixedAxisWidth,
         ticks: {
           color: COLORS.text,
           callback: (value) =>
             props.relative ? `${value}%` : formatDischarge(+value, locale.value),
         },
       },
-      y2: {
-        display: precipitationIndex !== null,
-        position: 'right',
-        min: 0,
-        title: { display: true, text: t.value.river.chart.precipitationAxis, color: COLORS.text },
-        grid: { drawOnChartArea: false },
-        border: { color: COLORS.grid },
-        ticks: {
-          color: COLORS.text,
-          callback: (value) => formatPrecipitation(+value, locale.value),
-        },
-      },
     },
     plugins: {
-      legend: {
-        position: 'bottom',
-        onClick: (_event, item, legend) => toggleGroup(legend.chart, item),
-        labels: {
-          color: COLORS.text,
-          boxWidth: 12,
-          boxHeight: 8,
-          useBorderRadius: true,
-          borderRadius: 2,
-          filter: (item) => item.datasetIndex === undefined || !bands.has(item.datasetIndex),
-        },
-      },
+      legend: { display: false },
       tooltip: {
         filter: (item) => !lowerIndices.has(item.datasetIndex) && item.raw !== null,
         callbacks: { label: tooltipLabel },
@@ -329,13 +307,42 @@ const options = computed((): ChartOptions<'line' | 'bar'> => {
 </script>
 
 <template>
-  <div class="h-[260px] lg:h-80">
-    <Chart
-      type="line"
-      :data="chart.data"
-      :options="options"
-      :aria-label="t.river.chart.ariaLabel"
-      role="img"
-    />
+  <div class="space-y-2">
+    <div class="h-56">
+      <Chart
+        ref="canvas"
+        type="line"
+        :data="chart.data"
+        :options="options"
+        :aria-label="t.river.chart.ariaLabel"
+        role="img"
+      />
+    </div>
+    <!-- Charts sharing the time axis, e.g. precipitation, go between the plot and its legend. -->
+    <slot />
+    <ul class="flex flex-wrap gap-x-3 gap-y-1 px-1 text-xs text-ink-muted">
+      <li v-for="entry in chart.legend" :key="entry.label">
+        <button
+          type="button"
+          class="flex items-center gap-1.5 rounded transition-opacity hover:text-ink focus-ring"
+          :class="{ 'line-through opacity-50': hidden.has(entry.index) }"
+          :aria-pressed="!hidden.has(entry.index)"
+          @click="toggle(entry.index)"
+        >
+          <span
+            class="relative inline-flex h-2.5 w-3 items-center rounded-[3px]"
+            :style="{ background: entry.fill ?? 'transparent' }"
+            aria-hidden="true"
+          >
+            <span
+              class="w-full border-t-2"
+              :class="{ 'border-dashed': entry.dashed }"
+              :style="{ borderColor: entry.color }"
+            ></span>
+          </span>
+          {{ entry.label }}
+        </button>
+      </li>
+    </ul>
   </div>
 </template>

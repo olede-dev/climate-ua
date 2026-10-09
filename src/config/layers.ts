@@ -97,17 +97,18 @@ const DROUGHT_SCALE: ColorScale = {
 
 /**
  * Low-flow days a year, in five classes (none, 1–14, 15–44, 45–89, 90 and more).
- * One violet hue, a colour no other layer uses, at hue 300° in OKLCH with even lightness steps
- * from L 0.465 to 0.87, checked with the `dataviz` validator (`--ordinal --mode dark`). By
- * definition a station averages about 37 such days, the middle class.
+ * One brown hue, the dry arm of the rivers layer's water-state scale, at hue 55–76° in OKLCH
+ * with even lightness steps from L 0.76 to 0.45, checked with the `dataviz` validator
+ * (`--ordinal`, light and dark). By definition a station averages about 37 such days, the
+ * middle class.
  */
 const RIVERS_SCALE: ColorScale = {
   stops: [
-    [0, '#43a047'],
-    [1, '#9ccc65'],
-    [15, '#fbc02d'],
-    [45, '#f57c00'],
-    [90, '#c62828'],
+    [0, '#d0aa73'],
+    [1, '#c38c45'],
+    [15, '#b07022'],
+    [45, '#965818'],
+    [90, '#7e4510'],
   ],
   noData: '#6e6e73',
   stepped: true,

@@ -14,8 +14,6 @@ const series = (value: number): DischargeSeries => ({
   discharge: [value, value],
   ensemble: {
     median: [null, value],
-    min: [null, 1],
-    max: [null, 9],
     p25: [null, 2],
     p75: [null, 8],
   },
@@ -42,8 +40,6 @@ const floodBody = (value: number) => {
       time: s.time,
       river_discharge: s.discharge,
       river_discharge_median: s.ensemble.median,
-      river_discharge_min: s.ensemble.min,
-      river_discharge_max: s.ensemble.max,
       river_discharge_p25: s.ensemble.p25,
       river_discharge_p75: s.ensemble.p75,
     },

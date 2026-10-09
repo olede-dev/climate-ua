@@ -17,7 +17,7 @@ import { useLocale } from '../../../composables/useLocale'
 import { useTheme } from '../../../composables/useTheme'
 import { formatWithUnit } from '../../../lib/format'
 import type { YearCount, YearRange } from '../../../lib/river/climate'
-import '../chartDefaults'
+import { CHART_INK } from '../chartDefaults'
 
 ChartJS.register(BarController, BarElement, CategoryScale, LinearScale, Tooltip, annotationPlugin)
 
@@ -32,19 +32,15 @@ const props = defineProps<{
 const PALETTES = {
   light: {
     past: '#d6c3a5',
-    recent: '#ec7014',
-    current: '#8c2d04',
-    reference: '#6e6e73',
-    text: '#6e6e73',
-    grid: 'rgba(0, 0, 0, 0.06)',
+    recent: '#b07022',
+    current: '#5f3209',
+    ...CHART_INK.light,
   },
   dark: {
     past: '#6b5b45',
-    recent: '#f59e0b',
+    recent: '#c38c45',
     current: '#fdba74',
-    reference: '#a1a1a6',
-    text: '#a1a1a6',
-    grid: 'rgba(255, 255, 255, 0.08)',
+    ...CHART_INK.dark,
   },
 }
 
@@ -119,7 +115,7 @@ const options = computed((): ChartOptions<'bar'> => {
 </script>
 
 <template>
-  <div class="h-44">
+  <div class="h-48">
     <Bar :data="data" :options="options" :aria-label="t.river.climate.chartAria" role="img" />
   </div>
 </template>

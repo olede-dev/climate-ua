@@ -2,6 +2,7 @@ import { layerConfig } from '../../config/layers'
 import type { Locale, Messages } from '../../i18n'
 import type { AnomalyClass, RiversFile, StationState } from '../../types'
 import { formatNumber, plural } from '../format'
+import { cssGradient } from '../scale'
 
 /** What the station markers and river tints show; `state` is the water state on the map date. */
 export type RiverView = 'state' | 'trend' | 'lowFlow'
@@ -19,33 +20,44 @@ export interface RiverClass<T extends string> {
 }
 
 /**
- * Traffic-light colours by how far from normal, either way: green near the norm, yellow a step
- * off, red at the extremes. The dry side is the darker shade of each. Driest first, then no data.
+ * Diverging brown–teal around a neutral grey: brown for dry (the hue of `RIVERS_SCALE`), teal for
+ * wet, kept apart from the plain river blue so a tinted reach still reads. Each arm is one hue
+ * with monotone lightness (L 0.74 → 0.46 in OKLCH), checked with the `dataviz` validator
+ * (`--ordinal`, light and dark). Driest first.
  */
+const DIVERGING = {
+  dryStrong: '#814716',
+  dry: '#b6762a',
+  neutral: '#aeaaa2',
+  wet: '#1c989e',
+  wetStrong: '#0d646c',
+} as const
+
+/** Water state on the map date against the day-of-year norm, driest first, then no data. */
 export const ANOMALY_CLASSES: readonly RiverClass<AnomalyClass>[] = [
-  { id: 'very-low', color: '#b71c1c', max: null, tint: true },
-  { id: 'low', color: '#f57f17', max: null, tint: true },
-  { id: 'normal', color: '#43a047', max: null, tint: false },
-  { id: 'high', color: '#fbc02d', max: null, tint: true },
-  { id: 'very-high', color: '#e53935', max: null, tint: true },
+  { id: 'very-low', color: DIVERGING.dryStrong, max: null, tint: true },
+  { id: 'low', color: DIVERGING.dry, max: null, tint: true },
+  { id: 'normal', color: DIVERGING.neutral, max: null, tint: false },
+  { id: 'high', color: DIVERGING.wet, max: null, tint: true },
+  { id: 'very-high', color: DIVERGING.wetStrong, max: null, tint: true },
   { id: 'no-data', color: null, max: null, tint: false },
 ]
 
 export type TrendClass = 'strong-decrease' | 'decrease' | 'stable' | 'increase' | 'strong-increase'
 export type LowFlowClass = 'none' | 'few' | 'some' | 'many' | 'extreme'
 
-/** Mean discharge change, %; the same traffic-light colours as the water state, driest first. */
+/** Mean discharge change, %; the same diverging colours as the water state, driest first. */
 export const TREND_CLASSES: readonly RiverClass<TrendClass>[] = [
-  { id: 'strong-decrease', color: '#b71c1c', max: -30, tint: true },
-  { id: 'decrease', color: '#f57f17', max: -10, tint: true },
-  { id: 'stable', color: '#43a047', max: 10, tint: false },
-  { id: 'increase', color: '#fbc02d', max: 30, tint: true },
-  { id: 'strong-increase', color: '#e53935', max: null, tint: true },
+  { id: 'strong-decrease', color: DIVERGING.dryStrong, max: -30, tint: true },
+  { id: 'decrease', color: DIVERGING.dry, max: -10, tint: true },
+  { id: 'stable', color: DIVERGING.neutral, max: 10, tint: false },
+  { id: 'increase', color: DIVERGING.wet, max: 30, tint: true },
+  { id: 'strong-increase', color: DIVERGING.wetStrong, max: null, tint: true },
 ]
 
 const lowFlowColor = (i: number) => layerConfig('rivers').scale.stops[i]![1]
 
-/** Low-flow days a year; the rivers layer's own green-to-red steps, which share these bounds. */
+/** Low-flow days a year; the rivers layer's own brown steps, which share these bounds. */
 export const LOW_FLOW_CLASSES: readonly RiverClass<LowFlowClass>[] = [
   { id: 'none', color: lowFlowColor(0), max: 0, tint: false },
   { id: 'few', color: lowFlowColor(1), max: 14, tint: false },
@@ -73,16 +85,28 @@ export interface MapMark {
   pulse: boolean
   /** The view's value for the tooltip, already formatted. */
   detail: string | null
+  /** Where the class sits on the legend scale, 0–1, for the tooltip's marker; `null` off it. */
+  position: number | null
 }
 
-/** Fill while the view's value is not known yet (norms or discharge missing). */
-export const UNCLASSIFIED_FILL = '#94a3b8'
 /** Outline of markers without data, also the no-data legend swatch. */
 export const NO_DATA_STROKE = '#64748b'
 /** Deviation from the median norm, in percent, from which a station pulses. */
 const PULSE_PCT = 50
 
-const UNCLASSIFIED: MapMark = { fill: UNCLASSIFIED_FILL, tint: null, pulse: false, detail: null }
+/** While the view's value is not known (norms or discharge missing) a marker is an outline. */
+const UNCLASSIFIED: MapMark = { fill: null, tint: null, pulse: false, detail: null, position: null }
+
+/** The coloured classes of a view, in legend order; the no-data class stays off the scale. */
+function scaleClasses<T extends string>(classes: readonly RiverClass<T>[]): RiverClass<T>[] {
+  return classes.filter((c) => c.color !== null)
+}
+
+function classPosition<T extends string>(classes: readonly RiverClass<T>[], id: T): number | null {
+  const scale = scaleClasses(classes)
+  const i = scale.findIndex((c) => c.id === id)
+  return i === -1 ? null : (i + 0.5) / scale.length
+}
 
 export function formatPct(value: number, locale: Locale): string {
   return `${formatNumber(value, locale, { decimals: 0, signed: true })}%`
@@ -96,6 +120,7 @@ function stateMark({ anomalyClass, anomalyPct }: StationState): MapMark {
     tint: info.tint ? info.color : null,
     pulse: info.color !== null && anomalyPct !== null && Math.abs(anomalyPct) >= PULSE_PCT,
     detail: null,
+    position: classPosition(ANOMALY_CLASSES, info.id),
   }
 }
 
@@ -111,6 +136,7 @@ function classMark<T extends string>(
     tint: info.tint ? info.color : null,
     pulse: false,
     detail: detail(value),
+    position: classPosition(classes, info.id),
   }
 }
 
@@ -155,45 +181,69 @@ export function riverMarks(
   )
 }
 
-export interface LegendRow {
-  color: string | null
-  label: string
-}
-
+/** A view's legend as a stepped scale, in the shape `MapLegend` takes. */
 export interface LegendContent {
   title: string
-  rows: LegendRow[]
-  /** Small print under the rows, e.g. the periods compared. */
-  note?: string
+  gradient: string
+  min: string
+  max: string
+  /** One name per step, left to right, shown on hover over the bar. */
+  steps: string[]
+  /** Small print under the bar: what the scale measures, e.g. the periods compared. */
+  note: string
+  /** Label of the outline swatch for stations without data; `null` hides it. */
+  noData: string | null
 }
 
 const yearRange = ({ from, to }: { from: number; to: number }) => `${from}–${to}`
+
+function steppedGradient<T extends string>(classes: readonly RiverClass<T>[]): string {
+  const stops = scaleClasses(classes).map((c, i) => [i, c.color!] as const)
+  return cssGradient({ stops, noData: NO_DATA_STROKE, stepped: true })
+}
 
 export function riverLegend(
   view: RiverView,
   copy: Messages['river'],
   rivers: Pick<RiversFile, 'baseline' | 'recent'> | undefined,
+  locale: Locale,
 ): LegendContent {
+  const noData = copy.anomalyClasses['no-data']
   if (view === 'trend') {
+    const periods =
+      rivers &&
+      copy.trendNote
+        .replace('{recent}', yearRange(rivers.recent))
+        .replace('{baseline}', yearRange(rivers.baseline))
     return {
       title: copy.trendLegend,
-      rows: TREND_CLASSES.map((c) => ({ color: c.color, label: copy.trendClasses[c.id] })),
-      note:
-        rivers &&
-        copy.trendNote
-          .replace('{recent}', yearRange(rivers.recent))
-          .replace('{baseline}', yearRange(rivers.baseline)),
+      gradient: steppedGradient(TREND_CLASSES),
+      min: `≤ ${formatPct(TREND_CLASSES[0]!.max!, locale)}`,
+      max: `> ${formatPct(TREND_CLASSES.at(-2)!.max!, locale)}`,
+      steps: TREND_CLASSES.map((c) => copy.trendClasses[c.id]),
+      note: periods ? `${copy.trendLegend}, ${periods}` : copy.trendLegend,
+      noData,
     }
   }
   if (view === 'lowFlow') {
+    const top = LOW_FLOW_CLASSES.at(-2)!.max! + 1
     return {
       title: copy.lowFlowLegend,
-      rows: LOW_FLOW_CLASSES.map((c) => ({ color: c.color, label: copy.lowFlowClasses[c.id] })),
+      gradient: steppedGradient(LOW_FLOW_CLASSES),
+      min: formatNumber(0, locale, { decimals: 0 }),
+      max: `≥ ${top} ${plural(top, locale, copy.days)}`,
+      steps: LOW_FLOW_CLASSES.map((c) => copy.lowFlowClasses[c.id]),
       note: copy.lowFlowNote,
+      noData,
     }
   }
   return {
     title: copy.stateLegend,
-    rows: ANOMALY_CLASSES.map((c) => ({ color: c.color, label: copy.anomalyClasses[c.id] })),
+    gradient: steppedGradient(ANOMALY_CLASSES),
+    min: copy.stateLow,
+    max: copy.stateHigh,
+    steps: scaleClasses(ANOMALY_CLASSES).map((c) => copy.anomalyClasses[c.id]),
+    note: copy.stateLegend,
+    noData,
   }
 }

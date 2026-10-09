@@ -54,7 +54,7 @@ describe('forecastOutlook', () => {
       cell: { lat: 50, lon: 30 },
       time,
       discharge: empty,
-      ensemble: { median, min: median, max: median, p25: median, p75: median },
+      ensemble: { median, p25: median, p75: median },
     }
   }
 

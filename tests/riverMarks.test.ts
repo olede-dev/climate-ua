@@ -8,7 +8,6 @@ import {
   riverLegend,
   riverMarks,
   TREND_CLASSES,
-  UNCLASSIFIED_FILL,
   type MarkContext,
 } from '../src/lib/river/marks'
 import type { StationState } from '../src/types'
@@ -57,10 +56,17 @@ describe('riverMarks', () => {
       ],
       context,
     )
-    expect(marks.get('a')).toMatchObject({ fill: '#b71c1c', tint: '#b71c1c', pulse: true })
+    const [veryLow, , normal] = ANOMALY_CLASSES
+    expect(marks.get('a')).toMatchObject({
+      fill: veryLow!.color,
+      tint: veryLow!.color,
+      pulse: true,
+      position: 0.1,
+    })
     // Near normal keeps the plain river colour.
-    expect(marks.get('b')).toMatchObject({ fill: '#43a047', tint: null, pulse: false })
-    expect(marks.get('c')).toMatchObject({ fill: UNCLASSIFIED_FILL, tint: null })
+    expect(marks.get('b')).toMatchObject({ fill: normal!.color, tint: null, pulse: false })
+    // Not classified yet: an outline, off the legend scale.
+    expect(marks.get('c')).toMatchObject({ fill: null, tint: null, position: null })
   })
 
   it('draws no-data stations as an outline', () => {
@@ -71,7 +77,7 @@ describe('riverMarks', () => {
   it('classifies the trend and the low-flow days of the chosen year', () => {
     const states = [state('a', {}, { meanChangePct: -35, lowFlowDays: [0, 50] })]
     expect(riverMarks('trend', states, context).get('a')).toMatchObject({
-      fill: '#b71c1c',
+      fill: TREND_CLASSES[0]!.color,
       detail: 'тренд стоку −35%',
     })
     expect(riverMarks('lowFlow', states, context).get('a')).toMatchObject({
@@ -82,23 +88,38 @@ describe('riverMarks', () => {
       fill: LOW_FLOW_CLASSES[0]!.color,
       tint: null,
     })
-    expect(riverMarks('lowFlow', states, { ...context, year: 1990 }).get('a')!.fill).toBe(
-      UNCLASSIFIED_FILL,
-    )
+    expect(riverMarks('lowFlow', states, { ...context, year: 1990 }).get('a')!.fill).toBeNull()
   })
 })
 
 describe('riverLegend', () => {
-  it('lists every class of the view', () => {
-    expect(riverLegend('state', uk.river, undefined).rows).toHaveLength(ANOMALY_CLASSES.length)
-    const trend = riverLegend('trend', uk.river, {
-      baseline: { from: 1997, to: 2010 },
-      recent: { from: 2012, to: 2025 },
-    })
-    expect(trend.rows).toHaveLength(TREND_CLASSES.length)
-    expect(trend.note).toBe('2012–2025 проти 1997–2010')
-    expect(riverLegend('lowFlow', uk.river, undefined).rows.map((r) => r.label)).toEqual(
+  it('names every coloured step of the view, left to right', () => {
+    const state = riverLegend('state', uk.river, undefined, 'uk')
+    expect(state.steps).toEqual([
+      'Дуже низька водність',
+      'Низька водність',
+      'Близько до норми',
+      'Підвищена водність',
+      'Висока водність',
+    ])
+    expect(state.noData).toBe('Немає даних')
+    expect(state.gradient).toContain(ANOMALY_CLASSES[0]!.color)
+    expect(riverLegend('lowFlow', uk.river, undefined, 'uk').steps).toEqual(
       Object.values(uk.river.lowFlowClasses),
     )
+  })
+
+  it('labels the ends of the scale and names the periods compared', () => {
+    const trend = riverLegend(
+      'trend',
+      uk.river,
+      { baseline: { from: 1997, to: 2010 }, recent: { from: 2012, to: 2025 } },
+      'uk',
+    )
+    expect(trend.steps).toHaveLength(TREND_CLASSES.length)
+    expect([trend.min, trend.max]).toEqual(['≤ −30%', '> +30%'])
+    expect(trend.note).toBe('Зміна середнього стоку, 2012–2025 проти 1997–2010')
+    const lowFlow = riverLegend('lowFlow', uk.river, undefined, 'uk')
+    expect([lowFlow.min, lowFlow.max]).toEqual(['0', '≥ 90 днів'])
   })
 })

@@ -209,6 +209,8 @@ export const en: Messages = {
     viewsLabel: 'What the map shows',
     views: { state: 'State', trend: 'Trend', lowFlow: 'Low flow' },
     stateLegend: 'Water level against the norm',
+    stateLow: 'below normal',
+    stateHigh: 'above normal',
     anomalyClasses: {
       'very-low': 'Very low water',
       low: 'Low water',
@@ -273,16 +275,20 @@ export const en: Messages = {
       close: 'Close the station',
       basin: 'Basin: {name}',
       cell: 'GloFAS cell: {coordinates}',
-      now: 'Now',
-      normToday: 'Norm for today',
-      deviation: 'Deviation',
+      headline: 'Discharge on {date}: {delta}.',
+      atNorm: 'at the norm',
+      normBar: {
+        usual: 'norm',
+        low: 'below: low water',
+        high: 'above: high water',
+        note: 'The norm is the median discharge on this day of the year over {norm}. Only 10% of years fall below p10 and another 10% above p90; half of the years lie between p25 and p75.',
+      },
       outlook: {
         high: 'Forecast: water may run high',
         low: 'Forecast: water may run low',
         highDetail: 'forecast median above the p90 norm from {date}',
         lowDetail: 'forecast median below the p10 norm from {date}',
       },
-      exportCsv: 'Export to CSV',
       chartHeading: 'GloFAS discharge and forecast',
       normsMissing: 'Norms did not load: the chart is shown in m³/s.',
       loadingChart: 'Loading the chart…',
@@ -293,7 +299,7 @@ export const en: Messages = {
       precipitationRateLimited:
         'Precipitation unavailable: the Open-Meteo request limit is reached.',
       chartNote:
-        'Forecast: the GloFAS ensemble median; the band is the interquartile range (p25–p75). Norm: the {norm} median for the same day of year; the band is p25–p75. The full ensemble spread (min–max) is in the CSV.',
+        'Forecast: the GloFAS ensemble median; the band is the interquartile range (p25–p75). Norm: the {norm} median for the same day of year; the band is p25–p75.',
     },
     chart: {
       rangeLabel: 'Forecast horizon',
@@ -311,6 +317,7 @@ export const en: Messages = {
       precipitation: 'Precipitation',
       precipitationAxis: 'Precipitation, mm',
       precipitationUnit: 'mm',
+      precipitationAria: 'Chart of daily precipitation at the station point over the same days',
       today: 'Today',
       ariaLabel: 'Discharge chart: past values, ensemble forecast and norm',
     },

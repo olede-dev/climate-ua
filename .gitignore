@@ -13,6 +13,9 @@ dist-ssr
 /pipeline/.venv/
 __pycache__/
 
+# Daily discharge fallback: built in CI before every deploy
+/public/data/discharge-snapshot.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

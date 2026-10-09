@@ -89,6 +89,44 @@ export interface RiverNormsFile {
   source: string
 }
 
+export type RiverStationNorms = RiverNormsFile['stations'][string]
+
+/** Daily values aligned by index with `time` (`YYYY-MM-DD`); `null` means no value. */
+export type DailyValues = (number | null)[]
+
+/** Open-Meteo Flood API discharge at one station: recent days, then the ensemble forecast. */
+export interface DischargeSeries {
+  /** Centre of the GloFAS cell the API resolved the query to. */
+  cell: LatLon
+  time: string[]
+  discharge: DailyValues
+  /** Ensemble statistics; `null` for past dates. */
+  ensemble: {
+    median: DailyValues
+    min: DailyValues
+    max: DailyValues
+    p25: DailyValues
+    p75: DailyValues
+  }
+}
+
+export type AnomalyClass = 'very-low' | 'low' | 'normal' | 'high' | 'very-high' | 'no-data'
+
+/** A station joined with one day's discharge and norm, as the map and list display it. */
+export interface StationState {
+  station: Station
+  /** Centre of the GloFAS cell; `null` until discharge has loaded. */
+  cell: LatLon | null
+  /** Discharge on that day, m³/s: observed up to today, the ensemble median after. */
+  current: number | null
+  /** Norm for that day of year; `null` while norms are unavailable. */
+  norm: RiverNormDay | null
+  /** `null` while norms are unavailable, so no class can be assigned. */
+  anomalyClass: AnomalyClass | null
+  /** Signed whole percent deviation from the median norm. */
+  anomalyPct: number | null
+}
+
 export interface RiverLineProperties {
   /** A Natural Earth main river line; otherwise a European supplement tributary. */
   major: boolean

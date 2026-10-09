@@ -3,6 +3,9 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Daily redeploy refreshes the fallback discharge snapshot.
+  schedule:
+    - cron: '30 5 * * *'
 permissions:
   contents: read
   pages: write
@@ -22,6 +25,9 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test -- --run
+      # A failed download must not block the deploy: the site then runs without a fallback.
+      - run: npm run build:river-snapshot
+        continue-on-error: true
       - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:

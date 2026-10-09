@@ -10,6 +10,7 @@ import type {
   LayerFile,
   LayerId,
   OblastsFile,
+  RiverNormsFile,
   RiversFile,
   WaterUseFile,
 } from '../types'
@@ -40,6 +41,15 @@ export function useLayer(id: MaybeRefOrGetter<LayerId | null>) {
 
 export function useRivers(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({ ...RIVERS_QUERY, enabled: computed(() => toValue(enabled)) })
+}
+
+/** Day-of-year discharge norms and yearly low-flow days; only the rivers layer reads them. */
+export function useRiverNorms(enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: ['river-norms'],
+    queryFn: () => fetchStatic<RiverNormsFile>('data/river-norms.json'),
+    enabled: computed(() => toValue(enabled)),
+  })
 }
 
 export function useWaterUse(enabled: MaybeRefOrGetter<boolean>) {

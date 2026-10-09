@@ -50,7 +50,11 @@ const style = computed(() => {
     <p v-for="line in details" :key="line" class="mt-1 text-[11px] text-ink-muted tabular-nums">
       {{ line }}
     </p>
-    <div class="relative mt-2.5 h-1.5 rounded-full" :style="{ background: gradient }">
+    <div
+      v-if="gradient"
+      class="relative mt-2.5 h-1.5 rounded-full"
+      :style="{ background: gradient }"
+    >
       <span
         v-if="position !== null"
         class="absolute top-1/2 size-3 -translate-1/2 rounded-full border-2 border-white bg-transparent shadow-[0_0_0_1px_rgb(0_0_0/0.5)]"

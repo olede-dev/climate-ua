@@ -1,5 +1,6 @@
 import { DEFAULT_LAYER, LAYER_IDS, layerConfig } from '../config/layers'
 import type { LayerId, ProjectionBound, WaterScenario, WaterSector, WaterView } from '../types'
+import { RIVER_VIEWS, type RiverView } from './river/marks'
 import { BOUNDS } from './series'
 import { parseStep, type TimeStep } from './time'
 import { WATER_PERIODS, WATER_SCENARIOS, WATER_SECTORS } from './waterUse'
@@ -16,6 +17,7 @@ export interface UrlState {
   waterSector: WaterSector
   waterScenario: WaterScenario
   bound: ProjectionBound
+  riverView: RiverView
 }
 
 export const DEFAULT_URL_STATE: Readonly<UrlState> = {
@@ -26,6 +28,7 @@ export const DEFAULT_URL_STATE: Readonly<UrlState> = {
   waterSector: 'total',
   waterScenario: 'SSP1-2.6',
   bound: 'median',
+  riverView: 'state',
 }
 
 export type QueryInput = Record<string, string | null | (string | null)[] | undefined>
@@ -60,6 +63,7 @@ export function parseUrlState(query: QueryInput): UrlState {
     waterScenario:
       WATER_SCENARIOS.find((v) => v === first(query.sc)) ?? DEFAULT_URL_STATE.waterScenario,
     bound: BOUNDS.find((v) => v === first(query.b)) ?? DEFAULT_URL_STATE.bound,
+    riverView: RIVER_VIEWS.find((v) => v === first(query.rl)) ?? DEFAULT_URL_STATE.riverView,
   }
 }
 
@@ -72,5 +76,7 @@ export function toUrlQuery(state: UrlState): Record<string, string> {
   if (state.waterSector !== DEFAULT_URL_STATE.waterSector) query.use = state.waterSector
   if (state.waterScenario !== DEFAULT_URL_STATE.waterScenario) query.sc = state.waterScenario
   if (state.bound !== DEFAULT_URL_STATE.bound) query.b = state.bound
+  if (state.layer === 'rivers' && state.riverView !== DEFAULT_URL_STATE.riverView)
+    query.rl = state.riverView
   return query
 }

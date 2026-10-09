@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { DEFAULT_URL_STATE, type UrlState } from '../lib/urlState'
+import type { RiverView } from '../lib/river/marks'
 import type { TimeStep } from '../lib/time'
 import type { LayerId, ProjectionBound, WaterScenario, WaterSector, WaterView } from '../types'
 
@@ -14,6 +15,7 @@ export const useUiStore = defineStore('ui', () => {
   const waterSector = ref<WaterSector>(DEFAULT_URL_STATE.waterSector)
   const waterScenario = ref<WaterScenario>(DEFAULT_URL_STATE.waterScenario)
   const bound = ref<ProjectionBound>(DEFAULT_URL_STATE.bound)
+  const riverView = ref<RiverView>(DEFAULT_URL_STATE.riverView)
 
   function toUrlState(): UrlState {
     return {
@@ -24,6 +26,7 @@ export const useUiStore = defineStore('ui', () => {
       waterSector: waterSector.value,
       waterScenario: waterScenario.value,
       bound: bound.value,
+      riverView: riverView.value,
     }
   }
 
@@ -35,6 +38,7 @@ export const useUiStore = defineStore('ui', () => {
     waterSector.value = state.waterSector
     waterScenario.value = state.waterScenario
     bound.value = state.bound
+    riverView.value = state.riverView
   }
 
   return {
@@ -46,6 +50,7 @@ export const useUiStore = defineStore('ui', () => {
     waterSector,
     waterScenario,
     bound,
+    riverView,
     toUrlState,
     applyUrlState,
   }

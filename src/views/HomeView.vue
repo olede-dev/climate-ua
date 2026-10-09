@@ -7,10 +7,12 @@ import AppHeader from '../components/layout/AppHeader.vue'
 import LanguageMenu from '../components/layout/LanguageMenu.vue'
 import ThemeMenu from '../components/layout/ThemeMenu.vue'
 import type { BasemapKind } from '../components/map/basemap'
-import ClimateMap, { type RegionHover } from '../components/map/ClimateMap.vue'
+import ClimateMap, { type RegionHover, type RiverMapData } from '../components/map/ClimateMap.vue'
 import MapLegend from '../components/map/MapLegend.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
 import RegionTable, { type RegionRow } from '../components/map/RegionTable.vue'
+import RiverLegend from '../components/map/RiverLegend.vue'
+import RiverTimeline from '../components/map/RiverTimeline.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
 import LayerList from '../components/panel/LayerList.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
@@ -20,15 +22,20 @@ import {
   useGrid,
   useLayer,
   useOblasts,
+  useRiverLines,
   useRivers,
   useWaterUse,
 } from '../composables/useLayer'
 import { useLocale } from '../composables/useLocale'
 import { useMediaQuery } from '../composables/useMediaQuery'
+import { useStationsState } from '../composables/useStationsState'
+import { DISCHARGE_WINDOW } from '../config/discharge'
 import { useUrlSync } from '../composables/useUrlSync'
-import { formatPeriod, valueFormat } from '../lib/format'
+import { formatDayMonth, formatNumber, formatPeriod, valueFormat } from '../lib/format'
 import { basinLabel, oblastLabel, oblastName, stationLabel, type RegionLabel } from '../lib/regions'
-import { stationPoints } from '../lib/rivers'
+import { OUTLOOK_DAYS } from '../lib/river/anomaly'
+import { todayKyiv } from '../lib/river/dates'
+import { riverLegend, riverMarks } from '../lib/river/marks'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, atBound, valueAt, type StepValue } from '../lib/series'
 import { outerBorder } from '../lib/geometry'
@@ -93,12 +100,13 @@ const config = computed(() =>
 const geometryQuery = computed(() =>
   config.value.geometry === 'basins' ? basinsQuery : oblastsQuery,
 )
-const riversQuery = useRivers(() => config.value.geometry === 'stations')
-const markers = computed(() =>
-  config.value.geometry === 'stations' && riversQuery.data.value
-    ? stationPoints(riversQuery.data.value)
-    : null,
-)
+const isRivers = computed(() => ui.layer === 'rivers')
+const riversQuery = useRivers(isRivers)
+const riverLinesQuery = useRiverLines(isRivers)
+const mapDate = ref(todayKyiv())
+const stations = useStationsState(isRivers, mapDate)
+// The timelapse belongs to the state view; any other view shows today again.
+watch([isRivers, () => ui.riverView], () => (mapDate.value = stations.today))
 const regionsFile = computed<RegionsFile | undefined>(() => geometryQuery.value.data.value)
 const loadError = computed(
   () =>
@@ -169,10 +177,27 @@ const mapGrid = computed(() => {
   return values && { file, values }
 })
 
+const riverMap = computed<RiverMapData | null>(() => {
+  const file = riversQuery.data.value
+  if (!isRivers.value || !file) return null
+  const marks = riverMarks(ui.riverView, stations.mapStates.value, {
+    locale: locale.value,
+    copy: t.value.river,
+    years: file.years,
+    year: typeof step.value === 'number' ? step.value : null,
+  })
+  return { stations: file.stations, lines: riverLinesQuery.data.value ?? null, marks }
+})
+const riverLegendContent = computed(() =>
+  isRivers.value ? riverLegend(ui.riverView, t.value.river, riversQuery.data.value) : null,
+)
+
 const mapValues = computed<Record<string, number | null>>(() =>
-  Object.fromEntries(
-    Object.keys(layer.value?.regions ?? {}).map((id) => [id, shownValue(id)?.median ?? null]),
-  ),
+  isRivers.value
+    ? {}
+    : Object.fromEntries(
+        Object.keys(layer.value?.regions ?? {}).map((id) => [id, shownValue(id)?.median ?? null]),
+      ),
 )
 
 const copy = computed<LayerCopy>(() => {
@@ -403,10 +428,45 @@ const menuButtonClass =
 const vFocus = { mounted: (el: HTMLElement) => el.focus() }
 
 const hover = ref<RegionHover | null>(null)
+function riverTooltip(at: RegionHover) {
+  const state = stations.mapStates.value.find((s) => s.station.id === at.id)
+  const mark = riverMap.value?.marks.get(at.id)
+  if (!state) return null
+  const copy = t.value.river
+  const details: string[] = []
+  if (state.current !== null && state.norm && state.norm.median > 0) {
+    const pct = formatNumber((state.current / state.norm.median) * 100, locale.value, {
+      decimals: 0,
+    })
+    details.push(copy.ofNorm.replace('{pct}', `${pct}%`))
+  }
+  if (mark?.detail) details.push(mark.detail)
+  const when =
+    ui.riverView === 'state'
+      ? formatDayMonth(mapDate.value, locale.value)
+      : ui.riverView === 'trend'
+        ? (riverLegendContent.value?.note ?? '')
+        : stepLabel.value
+  const discharge =
+    state.current === null
+      ? null
+      : `${formatNumber(state.current, locale.value, { decimals: state.current >= 10 ? 0 : 1 })} ${copy.dischargeUnit}`
+  return {
+    ...at,
+    name: regionLabel(at.id).name,
+    when,
+    value: discharge,
+    details,
+    gradient: '',
+    position: null,
+  }
+}
+
 const tooltip = computed(() => {
   const at = hover.value
   const file = layer.value
   if (!at || !file) return null
+  if (isRivers.value) return riverTooltip(at)
   const series = file.regions[at.id]
   const shown = shownValue(at.id)
   const raw = series && step.value !== null ? valueAt(series, file.history, step.value) : null
@@ -428,8 +488,10 @@ const tooltip = computed(() => {
   return {
     ...at,
     name: regionLabel(at.id).name,
+    when: stepLabel.value,
     value: shown ? format(shown.median) : null,
     details,
+    gradient: gradient.value,
     position: shown ? scalePosition(config.value.scale, shown.median) : null,
   }
 })
@@ -530,7 +592,7 @@ const tooltip = computed(() => {
         />
         <ClimateMap
           :regions="regionsFile"
-          :markers="markers"
+          :rivers="riverMap"
           :values="mapValues"
           :grid="mapGrid"
           :scale="config.scale"
@@ -557,19 +619,26 @@ const tooltip = computed(() => {
             :x="tooltip.x"
             :y="tooltip.y"
             :name="tooltip.name"
-            :when="stepLabel"
+            :when="tooltip.when"
             :value="tooltip.value"
             :no-data="t.tooltip.noData"
             :details="tooltip.details"
-            :gradient="gradient"
+            :gradient="tooltip.gradient"
             :position="tooltip.position"
           />
           <div
             v-if="!isWide"
             class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3"
           >
+            <RiverTimeline
+              v-if="isRivers && ui.riverView === 'state'"
+              v-model="mapDate"
+              :today="stations.today"
+              :past-days="DISCHARGE_WINDOW.pastDays"
+              :future-days="OUTLOOK_DAYS"
+            />
             <TimeSlider
-              v-if="sliderAxis && layer"
+              v-else-if="sliderAxis && layer && (!isRivers || ui.riverView === 'lowFlow')"
               v-model="timeModel"
               v-model:playing="ui.playing"
               :axis="sliderAxis"
@@ -577,8 +646,13 @@ const tooltip = computed(() => {
           </div>
         </ClimateMap>
       </section>
+      <RiverLegend
+        v-if="!isWide && riverLegendContent"
+        :content="riverLegendContent"
+        class="rounded-2xl bg-surface px-3 py-2 shadow-card"
+      />
       <MapLegend
-        v-if="!isWide && layer"
+        v-else-if="!isWide && layer"
         v-bind="legendProps"
         class="rounded-2xl bg-surface px-3 py-2 shadow-card"
       />
@@ -606,6 +680,8 @@ const tooltip = computed(() => {
           :scenario="ui.waterScenario"
           :projection-range="projectionRange"
           :region-sectors="regionSectorShares"
+          :river-view="isRivers ? ui.riverView : null"
+          @river-view="ui.riverView = $event"
           @close="ui.regionId = null"
           @sector="ui.waterSector = $event"
           @view="setWaterView"
@@ -615,15 +691,32 @@ const tooltip = computed(() => {
         />
       </div>
       <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
-        <div ref="bottomBar" class="relative z-10 flex justify-center">
+        <div ref="bottomBar" class="relative z-10 flex flex-col items-center gap-2">
+          <div
+            v-if="riverLegendContent && ui.riverView !== 'lowFlow'"
+            class="pointer-events-auto flex w-full max-w-xl min-w-0 flex-col gap-2"
+          >
+            <RiverTimeline
+              v-if="ui.riverView === 'state'"
+              v-model="mapDate"
+              :today="stations.today"
+              :past-days="DISCHARGE_WINDOW.pastDays"
+              :future-days="OUTLOOK_DAYS"
+            />
+            <RiverLegend
+              :content="riverLegendContent"
+              class="glass rounded-2xl px-3 py-2 shadow-float"
+            />
+          </div>
           <TimeSlider
-            v-if="sliderAxis && layer"
+            v-else-if="sliderAxis && layer"
             v-model="timeModel"
             v-model:playing="ui.playing"
             class="w-full max-w-xl min-w-0"
             :axis="sliderAxis"
           >
-            <MapLegend v-bind="legendProps" />
+            <RiverLegend v-if="riverLegendContent" :content="riverLegendContent" />
+            <MapLegend v-else v-bind="legendProps" />
           </TimeSlider>
         </div>
       </div>
@@ -686,6 +779,8 @@ const tooltip = computed(() => {
         :scenario="ui.waterScenario"
         :projection-range="projectionRange"
         :region-sectors="regionSectorShares"
+        :river-view="isRivers ? ui.riverView : null"
+        @river-view="ui.riverView = $event"
         @close="ui.regionId = null"
         @sector="ui.waterSector = $event"
         @view="setWaterView"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FeatureCollection, MultiLineString, MultiPolygon, Point, Polygon } from 'geojson'
+import type { MultiLineString, MultiPolygon, Polygon } from 'geojson'
 import * as maplibregl from 'maplibre-gl'
 import type {
   LngLatBoundsLike,
@@ -13,14 +13,15 @@ import { useLocale } from '../../composables/useLocale'
 import { geometryBounds } from '../../lib/geometry'
 import { gridCorners, paintGrid } from '../../lib/grid'
 import type { ColorScale } from '../../lib/scale'
-import type { GridFile, OblastsFile, RegionsFile } from '../../types'
+import type { MapMark } from '../../lib/river/marks'
+import { markerRadius, stationPoints } from '../../lib/rivers'
+import type { GridFile, OblastsFile, RegionsFile, RiverLinesFile, Station } from '../../types'
 import { useTheme } from '../../composables/useTheme'
 import { basemapStyle, setPlaceLabelsOnImagery, type BasemapKind } from './basemap'
 import {
   addCountryBorder,
   addFocusLayers,
   addRegionLayers,
-  addStationLayers,
   REGION_FILL,
   REGION_SOURCE,
   setCountryBorder,
@@ -29,10 +30,27 @@ import {
   setGridImage,
   setRegionData,
   setRegionScale,
-  setStationData,
-  STATION_DOT,
-  STATION_SOURCE,
+  setRegionsShown,
 } from './regionLayers'
+import {
+  addRiverLayers,
+  createStationAnimator,
+  hasRiverLayers,
+  hasRiverLines,
+  removeRiverLayers,
+  setRiverFocus,
+  setRiverMarks,
+  setStationData,
+  STATION_LAYERS,
+  type StationOverlay,
+} from './riverLayers'
+
+/** The rivers layer: station markers and river lines instead of the region fill. */
+export interface RiverMapData {
+  stations: Station[]
+  lines: RiverLinesFile | null
+  marks: ReadonlyMap<string, MapMark>
+}
 
 export interface RegionHover {
   id: string
@@ -42,7 +60,7 @@ export interface RegionHover {
 
 const props = defineProps<{
   regions: RegionsFile | undefined
-  markers: FeatureCollection<Point> | null
+  rivers?: RiverMapData | null
   values: Record<string, number | null>
   scale: ColorScale
   grid?: { file: GridFile; values: (number | null)[] } | null
@@ -71,7 +89,6 @@ const TWEEN_MS = 300
 const MARKER_HIT = 6
 const MARKER_FRAME = { lon: 2.4, lat: 1.5 }
 const MAX_FRAME_ZOOM = 10
-const NO_POINTS: FeatureCollection<Point> = { type: 'FeatureCollection', features: [] }
 
 const { locale, t } = useLocale()
 const { theme } = useTheme()
@@ -87,6 +104,10 @@ let hoveredId: string | null = null
 let shown: Record<string, number | null> = {}
 let tweenFrame = 0
 let styleReady = false
+let animator: ReturnType<typeof createStationAnimator> | undefined
+/** Stations whose markers the source holds, and the station whose river reach is outlined. */
+let shownStations: Station[] | null = null
+let riverFocus: string | null = null
 
 const gridCanvas = document.createElement('canvas')
 
@@ -105,16 +126,8 @@ function applyStyle() {
   })
 }
 
-function valueSource(): string {
-  return props.markers ? STATION_SOURCE : REGION_SOURCE
-}
-
-function targetLayer(): string {
-  return props.markers ? STATION_DOT : REGION_FILL
-}
-
 function setValue(id: string, value: number | null) {
-  map?.setFeatureState({ source: valueSource(), id }, { value })
+  map?.setFeatureState({ source: REGION_SOURCE, id }, { value })
   shown[id] = value
 }
 
@@ -147,7 +160,7 @@ function applyGrid() {
 
 function tweenTo(target: Record<string, number | null>) {
   cancelAnimationFrame(tweenFrame)
-  if (!styleReady || !map?.getSource(valueSource())) return
+  if (!styleReady || !map?.getSource(REGION_SOURCE)) return
   const from = { ...shown }
   const ids = Object.keys(target)
   if (reducedMotion.matches) {
@@ -169,22 +182,81 @@ function tweenTo(target: Record<string, number | null>) {
 }
 
 function setSelected(id: string | null, previous: string | null) {
-  if (!map?.getSource(valueSource())) return
-  if (previous) map.setFeatureState({ source: valueSource(), id: previous }, { selected: false })
-  if (id) map.setFeatureState({ source: valueSource(), id }, { selected: true })
+  if (props.rivers) return syncRiverFocus()
+  if (!map?.getSource(REGION_SOURCE)) return
+  if (previous) map.setFeatureState({ source: REGION_SOURCE, id: previous }, { selected: false })
+  if (id) map.setFeatureState({ source: REGION_SOURCE, id }, { selected: true })
 }
 
 function setHovered(id: string | null) {
   if (!map || id === hoveredId) return
-  if (hoveredId) map.setFeatureState({ source: valueSource(), id: hoveredId }, { hover: false })
-  if (id) map.setFeatureState({ source: valueSource(), id }, { hover: true })
+  if (!props.rivers) {
+    if (hoveredId) map.setFeatureState({ source: REGION_SOURCE, id: hoveredId }, { hover: false })
+    if (id) map.setFeatureState({ source: REGION_SOURCE, id }, { hover: true })
+  }
   hoveredId = id
-  if (!props.markers) applyFillOpacity()
+  if (props.rivers) syncRiverFocus()
+  else applyFillOpacity()
   map.getCanvas().style.cursor = id ? 'pointer' : ''
 }
 
 function focused(): boolean {
-  return !props.markers && !!props.focusOutlines && props.selectedId !== null
+  return !props.rivers && !!props.focusOutlines && props.selectedId !== null
+}
+
+/** A selection outlines its river reach and dims the rest; a hover only outlines. */
+function syncRiverFocus() {
+  if (!map || !hasRiverLayers(map)) return
+  const next = props.selectedId ?? hoveredId
+  setRiverFocus(map, props.selectedId, { from: riverFocus, to: next })
+  riverFocus = next
+}
+
+function overlayOf(station: Station, mark: MapMark | undefined): StationOverlay | null {
+  if (!mark?.fill) return null
+  return {
+    id: station.id,
+    lngLat: [station.marker.lon, station.marker.lat],
+    radius: markerRadius(station.meanAnnual),
+    fill: mark.fill,
+  }
+}
+
+/** Adds, updates or removes the river layers to match the `rivers` prop. */
+function syncRivers() {
+  if (!map || !styleReady || !map.getLayer(REGION_FILL)) return
+  const rivers = props.rivers
+  setRegionsShown(map, !rivers)
+  if (!rivers) {
+    removeRiverLayers(map)
+    animator?.stop()
+    shownStations = null
+    riverFocus = null
+    return
+  }
+  const fresh = !hasRiverLayers(map)
+  const linesBefore = hasRiverLines(map)
+  addRiverLayers(map, stationPoints(rivers.stations), rivers.lines, theme.value)
+  if (!fresh && shownStations !== rivers.stations) {
+    setStationData(map, stationPoints(rivers.stations))
+  }
+  shownStations = rivers.stations
+  // New layers start without feature state: marks and focus set it again.
+  if (hasRiverLines(map) !== linesBefore) riverFocus = null
+  setRiverMarks(map, rivers.marks)
+  syncRiverFocus()
+  animator?.setPulsing(
+    rivers.stations
+      .filter((s) => rivers.marks.get(s.id)?.pulse)
+      .map((s) => overlayOf(s, rivers.marks.get(s.id)))
+      .filter((o) => o !== null),
+  )
+}
+
+function popSelected(id: string | null) {
+  const station = props.rivers?.stations.find((s) => s.id === id)
+  const overlay = station && overlayOf(station, props.rivers?.marks.get(station.id))
+  if (overlay) animator?.pop(overlay, theme.value)
 }
 
 function applyFillOpacity() {
@@ -213,10 +285,10 @@ function fitUkraine(animate: boolean) {
 }
 
 function selectionBounds(): LngLatBoundsLike | null {
-  if (props.markers) {
-    const point = props.markers.features.find((f) => f.properties?.id === props.selectedId)
-    if (!point) return null
-    const [lon, lat] = point.geometry.coordinates as [number, number]
+  if (props.rivers) {
+    const station = props.rivers.stations.find((s) => s.id === props.selectedId)
+    if (!station) return null
+    const { lon, lat } = station.marker
     return [
       [lon - MARKER_FRAME.lon, lat - MARKER_FRAME.lat],
       [lon + MARKER_FRAME.lon, lat + MARKER_FRAME.lat],
@@ -236,9 +308,7 @@ function frameSelection(animate: boolean) {
 function redraw() {
   if (!map?.getSource(REGION_SOURCE)) return
   cancelAnimationFrame(tweenFrame)
-  for (const source of [REGION_SOURCE, STATION_SOURCE]) {
-    if (map.getSource(source)) map.removeFeatureState({ source })
-  }
+  map.removeFeatureState({ source: REGION_SOURCE })
   shown = {}
   for (const [id, value] of Object.entries(props.values)) setValue(id, value)
   setSelected(props.selectedId, null)
@@ -250,26 +320,32 @@ function redraw() {
 function installRegions() {
   if (!map || !props.regions || !styleReady) return
   addRegionLayers(map, props.regions, props.scale, theme.value)
-  addStationLayers(map, props.markers ?? NO_POINTS, props.scale, theme.value)
   if (props.focusOutlines) addFocusLayers(map, props.focusOutlines)
   if (props.countryBorder) addCountryBorder(map, props.countryBorder, theme.value)
   setFutureHatch(map, props.future)
   setCountryBorder(map, props.projection ?? false)
   redraw()
   applyGrid()
+  syncRivers()
 }
 
 function featureAt(event: MapMouseEvent): string | null {
-  const layer = targetLayer()
-  if (!map?.getLayer(layer)) return null
-  const { x, y } = event.point
-  const where: Parameters<maplibregl.Map['queryRenderedFeatures']>[0] = props.markers
-    ? [
+  if (!map) return null
+  if (props.rivers) {
+    if (!hasRiverLayers(map)) return null
+    const { x, y } = event.point
+    const hits = map.queryRenderedFeatures(
+      [
         [x - MARKER_HIT, y - MARKER_HIT],
         [x + MARKER_HIT, y + MARKER_HIT],
-      ]
-    : event.point
-  const [feature] = map.queryRenderedFeatures(where, { layers: [layer] })
+      ],
+      { layers: STATION_LAYERS },
+    )
+    const id = hits[0]?.properties.id
+    return typeof id === 'string' ? id : null
+  }
+  if (!map.getLayer(REGION_FILL)) return null
+  const [feature] = map.queryRenderedFeatures(event.point, { layers: [REGION_FILL] })
   return typeof feature?.id === 'string' ? feature.id : null
 }
 
@@ -309,8 +385,11 @@ onMounted(() => {
   map.touchZoomRotate.disableRotation()
   map.keyboard.disableRotation()
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
+  animator = createStationAnimator(map, () => reducedMotion.matches)
   map.on('style.load', () => {
     styleReady = true
+    shownStations = null
+    riverFocus = null
     installRegions()
   })
   map.on('mousemove', onMove)
@@ -335,6 +414,8 @@ onMounted(() => {
 onBeforeUnmount(() => {
   cancelAnimationFrame(tweenFrame)
   resizeObserver?.disconnect()
+  animator?.stop()
+  animator = undefined
   map?.remove()
   map = undefined
 })
@@ -352,12 +433,14 @@ watch(
   },
 )
 watch(
-  () => props.markers,
-  (markers) => {
-    if (!map?.getSource(STATION_SOURCE)) return
-    setStationData(map, markers ?? NO_POINTS)
-    redraw()
-    if (!viewTouched) frameSelection(false)
+  () => props.rivers,
+  (rivers, previous) => {
+    if (!!rivers !== !!previous) {
+      setHovered(null)
+      applyFocus()
+    }
+    syncRivers()
+    if (!viewTouched && rivers?.stations !== previous?.stations) frameSelection(false)
   },
 )
 watch(
@@ -407,6 +490,7 @@ watch(
     setSelected(id, previous)
     applyFocus()
     frameSelection(true)
+    popSelected(id)
   },
 )
 </script>

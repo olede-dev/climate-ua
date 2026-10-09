@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { riversLayer, stationPoints } from '../src/lib/rivers'
+import { markerRadius, riversLayer, stationPoints } from '../src/lib/rivers'
 import type { RiversFile } from '../src/types'
 
 type Station = RiversFile['stations'][number]
@@ -64,8 +64,17 @@ describe('riversLayer', () => {
 
 describe('stationPoints', () => {
   it('places each station at its marker, not its GloFAS cell', () => {
-    const points = stationPoints(file)
+    const points = stationPoints(file.stations)
     expect(points.features.map((f) => f.properties.id)).toEqual(['a', 'b'])
     expect(points.features[1]!.geometry.coordinates).toEqual([25, 48])
+  })
+})
+
+describe('markerRadius', () => {
+  it('grows with mean flow within 6–16 px', () => {
+    expect(markerRadius(null)).toBe(8)
+    expect(markerRadius(1)).toBe(6)
+    expect(markerRadius(100)).toBe(10)
+    expect(markerRadius(1e6)).toBe(16)
   })
 })

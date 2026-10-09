@@ -80,3 +80,19 @@ export function valueFormat(locale: Locale, unit: Unit, decimals: number): Value
       ? formatWithUnit(value, unit, locale, { decimals: places, signed })
       : formatNumber(value, locale, { decimals: places, signed })
 }
+
+const dayMonthFormats = new Map<Locale, Intl.DateTimeFormat>()
+
+/** Calendar date without the year: `2026-10-12` → `12 жовтня` / `12 October`. */
+export function formatDayMonth(date: string, locale: Locale): string {
+  let format = dayMonthFormats.get(locale)
+  if (!format) {
+    format = new Intl.DateTimeFormat(INTL_LOCALES[locale], {
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'UTC',
+    })
+    dayMonthFormats.set(locale, format)
+  }
+  return format.format(new Date(`${date}T00:00:00Z`))
+}

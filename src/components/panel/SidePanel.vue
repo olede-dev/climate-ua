@@ -9,6 +9,7 @@ import { summaryStory, type StoryInput } from '../../lib/narrative'
 import { BOUNDS } from '../../lib/series'
 import { summaryRows } from '../../lib/summary'
 import type { RegionLabel } from '../../lib/regions'
+import { RIVER_VIEWS, type RiverView } from '../../lib/river/marks'
 import { isFuture, type TimeStep } from '../../lib/time'
 import { countryColor, WATER_SCENARIOS, WATER_SECTORS, WATER_USE_VIEWS } from '../../lib/waterUse'
 import type {
@@ -36,6 +37,7 @@ const props = defineProps<{
   scenario?: WaterScenario
   projectionRange?: { bound: ProjectionBound; values: Record<ProjectionBound, number> } | null
   regionSectors?: Sectors | null
+  riverView?: RiverView | null
 }>()
 const emit = defineEmits<{
   close: []
@@ -44,9 +46,12 @@ const emit = defineEmits<{
   scenario: [WaterScenario]
   bound: [ProjectionBound]
   future: [boolean]
+  riverView: [RiverView]
 }>()
 
 const { t } = useLocale()
+
+const riverViews = computed(() => RIVER_VIEWS.map((id) => ({ id, label: t.value.river.views[id] })))
 
 const futureOn = computed(() =>
   props.water ? props.water.view === 'future' : isFuture(props.step),
@@ -194,6 +199,13 @@ function onKeydown(event: KeyboardEvent) {
       />
       <div v-else class="space-y-3">
         <WaterTabs
+          v-if="riverView"
+          :model-value="riverView"
+          :views="riverViews"
+          :label="t.river.viewsLabel"
+          @update:model-value="emit('riverView', $event)"
+        />
+        <WaterTabs
           v-if="water?.view === 'future' && scenario"
           :model-value="scenario"
           stacked
@@ -260,9 +272,7 @@ function onKeydown(event: KeyboardEvent) {
           class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg text-white transition-transform group-hover:-translate-x-0.5"
           >←</span
         >
-        <span class="text-[15px] font-semibold text-white">{{
-          t.waterUse.back
-        }}</span>
+        <span class="text-[15px] font-semibold text-white">{{ t.waterUse.back }}</span>
       </button>
     </div>
     <div v-else-if="futureOffered" class="shrink-0 px-4 pb-4">
@@ -288,9 +298,7 @@ function onKeydown(event: KeyboardEvent) {
           </svg>
         </span>
         <span class="min-w-0 flex-1">
-          <span class="block text-[15px] font-semibold text-white">{{
-            t.waterUse.future
-          }}</span>
+          <span class="block text-[15px] font-semibold text-white">{{ t.waterUse.future }}</span>
           <span class="block text-xs text-white/90">{{ futureHint }}</span>
         </span>
         <span

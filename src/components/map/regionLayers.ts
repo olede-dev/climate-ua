@@ -1,4 +1,4 @@
-import type { FeatureCollection, MultiLineString, Point } from 'geojson'
+import type { MultiLineString } from 'geojson'
 import type { ExpressionSpecification, Map as MaplibreMap } from 'maplibre-gl'
 
 import type { Theme } from '../../composables/useTheme'
@@ -11,8 +11,6 @@ const REGION_HATCH = 'region-hatch'
 const REGION_LINE = 'region-line'
 const REGION_HIGHLIGHT = 'region-highlight'
 const HATCH_IMAGE = 'future-hatch'
-export const STATION_SOURCE = 'stations'
-export const STATION_DOT = 'station-dot'
 const FOCUS_SATELLITE = 'focus-satellite'
 const FOCUS_OBLAST_SOURCE = 'focus-oblasts'
 const FOCUS_OBLAST_LINE = 'focus-oblast-line'
@@ -37,18 +35,16 @@ const FOCUS_SELECTED_OPACITY = 0.5
 const FOCUS_HOVER_OPACITY = 0.3
 const FOCUS_FADE = { duration: 400 }
 
-const INK: Record<Theme, { hatch: string; border: string; outline: string; ring: string }> = {
+const INK: Record<Theme, { hatch: string; border: string; outline: string }> = {
   dark: {
     hatch: 'rgba(255, 255, 255, 0.16)',
     border: 'rgba(235, 238, 245, 0.32)',
     outline: '#f5f5f7',
-    ring: '#1a1a19',
   },
   light: {
     hatch: 'rgba(0, 0, 0, 0.18)',
     border: 'rgba(255, 255, 255, 0.7)',
     outline: '#1d1d1f',
-    ring: '#ffffff',
   },
 }
 
@@ -132,39 +128,6 @@ export function addRegionLayers(
   )
 }
 
-export function addStationLayers(
-  map: MaplibreMap,
-  data: FeatureCollection<Point>,
-  scale: ColorScale,
-  theme: Theme,
-) {
-  const ink = INK[theme]
-  if (map.getSource(STATION_SOURCE)) return
-  map.addSource(STATION_SOURCE, { type: 'geojson', data, promoteId: 'id' })
-  const beforeId = map
-    .getStyle()
-    .layers.find((layer) => layer.type === 'symbol' && layer['source-layer'] === 'place')?.id
-  map.addLayer(
-    {
-      id: STATION_DOT,
-      type: 'circle',
-      source: STATION_SOURCE,
-      paint: {
-        'circle-radius': ['case', SELECTED, 9, HOVER, 8.5, 7],
-        'circle-color': mapColorExpression(scale, VALUE),
-        'circle-stroke-color': ['case', SELECTED, ink.outline, HOVER, ink.outline, ink.ring],
-        'circle-stroke-width': ['case', SELECTED, 2.5, HOVER, 2, 1.5],
-      },
-    },
-    beforeId,
-  )
-}
-
-export function setStationData(map: MaplibreMap, data: FeatureCollection<Point>) {
-  const source = map.getSource(STATION_SOURCE)
-  if (source && 'setData' in source && typeof source.setData === 'function') source.setData(data)
-}
-
 export function setRegionData(map: MaplibreMap, data: RegionsFile) {
   const source = map.getSource(REGION_SOURCE)
   if (source && 'setData' in source && typeof source.setData === 'function') source.setData(data)
@@ -173,8 +136,13 @@ export function setRegionData(map: MaplibreMap, data: RegionsFile) {
 export function setRegionScale(map: MaplibreMap, scale: ColorScale) {
   if (map.getLayer(REGION_FILL))
     map.setPaintProperty(REGION_FILL, 'fill-color', mapColorExpression(scale, VALUE))
-  if (map.getLayer(STATION_DOT))
-    map.setPaintProperty(STATION_DOT, 'circle-color', mapColorExpression(scale, VALUE))
+}
+
+/** The rivers layer draws its own lines and markers; the region fill only gets in their way. */
+export function setRegionsShown(map: MaplibreMap, shown: boolean) {
+  const visibility = shown ? 'visible' : 'none'
+  for (const id of [REGION_FILL, REGION_HIGHLIGHT])
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visibility)
 }
 
 export function setFutureHatch(map: MaplibreMap, visible: boolean) {

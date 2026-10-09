@@ -34,12 +34,25 @@ export function riversLayer(file: RiversFile): LayerFile {
   }
 }
 
-export function stationPoints(file: RiversFile): FeatureCollection<Point, { id: string }> {
+/** Marker radius in pixels, growing with the station's mean flow. */
+export function markerRadius(meanAnnual: number | null): number {
+  if (meanAnnual === null || meanAnnual <= 0) return 8
+  return Math.min(16, Math.max(6, 5 + 2.5 * Math.log10(meanAnnual)))
+}
+
+export interface StationPoint {
+  id: string
+  radius: number
+}
+
+export function stationPoints(
+  stations: readonly RiversFile['stations'][number][],
+): FeatureCollection<Point, StationPoint> {
   return {
     type: 'FeatureCollection',
-    features: file.stations.map((s): Feature<Point, { id: string }> => ({
+    features: stations.map((s): Feature<Point, StationPoint> => ({
       type: 'Feature',
-      properties: { id: s.id },
+      properties: { id: s.id, radius: markerRadius(s.meanAnnual) },
       geometry: { type: 'Point', coordinates: [s.marker.lon, s.marker.lat] },
     })),
   }

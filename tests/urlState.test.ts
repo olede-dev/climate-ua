@@ -12,6 +12,7 @@ describe('parseUrlState', () => {
       waterSector: 'total',
       waterScenario: 'SSP1-2.6',
       bound: 'median',
+      riverView: 'state',
     })
     expect(parseUrlState({ t: '1987' }).time).toBe(1987)
   })
@@ -52,8 +53,15 @@ describe('toUrlQuery', () => {
       waterSector: 'irrigation',
       waterScenario: 'SSP5-8.5',
       bound: 'min',
+      riverView: 'state',
     }
     expect(parseUrlState(toUrlQuery(state))).toEqual(state)
+  })
+
+  it('keeps the river view only in the rivers layer', () => {
+    const rivers = { ...DEFAULT_URL_STATE, layer: 'rivers' as const, riverView: 'trend' as const }
+    expect(toUrlQuery(rivers)).toEqual({ layer: 'rivers', rl: 'trend' })
+    expect(toUrlQuery({ ...rivers, layer: 'temp' })).toEqual({ layer: 'temp' })
   })
 
   it('reads the water projection periods, with its scenario', () => {
@@ -67,6 +75,8 @@ describe('toUrlQuery', () => {
     expect(parseUrlState({ b: 'min' }).bound).toBe('min')
     expect(parseUrlState({ b: 'max' }).bound).toBe('max')
     expect(parseUrlState({ b: 'mean' }).bound).toBe('median')
+    expect(parseUrlState({ layer: 'rivers', rl: 'lowFlow' }).riverView).toBe('lowFlow')
+    expect(parseUrlState({ rl: 'flood' }).riverView).toBe('state')
     // Links shared before the views keep opening the projection.
     expect(parseUrlState({ t: '2050' })).toMatchObject({ time: 2050, waterView: 'future' })
     expect(parseUrlState({ hot: '1' }).waterView).toBe('future')

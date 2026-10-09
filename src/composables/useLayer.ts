@@ -10,6 +10,7 @@ import type {
   LayerFile,
   LayerId,
   OblastsFile,
+  RiverLinesFile,
   RiverNormsFile,
   RiversFile,
   WaterUseFile,
@@ -48,6 +49,15 @@ export function useRiverNorms(enabled: MaybeRefOrGetter<boolean>) {
   return useQuery({
     queryKey: ['river-norms'],
     queryFn: () => fetchStatic<RiverNormsFile>('data/river-norms.json'),
+    enabled: computed(() => toValue(enabled)),
+  })
+}
+
+/** River lines with the station tint runs; only the rivers layer draws them. */
+export function useRiverLines(enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: ['river-lines'],
+    queryFn: () => fetchStatic<RiverLinesFile>('data/river-lines.geojson'),
     enabled: computed(() => toValue(enabled)),
   })
 }

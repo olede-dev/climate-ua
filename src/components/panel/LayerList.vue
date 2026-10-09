@@ -39,11 +39,7 @@ const TONES: Record<LayerId, string> = {
       </legend>
       <slot v-if="!compact" name="action" />
     </div>
-    <div
-      :class="
-        compact ? 'group/rail grid gap-1' : 'grid gap-1 sm:grid-cols-3 lg:grid-cols-1'
-      "
-    >
+    <div :class="compact ? 'group/rail grid gap-1' : 'grid gap-1 sm:grid-cols-3 lg:grid-cols-1'">
       <!-- The selected look follows the model, not `:checked`: Chromium does not restyle
            `:has(:checked)` when the URL, not a click, changes the layer. -->
       <label
@@ -84,9 +80,7 @@ const TONES: Record<LayerId, string> = {
           <span class="block text-sm font-semibold">{{ layer.name }}</span>
           <span
             class="mt-0.5 block text-xs leading-snug max-sm:hidden"
-            :class="
-              model === layer.id ? 'text-white/80' : 'text-ink-muted'
-            "
+            :class="model === layer.id ? 'text-white/80' : 'text-ink-muted'"
           >
             {{ layer.description }}
           </span>

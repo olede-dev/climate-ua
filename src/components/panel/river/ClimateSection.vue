@@ -10,6 +10,8 @@ import LowFlowChart from './LowFlowChart.vue'
 import InfoHint from '../../ui/InfoHint.vue'
 
 const props = defineProps<{
+  /** Which half to show: the flow-change tiles, or this year's low-flow days with their chart. */
+  view: 'trend' | 'lowFlow'
   periods: { baseline: YearRange; recent: YearRange; norm: YearRange } | undefined
   summary: ClimateSummary | null
   /** This year's discharge failed: only past years can be shown. */
@@ -44,7 +46,7 @@ const tiles = computed(() => {
       : s.thisYear > base
         ? 'drier'
         : 'wetter'
-  return [
+  const trend = [
     {
       label: copy.value.meanChange,
       value: formatPct(s.meanChangePct, locale.value),
@@ -59,6 +61,9 @@ const tiles = computed(() => {
       up: s.lowSeasonChangePct > 0,
       detail: null,
     },
+  ]
+  if (props.view === 'trend') return trend
+  return [
     {
       label: copy.value.thisYear,
       value: s.thisYear === null ? '—' : days(s.thisYear),
@@ -77,16 +82,16 @@ const tiles = computed(() => {
 
 <template>
   <section class="space-y-3" aria-labelledby="climate-heading">
-    <h3 id="climate-heading" class="px-1 text-[13px] leading-snug font-semibold text-ink">
-      {{ copy.heading }}
+    <h3 id="climate-heading" class="text-[13px] leading-snug font-semibold text-ink">
+      {{ view === 'trend' ? copy.heading : copy.lowFlowHeading }}
     </h3>
     <LoadingSkeleton v-if="!periods || !summary" :label="copy.loading" class="h-48" />
     <template v-else>
-      <ul class="divide-y divide-line rounded-xl bg-group">
+      <ul class="divide-y divide-line">
         <li
           v-for="tile in tiles"
           :key="tile.label"
-          class="flex items-center justify-between gap-3 px-4 py-2.5"
+          class="flex items-center justify-between gap-3 py-2.5"
         >
           <div class="min-w-0">
             <p class="text-sm leading-snug text-ink">{{ tile.label }}</p>
@@ -116,45 +121,47 @@ const tiles = computed(() => {
           </p>
         </li>
       </ul>
-      <h4 class="px-1 pt-1 text-[13px] leading-snug font-semibold text-ink">
-        {{ copy.chartHeading.replace('{date}', formatDayMonth(today, locale)) }}
-      </h4>
-      <LowFlowChart
-        :by-year="summary.byYear"
-        :recent="periods.recent"
-        :current-year="currentYear"
-        :baseline-mean="summary.baselineMean"
-      />
-      <ul class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-muted">
-        <li class="flex items-center gap-1.5">
-          <span class="inline-block size-2.5 rounded-[3px] bg-[#d6c3a5] dark:bg-[#6b5b45]"></span>
-          {{ formatYearRange(periods.baseline) }}
-        </li>
-        <li class="flex items-center gap-1.5">
-          <span class="inline-block size-2.5 rounded-[3px] bg-[#b07022] dark:bg-[#c38c45]"></span>
-          {{ formatYearRange(periods.recent) }}
-        </li>
-        <li v-if="summary.thisYear !== null" class="flex items-center gap-1.5">
-          <span class="inline-block size-2.5 rounded-[3px] bg-[#5f3209] dark:bg-[#fdba74]"></span>
-          {{ currentYear }}
-        </li>
-        <li class="flex items-center gap-1.5">
-          <span class="inline-block w-3 border-t border-dashed border-ink-muted"></span>
-          {{ meanOver(periods.baseline) }}
-        </li>
-      </ul>
-      <p v-if="thisYearFailed" role="status" class="text-xs text-warn-ink">
-        {{ copy.thisYearFailed }}
-      </p>
+      <template v-if="view === 'lowFlow'">
+        <h4 class="pt-1 text-[13px] leading-snug font-semibold text-ink">
+          {{ copy.chartHeading.replace('{date}', formatDayMonth(today, locale)) }}
+        </h4>
+        <LowFlowChart
+          :by-year="summary.byYear"
+          :recent="periods.recent"
+          :current-year="currentYear"
+          :baseline-mean="summary.baselineMean"
+        />
+        <ul class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-muted">
+          <li class="flex items-center gap-1.5">
+            <span class="inline-block size-2.5 rounded-[3px] bg-[#d6c3a5] dark:bg-[#6b5b45]"></span>
+            {{ formatYearRange(periods.baseline) }}
+          </li>
+          <li class="flex items-center gap-1.5">
+            <span class="inline-block size-2.5 rounded-[3px] bg-[#b07022] dark:bg-[#c38c45]"></span>
+            {{ formatYearRange(periods.recent) }}
+          </li>
+          <li v-if="summary.thisYear !== null" class="flex items-center gap-1.5">
+            <span class="inline-block size-2.5 rounded-[3px] bg-[#5f3209] dark:bg-[#fdba74]"></span>
+            {{ currentYear }}
+          </li>
+          <li class="flex items-center gap-1.5">
+            <span class="inline-block w-3 border-t border-dashed border-ink-muted"></span>
+            {{ meanOver(periods.baseline) }}
+          </li>
+        </ul>
+        <p v-if="thisYearFailed" role="status" class="text-xs text-warn-ink">
+          {{ copy.thisYearFailed }}
+        </p>
+      </template>
       <InfoHint :label="copy.noteToggle">
-        <p>
+        <p v-if="view === 'trend'">
           {{
             copy.periods
               .replace('{recent}', formatYearRange(periods.recent))
               .replace('{baseline}', formatYearRange(periods.baseline))
           }}
         </p>
-        <p>{{ copy.chartNote.replace('{norm}', formatYearRange(periods.norm)) }}</p>
+        <p v-else>{{ copy.chartNote.replace('{norm}', formatYearRange(periods.norm)) }}</p>
       </InfoHint>
     </template>
   </section>

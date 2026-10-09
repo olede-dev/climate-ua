@@ -17,6 +17,14 @@
       content="Вода, спека, морози й посуха по регіонах України: спостереження з 1950 року і прогнози до 2100."
     />
     <meta property="og:url" content="https://olede-dev.github.io/climate-ua/" />
+    <!-- Every view reads these; fetching them alongside the JS saves a round trip after boot. -->
+    <link rel="preload" href="/data/oblasts.geojson" as="fetch" crossorigin />
+    <link rel="preload" href="/data/basins.geojson" as="fetch" crossorigin />
+    <link rel="preload" href="/data/hidden-labels.geojson" as="fetch" crossorigin />
+    <!-- The default layer. -->
+    <link rel="preload" href="/data/water-use.json" as="fetch" crossorigin />
+    <link rel="preconnect" href="https://tiles.openfreemap.org" crossorigin />
+    <link rel="dns-prefetch" href="https://server.arcgisonline.com" />
     <title>Клімат України — минуле і майбутнє</title>
     <script>
       // Applies the theme before first paint; src/composables/useTheme.ts takes over after mount.

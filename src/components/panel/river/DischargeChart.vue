@@ -330,7 +330,7 @@ const options = computed((): ChartOptions<'line'> => {
     </div>
     <!-- Charts sharing the time axis, e.g. precipitation, go between the plot and its legend. -->
     <slot />
-    <ul class="flex flex-wrap gap-x-3 gap-y-1 px-1 text-xs text-ink-muted">
+    <ul class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-muted">
       <li v-for="entry in chart.legend" :key="entry.label">
         <button
           type="button"

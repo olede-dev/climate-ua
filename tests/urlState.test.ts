@@ -84,9 +84,9 @@ describe('toUrlQuery', () => {
   it('writes the river keys only in the rivers layer and only off their defaults', () => {
     const rivers = { ...DEFAULT_URL_STATE, layer: 'rivers' as const }
     expect(toUrlQuery(rivers)).toEqual({ layer: 'rivers' })
-    expect(toUrlQuery({ ...rivers, layer: 'temp', basin: 'don', riverSpan: 'year' })).toEqual(
-      { layer: 'temp' },
-    )
+    expect(toUrlQuery({ ...rivers, layer: 'temp', basin: 'don', riverSpan: 'year' })).toEqual({
+      layer: 'temp',
+    })
   })
 
   it('keeps the river view only in the rivers layer', () => {
@@ -120,17 +120,22 @@ describe('toUrlQuery', () => {
 
 describe('river URL keys', () => {
   it('reads each key and falls back on a bad value', () => {
-    const query = { layer: 'rivers', basin: 'danube', rs: 'forecast' }
-    expect(parseUrlState(query)).toMatchObject({ basin: 'danube', riverSpan: 'forecast' })
+    const query = { layer: 'rivers', basin: 'danube', rs: 'year' }
+    expect(parseUrlState(query)).toMatchObject({ basin: 'danube', riverSpan: 'year' })
     expect(parseUrlState({ layer: 'rivers', basin: '<b>', rs: 'decade' })).toMatchObject({
       basin: 'all',
       riverSpan: 'season',
     })
   })
 
-  it('opens the forecast span from the retired 7-month chart horizon', () => {
-    expect(parseUrlState({ layer: 'rivers', range: '210' }).riverSpan).toBe('forecast')
-    expect(parseUrlState({ layer: 'rivers', range: '30' }).riverSpan).toBe('season')
+  it('opens the forecast view from the retired forecast span and 7-month chart horizon', () => {
+    expect(parseUrlState({ layer: 'rivers', rs: 'forecast' })).toMatchObject({
+      riverView: 'forecast',
+      riverSpan: 'season',
+    })
+    expect(parseUrlState({ layer: 'rivers', range: '210' }).riverView).toBe('forecast')
+    expect(parseUrlState({ layer: 'rivers', range: '30' }).riverView).toBe('state')
+    expect(parseUrlState({ layer: 'rivers', rl: 'trend', rs: 'forecast' }).riverView).toBe('trend')
   })
 
   it('accepts station as an alias for region under layer=rivers', () => {
@@ -147,8 +152,8 @@ describe('rivers-ua links', () => {
     ).toMatchObject({
       layer: 'rivers',
       region: 'dnipro-kyiv',
-      riverSpan: 'forecast',
-      riverView: 'state',
+      riverSpan: 'season',
+      riverView: 'forecast',
     })
   })
 

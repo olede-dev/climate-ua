@@ -130,7 +130,13 @@ const options = computed((): ChartOptions<'bar'> => {
 </script>
 
 <template>
-  <div class="h-20">
-    <Bar ref="bar" :data="data" :options="options" :aria-label="copy.precipitationAria" role="img" />
+  <div class="h-56">
+    <Bar
+      ref="bar"
+      :data="data"
+      :options="options"
+      :aria-label="copy.precipitationAria"
+      role="img"
+    />
   </div>
 </template>

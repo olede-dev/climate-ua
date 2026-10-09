@@ -31,6 +31,7 @@ const SELECTED: ExpressionSpecification = ['boolean', ['feature-state', 'selecte
 
 /** Opaque enough that the basemap's own borders inside Ukraine do not show through. */
 const FILL_OPACITY = 0.9
+const REVEAL_FADE = { duration: 300 }
 const DIMMED_OPACITY = 0.45
 const FOCUS_GRID_OPACITY = 0.75
 
@@ -91,8 +92,9 @@ export function addRegionLayers(
       source: REGION_SOURCE,
       paint: {
         'fill-color': mapColorExpression(scale, VALUE),
-        'fill-opacity': FILL_OPACITY,
-        'fill-opacity-transition': { duration: 200 },
+        // Hidden until every tile of the source is parsed, so it never shows in pieces.
+        'fill-opacity': 0,
+        'fill-opacity-transition': REVEAL_FADE,
       },
     },
     beforeId,
@@ -112,7 +114,12 @@ export function addRegionLayers(
       id: REGION_LINE,
       type: 'line',
       source: REGION_SOURCE,
-      paint: { 'line-color': ink.border, 'line-width': 0.6 },
+      paint: {
+        'line-color': ink.border,
+        'line-width': 0.6,
+        'line-opacity': 0,
+        'line-opacity-transition': REVEAL_FADE,
+      },
     },
     beforeId,
   )
@@ -200,13 +207,14 @@ export function setFillOpacity(
   hovering: boolean,
   focused: boolean,
   theme: Theme,
+  revealed: boolean,
 ) {
   if (!map.getLayer(REGION_FILL)) return
   // Over the raster the fill stays invisible: it only catches the pointer for hover and click.
   map.setPaintProperty(
     REGION_FILL,
     'fill-opacity',
-    map.getLayer(GRID)
+    map.getLayer(GRID) || !revealed
       ? 0
       : focused
         ? ['case', SELECTED, FOCUS_SELECTED_OPACITY, HOVER, FOCUS_HOVER_OPACITY, 0]
@@ -215,8 +223,12 @@ export function setFillOpacity(
           : FILL_OPACITY,
   )
   if (map.getLayer(GRID))
-    map.setPaintProperty(GRID, 'raster-opacity', focused ? FOCUS_GRID_OPACITY : FILL_OPACITY)
-  map.setPaintProperty(REGION_LINE, 'line-opacity', focused ? 0 : 1)
+    map.setPaintProperty(
+      GRID,
+      'raster-opacity',
+      !revealed ? 0 : focused ? FOCUS_GRID_OPACITY : FILL_OPACITY,
+    )
+  map.setPaintProperty(REGION_LINE, 'line-opacity', focused || !revealed ? 0 : 1)
   // The theme's dark outline is lost on imagery; white reads on both.
   map.setPaintProperty(REGION_HIGHLIGHT, 'line-color', focused ? '#ffffff' : INK[theme].outline)
   map.setPaintProperty(
@@ -317,7 +329,8 @@ export function setGridImage(
       type: 'raster',
       source: GRID,
       paint: {
-        'raster-opacity': FILL_OPACITY,
+        'raster-opacity': 0,
+        'raster-opacity-transition': REVEAL_FADE,
         'raster-resampling': 'linear',
         'raster-fade-duration': 0,
       },

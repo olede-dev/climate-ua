@@ -16,9 +16,10 @@ defineProps<{
 </script>
 
 <template>
-  <figure class="text-[11px] leading-tight" :title="title">
+  <figure class="text-[11px] leading-tight">
     <figcaption class="sr-only">{{ title }}</figcaption>
-    <div class="flex items-center gap-2 font-semibold text-ink tabular-nums">
+    <div v-if="$slots.default" class="mb-2"><slot /></div>
+    <div class="flex items-center gap-2 font-semibold text-ink tabular-nums" :title="title">
       <span>{{ min }}</span>
       <span
         class="flex h-2 min-w-28 flex-1 overflow-hidden rounded-full sm:min-w-36"

@@ -16,13 +16,31 @@ export const SNAPSHOT_PATH = 'data/discharge-snapshot.json'
  */
 export const PRECIPITATION_WINDOW: PrecipitationWindow = { pastDays: 92, forecastDays: 16 }
 
-/** Window of the rivers timeline, which the station chart shares. */
-export type RiverSpan = 'season' | 'year' | 'forecast'
+export interface RiverWindow {
+  pastDays: number
+  futureDays: number
+}
 
-export const RIVER_SPANS: Record<RiverSpan, { pastDays: number; futureDays: number }> = {
+/** Window of the state view's station chart, which also shows the next month's forecast. */
+export type RiverSpan = 'season' | 'year'
+
+export const RIVER_SPANS: Record<RiverSpan, RiverWindow> = {
   season: { pastDays: DISCHARGE_WINDOW.pastDays, futureDays: 30 },
   year: { pastDays: 365, futureDays: 30 },
-  forecast: { pastDays: 30, futureDays: DISCHARGE_WINDOW.forecastDays },
+}
+
+/** The forecast view's station chart: the last month, then the full 7-month ensemble forecast. */
+export const FORECAST_WINDOW: RiverWindow = {
+  pastDays: 30,
+  futureDays: DISCHARGE_WINDOW.forecastDays,
+}
+
+/**
+ * The timeline holds one side of today only, as the other layers' history and future modes do:
+ * the state view's past days, or the forecast view's coming ones.
+ */
+export function timelineWindow({ pastDays, futureDays }: RiverWindow, forecast: boolean) {
+  return forecast ? { pastDays: 0, futureDays } : { pastDays, futureDays: 0 }
 }
 
 export const DEFAULT_RIVER_SPAN: RiverSpan = 'season'

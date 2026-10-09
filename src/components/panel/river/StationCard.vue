@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, useTemplateRef } from 'vue'
+import { computed, onMounted, useTemplateRef, type FunctionalComponent } from 'vue'
 
 import { isRateLimited } from '../../../api/http'
 import { useLocale } from '../../../composables/useLocale'
@@ -9,17 +9,16 @@ import type { RegionLabel } from '../../../lib/regions'
 import { formatDayMonth } from '../../../lib/format'
 import { forecastOutlook } from '../../../lib/river/anomaly'
 import { buildChartSeries } from '../../../lib/river/chartSeries'
-import { ANOMALY_CLASSES } from '../../../lib/river/marks'
-import {
-  formatDischarge,
-  formatPct,
-  formatYearRange,
-} from '../../../lib/river/format'
+import { ANOMALY_CLASSES, isDailyView, type RiverView } from '../../../lib/river/marks'
+import { formatDischarge, formatPct, formatYearRange } from '../../../lib/river/format'
 import type { DischargeSeries, RiverNormsFile, RiversFile, StationState } from '../../../types'
+import { RIVER_SPANS, type RiverSpan } from '../../../config/discharge'
 import ErrorState from '../../ui/ErrorState.vue'
+import ExpandList from '../../ui/ExpandList.vue'
 import InfoHint from '../../ui/InfoHint.vue'
 import LoadingSkeleton from '../../ui/LoadingSkeleton.vue'
 import OutlookBadge from '../../ui/OutlookBadge.vue'
+import SegmentedControl from '../../ui/SegmentedControl.vue'
 import ClimateSection from './ClimateSection.vue'
 import DischargeChart from './DischargeChart.vue'
 import PrecipitationChart from './PrecipitationChart.vue'
@@ -28,7 +27,9 @@ import RiverNormBar from './RiverNormBar.vue'
 /**
  * The rivers layer's station card, laid out like the climate layers' `RegionCard`: discharge
  * on the timeline's day as the headline with its norm bar, the forecast outlook, the
- * discharge chart over the timeline's window with precipitation, and the climate section. Loaded as its own
+ * discharge chart over the timeline's window with precipitation. The trend and low-flow views
+ * swap all of that for their part of the climate section; the views are
+ * picked from a list in the card, which the forecast view skips. Loaded as its own
  * chunk with Chart.js, only once a station opens.
  */
 const props = defineProps<{
@@ -48,6 +49,16 @@ const props = defineProps<{
   errorMessage: string
 }>()
 const emit = defineEmits<{ close: []; retry: []; select: [date: string] }>()
+/** The chart's window picker; without the model (the forecast view) the window is fixed. */
+const spanId = defineModel<RiverSpan>('spanId')
+/** The map's river view, picked here from the list; the forecast view has no row and shows bare. */
+const view = defineModel<RiverView>('view', { required: true })
+const spanOptions = computed(() =>
+  (Object.keys(RIVER_SPANS) as RiverSpan[]).map((value) => ({
+    value,
+    label: t.value.river.timeline.spans[value],
+  })),
+)
 
 const { locale, t } = useLocale()
 const copy = computed(() => t.value.river.details)
@@ -58,7 +69,28 @@ const stationNorms = computed(() => props.norms?.stations[station.value.id] ?? n
 const stateColor = computed(
   () => ANOMALY_CLASSES.find((c) => c.id === props.state.anomalyClass)?.color ?? null,
 )
-const precipitation = usePrecipitation(station, true)
+const daily = computed(() => isDailyView(view.value))
+
+const VIEW_ICONS: Record<ListedView, { icon: string; tone: string }> = {
+  state: { icon: 'M12 3s-6 6.5-6 11a6 6 0 0 0 12 0c0-4.5-6-11-6-11z', tone: 'bg-sky-500' },
+  trend: { icon: 'M3 17l6-6 4 4 8-8 M15 7h6v6', tone: 'bg-violet-500' },
+  lowFlow: { icon: 'M4 20h16 M6 20v-4 M10 20v-8 M14 20v-6 M18 20v-11', tone: 'bg-orange-500' },
+}
+type ListedView = Exclude<RiverView, 'forecast'>
+const viewItems = computed(() =>
+  (Object.keys(VIEW_ICONS) as ListedView[]).map((id) => ({
+    id,
+    name: t.value.river.views[id],
+    about: t.value.river.viewsAbout[id],
+    ...VIEW_ICONS[id],
+  })),
+)
+const Bare: FunctionalComponent = (_, { slots }) => slots.default?.()
+Bare.inheritAttrs = false
+/** Inside the list the blocks sit on its grouped row, so they drop their own inset. */
+const listed = computed(() => view.value !== 'forecast')
+const viewList = computed(() => (listed.value ? ExpandList : Bare))
+const precipitation = usePrecipitation(station, daily)
 const precipitationError = computed(() => {
   if (!precipitation.isError.value) return null
   return isRateLimited(precipitation.error.value)
@@ -157,49 +189,6 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       </p>
     </header>
 
-    <div>
-      <div
-        class="flex items-baseline gap-2.5"
-        :style="
-          stateColor ? { color: `color-mix(in oklab, ${stateColor} 75%, var(--ui-ink))` } : {}
-        "
-      >
-        <p
-          class="text-4xl leading-none font-semibold tabular-nums"
-          :class="!stateColor && 'text-ink'"
-        >
-          {{ formatDischarge(state.current, locale) }}
-          <span v-if="state.current !== null" class="text-xl">{{ t.river.dischargeUnit }}</span>
-        </p>
-        <span
-          v-if="state.anomalyPct !== null"
-          class="rounded-full bg-fill px-2 py-0.5 text-sm font-semibold whitespace-nowrap text-ink tabular-nums"
-          >{{ formatPct(state.anomalyPct, locale) }}</span
-        >
-      </div>
-      <p
-        v-if="state.anomalyClass"
-        class="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-ink"
-      >
-        <span
-          class="size-2.5 shrink-0 rounded-full"
-          :style="stateColor ? { background: stateColor } : { border: '2px solid currentColor' }"
-          aria-hidden="true"
-        ></span>
-        {{ t.river.anomalyClasses[state.anomalyClass] }}
-      </p>
-    </div>
-
-    <RiverNormBar
-      v-if="state.norm"
-      class="rounded-xl bg-group px-3 py-2.5"
-      :norm="state.norm"
-      :current="state.current"
-      :anomaly-class="state.anomalyClass"
-      :when="formatDayMonth(date, locale)"
-      :norm-period="rivers?.norm"
-    />
-
     <p
       v-if="label.note"
       role="note"
@@ -220,49 +209,111 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <span>{{ label.note }}</span>
     </p>
 
-    <OutlookBadge v-if="outlook" :outlook="outlook" />
+    <component :is="viewList" v-model="view" flush :items="viewItems" :label="t.river.viewsLabel">
+      <div v-if="daily" class="space-y-4">
+        <div>
+          <div
+            class="flex items-baseline gap-2.5"
+            :style="
+              stateColor ? { color: `color-mix(in oklab, ${stateColor} 75%, var(--ui-ink))` } : {}
+            "
+          >
+            <p
+              class="text-4xl leading-none font-semibold tabular-nums"
+              :class="!stateColor && 'text-ink'"
+            >
+              {{ formatDischarge(state.current, locale) }}
+              <span v-if="state.current !== null" class="text-xl">{{ t.river.dischargeUnit }}</span>
+            </p>
+            <span
+              v-if="state.anomalyPct !== null"
+              class="rounded-full bg-fill px-2 py-0.5 text-sm font-semibold whitespace-nowrap text-ink tabular-nums"
+              >{{ formatPct(state.anomalyPct, locale) }}</span
+            >
+          </div>
+          <p
+            v-if="state.anomalyClass"
+            class="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-ink"
+          >
+            <span
+              class="size-2.5 shrink-0 rounded-full"
+              :style="
+                stateColor ? { background: stateColor } : { border: '2px solid currentColor' }
+              "
+              aria-hidden="true"
+            ></span>
+            {{ t.river.anomalyClasses[state.anomalyClass] }}
+          </p>
+        </div>
 
-    <section class="space-y-3" aria-labelledby="chart-heading">
-      <h3 id="chart-heading" class="px-1 text-[13px] leading-snug font-semibold text-ink">
-        {{ copy.chartHeading }}
-      </h3>
-      <LoadingSkeleton v-if="status === 'pending'" :label="copy.loadingChart" class="h-56" />
-      <ErrorState v-else-if="status === 'error'" :message="errorMessage" @retry="emit('retry')" />
-      <DischargeChart
-        v-else-if="chartSeries"
-        :series="chartSeries"
-        :today="today"
-        :selected="date"
-        @select="emit('select', $event)"
-      >
-        <PrecipitationChart
-          v-if="chartSeries.precipitation"
-          :time="chartSeries.time"
-          :values="chartSeries.precipitation"
-          :today="today"
-          :selected="date"
+        <RiverNormBar
+          v-if="state.norm"
+          :class="!listed && 'rounded-xl bg-group px-3 py-2.5'"
+          :norm="state.norm"
+          :current="state.current"
+          :anomaly-class="state.anomalyClass"
+          :when="formatDayMonth(date, locale)"
+          :norm-period="rivers?.norm"
         />
-      </DischargeChart>
-      <div
-        v-else
-        class="flex h-56 items-center justify-center rounded-xl bg-group text-sm text-ink-muted"
-      >
-        {{ copy.noChartData }}
-      </div>
-      <p v-if="precipitationError" role="status" class="text-xs text-warn-ink">
-        {{ precipitationError }}
-      </p>
-      <InfoHint :label="copy.chartNoteToggle">
-        <p>{{ copy.chartNote.replace('{norm}', normPeriod) }}</p>
-        <p>{{ copy.precipitationNote }}</p>
-      </InfoHint>
-    </section>
 
-    <ClimateSection
-      :periods="rivers"
-      :summary="climate.summary.value"
-      :this-year-failed="climate.thisYear.isError.value"
-      :today="today"
-    />
+        <OutlookBadge v-if="outlook" :outlook="outlook" :flat="listed" />
+
+        <section class="space-y-3" aria-labelledby="chart-heading">
+          <div class="flex items-center justify-between gap-2" :class="!listed && 'px-1'">
+            <h3 id="chart-heading" class="text-[13px] leading-snug font-semibold text-ink">
+              {{ copy.chartHeading }}
+            </h3>
+            <SegmentedControl
+              v-if="spanId"
+              v-model="spanId"
+              :label="t.river.timeline.spanLabel"
+              :options="spanOptions"
+            />
+          </div>
+          <LoadingSkeleton v-if="status === 'pending'" :label="copy.loadingChart" class="h-56" />
+          <ErrorState
+            v-else-if="status === 'error'"
+            :message="errorMessage"
+            @retry="emit('retry')"
+          />
+          <DischargeChart
+            v-else-if="chartSeries"
+            :series="chartSeries"
+            :today="today"
+            :selected="date"
+            @select="emit('select', $event)"
+          >
+            <PrecipitationChart
+              v-if="chartSeries.precipitation"
+              :time="chartSeries.time"
+              :values="chartSeries.precipitation"
+              :today="today"
+              :selected="date"
+            />
+          </DischargeChart>
+          <div
+            v-else
+            class="flex h-56 items-center justify-center rounded-xl bg-group text-sm text-ink-muted"
+          >
+            {{ copy.noChartData }}
+          </div>
+          <p v-if="precipitationError" role="status" class="text-xs text-warn-ink">
+            {{ precipitationError }}
+          </p>
+          <InfoHint :label="copy.chartNoteToggle">
+            <p>{{ copy.chartNote.replace('{norm}', normPeriod) }}</p>
+            <p>{{ copy.precipitationNote }}</p>
+          </InfoHint>
+        </section>
+      </div>
+      <ClimateSection
+        v-else
+        :view="view === 'trend' ? 'trend' : 'lowFlow'"
+        :periods="rivers"
+        :summary="climate.summary.value"
+        :this-year-failed="climate.thisYear.isError.value"
+        :today="today"
+      />
+    </component>
   </article>
 </template>

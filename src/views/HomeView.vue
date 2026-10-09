@@ -7,6 +7,7 @@ import {
   nextTick,
   onBeforeUnmount,
   ref,
+  shallowRef,
   useTemplateRef,
   watch,
   watchEffect,
@@ -19,6 +20,7 @@ import ThemeMenu from '../components/layout/ThemeMenu.vue'
 import type { BasemapKind } from '../components/map/basemap'
 import ClimateMap, { type RegionHover, type RiverMapData } from '../components/map/ClimateMap.vue'
 import MapLegend from '../components/map/MapLegend.vue'
+import WaterTabs from '../components/map/WaterTabs.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
 import RegionTable, { type RegionRow } from '../components/map/RegionTable.vue'
 import RiverTimeline from '../components/map/RiverTimeline.vue'
@@ -40,12 +42,12 @@ import {
 import { useLocale } from '../composables/useLocale'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useStationsState } from '../composables/useStationsState'
-import { RIVER_SPANS } from '../config/discharge'
+import { FORECAST_WINDOW, RIVER_SPANS, type RiverSpan, timelineWindow } from '../config/discharge'
 import { useUrlSync } from '../composables/useUrlSync'
 import { formatDayMonth, formatNumber, formatPeriod, valueFormat } from '../lib/format'
 import { basinLabel, oblastLabel, oblastName, stationLabel, type RegionLabel } from '../lib/regions'
 import { addDays, todayKyiv } from '../lib/river/dates'
-import { riverLegend, riverMarks } from '../lib/river/marks'
+import { isDailyView, RIVER_VIEWS, riverLegend, riverMarks } from '../lib/river/marks'
 import { dischargeErrorMessage, snapshotNotice } from '../lib/river/messages'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, atBound, valueAt, type StepValue } from '../lib/series'
@@ -123,7 +125,18 @@ const isRivers = computed(() => ui.layer === 'rivers')
 const riversQuery = useRivers(isRivers)
 const riverLinesQuery = useRiverLines(isRivers)
 const mapDate = ref(todayKyiv())
-const riverSpan = computed(() => RIVER_SPANS[ui.riverSpan])
+const riverSpan = computed(() =>
+  ui.riverView === 'forecast' ? FORECAST_WINDOW : RIVER_SPANS[ui.riverSpan],
+)
+const riverForecast = computed(() => ui.riverView === 'forecast')
+const riverTimeline = computed(() => timelineWindow(riverSpan.value, riverForecast.value))
+/** The span picker belongs to the state view; the forecast view's window is fixed. */
+const riverSpanModel = computed<RiverSpan | undefined>({
+  get: () => (ui.riverView === 'state' ? ui.riverSpan : undefined),
+  set: (span) => {
+    if (span) ui.riverSpan = span
+  },
+})
 const stations = useStationsState(isRivers, mapDate, () => riverSpan.value.pastDays)
 const inBasin = (s: { basin: string }) => ui.basin === 'all' || s.basin === ui.basin
 const shownStations = computed(() => riversQuery.data.value?.stations.filter(inBasin) ?? [])
@@ -145,14 +158,17 @@ const selectedStation = computed(() =>
     ? (stations.mapStates.value.find((s) => s.station.id === ui.regionId) ?? null)
     : null,
 )
-// The timelapse belongs to the state view; any other view shows today again.
+// Each view opens on today; the timelapse belongs to the state and forecast views.
 watch([isRivers, () => ui.riverView], () => (mapDate.value = stations.today))
-/** A day picked on the station chart; only the state view has a timeline to move. */
+/** A day picked on the station chart; only the daily views have a timeline to move. */
 function selectDay(date: string) {
-  if (ui.riverView === 'state') mapDate.value = date
+  if (!isDailyView(ui.riverView)) return
+  const { pastDays, futureDays } = riverTimeline.value
+  const { today } = stations
+  if (date >= addDays(today, -pastDays) && date <= addDays(today, futureDays)) mapDate.value = date
 }
-// A shorter window that no longer holds the day returns to today.
-watch(riverSpan, ({ pastDays, futureDays }) => {
+// A window that no longer holds the day returns to today.
+watch(riverTimeline, ({ pastDays, futureDays }) => {
   const { today } = stations
   if (mapDate.value < addDays(today, -pastDays) || mapDate.value > addDays(today, futureDays)) {
     mapDate.value = today
@@ -228,6 +244,15 @@ const mapGrid = computed(() => {
   return values && { file, values }
 })
 
+/** The current layer's data is still on its way; the map shows a spinner meanwhile. */
+const mapLoading = computed(() =>
+  loadError.value
+    ? false
+    : isRivers.value
+      ? !riversQuery.data.value || !riverLinesQuery.data.value
+      : !regionsFile.value || !layer.value || (!!config.value.gridPath && !mapGrid.value),
+)
+
 const riverMap = computed<RiverMapData | null>(() => {
   const file = riversQuery.data.value
   if (!isRivers.value || !file) return null
@@ -244,6 +269,17 @@ const riverMap = computed<RiverMapData | null>(() => {
   }
   return { stations: shownStations.value, lines: riverLinesQuery.data.value ?? null, marks }
 })
+// The forecast view opens from the side panel's future button, as the other layers' projections do.
+const riverViews = computed(() =>
+  RIVER_VIEWS.filter((id) => id !== 'forecast').map((id) => ({
+    id,
+    label: t.value.river.views[id],
+  })),
+)
+function setRiverForecast(on: boolean) {
+  ui.riverView = on ? 'forecast' : 'state'
+}
+
 const riverLegendContent = computed(() =>
   isRivers.value
     ? riverLegend(ui.riverView, t.value.river, riversQuery.data.value, locale.value)
@@ -382,6 +418,31 @@ const selected = computed(() =>
   ui.regionId === null ? null : { id: ui.regionId, ...regionLabel(ui.regionId) },
 )
 
+/**
+ * The side panel's view. While the next layer loads it keeps showing the previous one, so the
+ * panel does not empty out and refill on every switch.
+ */
+const panel = shallowRef<InstanceType<typeof SidePanel>['$props'] | null>(null)
+watchEffect(() => {
+  if (!layer.value || step.value === null) {
+    if (!mapLoading.value) panel.value = null
+    return
+  }
+  panel.value = {
+    file: layer.value,
+    config: config.value,
+    copy: copy.value,
+    step: step.value,
+    format: valueFormatter.value,
+    region: selected.value,
+    water: waterState.value,
+    scenario: ui.waterScenario,
+    projectionRange: projectionRange.value,
+    regionSectors: regionSectorShares.value,
+    river: isRivers.value ? { forecast: ui.riverView === 'forecast' } : null,
+  }
+})
+
 const tableRows = computed<RegionRow[]>(() =>
   Object.keys(layer.value?.regions ?? {})
     .map((id) => {
@@ -403,6 +464,7 @@ const insets = ref<Required<PaddingOptions>>({ top: 0, bottom: 0, left: 0, right
 /** The zoom buttons line up with the control column's right edge; MapLibre adds its own 10px margin. */
 const controls = ref({ right: 0 })
 const CONTROL_MARGIN = 10
+const barHeight = ref(0)
 
 function measureInsets() {
   const rect = (el: unknown) => (el instanceof HTMLElement ? el.getBoundingClientRect() : null)
@@ -419,6 +481,8 @@ function measureInsets() {
     const right = Math.round(width - column.right - CONTROL_MARGIN)
     if (right !== controls.value.right) controls.value = { right }
   }
+  // A loading layer drops its timeline for a moment; the bar keeps its height so the map holds still.
+  if (!mapLoading.value && bottomBar.value) barHeight.value = bottomBar.value.offsetHeight
   const now = insets.value
   // A new object reframes the map, so only a real change makes one.
   if ((Object.keys(next) as (keyof PaddingOptions)[]).some((k) => next[k] !== now[k])) {
@@ -502,12 +566,11 @@ function riverTooltip(at: RegionHover) {
     details.push(copy.ofNorm.replace('{pct}', `${pct}%`))
   }
   if (mark?.detail) details.push(mark.detail)
-  const when =
-    ui.riverView === 'state'
-      ? formatDayMonth(mapDate.value, locale.value)
-      : ui.riverView === 'trend'
-        ? (riverLegendContent.value?.note ?? '')
-        : stepLabel.value
+  const when = isDailyView(ui.riverView)
+    ? formatDayMonth(mapDate.value, locale.value)
+    : ui.riverView === 'trend'
+      ? (riverLegendContent.value?.note ?? '')
+      : stepLabel.value
   const scale = riverLegendContent.value
   const discharge =
     state.current === null
@@ -658,11 +721,12 @@ const tooltip = computed(() => {
           :rivers="riverMap"
           :values="mapValues"
           :grid="mapGrid"
+          :loading="mapLoading"
           :scale="config.scale"
           :future="step !== null && isFuture(step)"
           :selected-id="ui.regionId"
           :country-border="countryBorder"
-          :projection="waterFuture || (step !== null && isFuture(step))"
+          :projection="waterFuture || riverForecast || (step !== null && isFuture(step))"
           :focus-outlines="config.geometry === 'stations' ? null : oblastsQuery.data.value"
           :insets="isWide ? insets : undefined"
           :controls="isWide ? controls : undefined"
@@ -694,10 +758,10 @@ const tooltip = computed(() => {
             class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3"
           >
             <RiverTimeline
-              v-if="isRivers && ui.riverView === 'state'"
+              v-if="isRivers && isDailyView(ui.riverView)"
               v-model="mapDate"
-              v-model:span="ui.riverSpan"
               :today="stations.today"
+              :window="riverTimeline"
             />
             <TimeSlider
               v-else-if="sliderAxis && layer && (!isRivers || ui.riverView === 'lowFlow')"
@@ -712,7 +776,14 @@ const tooltip = computed(() => {
         v-if="!isWide && layer"
         v-bind="legendProps"
         class="rounded-2xl bg-surface px-3 py-2 shadow-card"
-      />
+      >
+        <WaterTabs
+          v-if="isRivers && !riverForecast && !selectedStation"
+          v-model="ui.riverView"
+          :views="riverViews"
+          :label="t.river.viewsLabel"
+        />
+      </MapLegend>
       <div
         v-if="isWide"
         ref="panelCard"
@@ -725,30 +796,22 @@ const tooltip = computed(() => {
           </div>
         </AppHeader>
         <SidePanel
-          v-if="layer && step !== null"
+          v-if="panel"
           class="min-h-0 flex-1"
-          :file="layer"
-          :config="config"
-          :copy="copy"
-          :step="step"
-          :format="valueFormatter"
-          :region="selected"
-          :water="waterState"
-          :scenario="ui.waterScenario"
-          :projection-range="projectionRange"
-          :region-sectors="regionSectorShares"
-          :river-view="isRivers ? ui.riverView : null"
-          @river-view="ui.riverView = $event"
+          v-bind="panel"
           @close="ui.regionId = null"
           @sector="ui.waterSector = $event"
           @view="setWaterView"
           @future="setFuture"
+          @river-forecast="setRiverForecast"
           @scenario="ui.waterScenario = $event"
           @bound="ui.bound = $event"
         >
           <template v-if="selectedStation && selected" #card>
             <StationCard
               :key="selectedStation.station.id"
+              v-model:span-id="riverSpanModel"
+              v-model:view="ui.riverView"
               :state="selectedStation"
               :label="selected"
               :rivers="riversQuery.data.value"
@@ -764,7 +827,7 @@ const tooltip = computed(() => {
               @select="selectDay"
             />
           </template>
-          <template v-if="isRivers" #overview>
+          <template v-if="panel.river" #overview>
             <StationsPanel
               :states="listStates"
               :basins="riversQuery.data.value?.basins ?? []"
@@ -782,21 +845,39 @@ const tooltip = computed(() => {
         </SidePanel>
       </div>
       <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
-        <div ref="bottomBar" class="relative z-10 flex flex-col items-center gap-2">
+        <div
+          ref="bottomBar"
+          class="relative z-10 flex flex-col items-center gap-2"
+          :style="mapLoading && barHeight ? { minHeight: `${barHeight}px` } : undefined"
+        >
           <RiverTimeline
-            v-if="isRivers && ui.riverView === 'state'"
+            v-if="isRivers && isDailyView(ui.riverView)"
             v-model="mapDate"
-            v-model:span="ui.riverSpan"
             class="w-full max-w-xl min-w-0"
             :today="stations.today"
+            :window="riverTimeline"
           >
-            <MapLegend v-bind="legendProps" />
+            <MapLegend v-bind="legendProps">
+              <WaterTabs
+                v-if="isRivers && !riverForecast && !selectedStation"
+                v-model="ui.riverView"
+                :views="riverViews"
+                :label="t.river.viewsLabel"
+              />
+            </MapLegend>
           </RiverTimeline>
           <MapLegend
             v-else-if="isRivers && ui.riverView === 'trend'"
             v-bind="legendProps"
             class="glass pointer-events-auto w-full max-w-xl min-w-0 rounded-2xl px-3 py-2.5 shadow-float"
-          />
+          >
+            <WaterTabs
+              v-if="isRivers && !selectedStation"
+              v-model="ui.riverView"
+              :views="riverViews"
+              :label="t.river.viewsLabel"
+            />
+          </MapLegend>
           <TimeSlider
             v-else-if="sliderAxis && layer"
             v-model="timeModel"
@@ -804,7 +885,14 @@ const tooltip = computed(() => {
             class="w-full max-w-xl min-w-0"
             :axis="sliderAxis"
           >
-            <MapLegend v-bind="legendProps" />
+            <MapLegend v-bind="legendProps">
+              <WaterTabs
+                v-if="isRivers && !riverForecast && !selectedStation"
+                v-model="ui.riverView"
+                :views="riverViews"
+                :label="t.river.viewsLabel"
+              />
+            </MapLegend>
           </TimeSlider>
         </div>
       </div>
@@ -854,31 +942,23 @@ const tooltip = computed(() => {
         </aside>
       </div>
       <SidePanel
-        v-if="!isWide && layer && step !== null"
+        v-if="!isWide && panel"
         ref="sheet"
         class="scroll-mt-20 rounded-2xl bg-surface shadow-card"
-        :file="layer"
-        :config="config"
-        :copy="copy"
-        :step="step"
-        :format="valueFormatter"
-        :region="selected"
-        :water="waterState"
-        :scenario="ui.waterScenario"
-        :projection-range="projectionRange"
-        :region-sectors="regionSectorShares"
-        :river-view="isRivers ? ui.riverView : null"
-        @river-view="ui.riverView = $event"
+        v-bind="panel"
         @close="ui.regionId = null"
         @sector="ui.waterSector = $event"
         @view="setWaterView"
         @future="setFuture"
+        @river-forecast="setRiverForecast"
         @scenario="ui.waterScenario = $event"
         @bound="ui.bound = $event"
       >
         <template v-if="selectedStation && selected" #card>
           <StationCard
             :key="selectedStation.station.id"
+            v-model:span-id="riverSpanModel"
+            v-model:view="ui.riverView"
             :state="selectedStation"
             :label="selected"
             :rivers="riversQuery.data.value"
@@ -894,7 +974,7 @@ const tooltip = computed(() => {
             @select="selectDay"
           />
         </template>
-        <template v-if="isRivers" #overview>
+        <template v-if="panel.river" #overview>
           <StationsPanel
             :states="listStates"
             :basins="riversQuery.data.value?.basins ?? []"

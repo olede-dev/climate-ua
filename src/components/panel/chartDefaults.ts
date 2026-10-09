@@ -49,8 +49,7 @@ export function useSelectedLine(
     day = value
     const line = (
       instance?.options.plugins?.annotation?.annotations as
-        | Record<string, AnnotationOptions<'line'>>
-        | undefined
+        Record<string, AnnotationOptions<'line'>> | undefined
     )?.selected
     if (!instance || !line) return
     line.value = value

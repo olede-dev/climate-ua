@@ -4,10 +4,16 @@ import type { AnomalyClass, RiversFile, StationState } from '../../types'
 import { formatNumber, plural } from '../format'
 import { cssGradient } from '../scale'
 
-/** What the station markers and river tints show; `state` is the water state on the map date. */
-export type RiverView = 'state' | 'trend' | 'lowFlow'
+/**
+ * What the station markers and river tints show; `state` is the water state on the map date,
+ * `forecast` the same marks over the ensemble forecast's months.
+ */
+export type RiverView = 'state' | 'trend' | 'lowFlow' | 'forecast'
 
-export const RIVER_VIEWS: readonly RiverView[] = ['state', 'trend', 'lowFlow']
+export const RIVER_VIEWS: readonly RiverView[] = ['state', 'trend', 'lowFlow', 'forecast']
+
+/** Views with a day timeline, whose marks show the water state on the map date. */
+export const isDailyView = (view: RiverView) => view === 'state' || view === 'forecast'
 
 export interface RiverClass<T extends string> {
   id: T
@@ -167,7 +173,7 @@ export function riverMarks(
   return new Map(
     states.map((state): [string, MapMark] => {
       const { station } = state
-      if (view === 'state') return [station.id, stateMark(state)]
+      if (isDailyView(view)) return [station.id, stateMark(state)]
       if (view === 'trend') {
         return [
           station.id,

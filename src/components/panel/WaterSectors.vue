@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import type { WaterSector } from '../../types'
-import CheckMark from '../ui/CheckMark.vue'
-import IconTile from '../ui/IconTile.vue'
+import { computed } from 'vue'
 
-defineProps<{
+import type { WaterSector } from '../../types'
+import ExpandList from '../ui/ExpandList.vue'
+
+const props = defineProps<{
   sectors: readonly { id: WaterSector; name: string; about: string }[]
   label: string
 }>()
@@ -21,31 +22,13 @@ const TONES: Record<WaterSector, string> = {
   domestic: 'bg-amber-500',
   industrial: 'bg-emerald-500',
 }
+const items = computed(() =>
+  props.sectors.map((s) => ({ ...s, icon: ICONS[s.id], tone: TONES[s.id] })),
+)
 </script>
 
 <template>
-  <ul class="flex flex-col overflow-hidden rounded-xl bg-group" :aria-label="label">
-    <li v-for="sector in sectors" :key="sector.id" class="group/row">
-      <button
-        type="button"
-        class="flex w-full items-center gap-2.5 pl-2.5 text-left text-[13px] text-ink transition-colors hover:bg-fill focus-ring-inset"
-        :aria-expanded="model === sector.id"
-        @click="model = sector.id"
-      >
-        <IconTile :path="ICONS[sector.id]" :tone="TONES[sector.id]" />
-        <span
-          class="flex min-w-0 flex-1 items-center gap-2 py-2 pr-3 group-not-first/row:border-t group-not-first/row:border-line"
-        >
-          <span class="min-w-0 flex-1" :class="model === sector.id && 'font-semibold'">{{
-            sector.name
-          }}</span>
-          <CheckMark v-if="model === sector.id" />
-        </span>
-      </button>
-      <div v-if="model === sector.id" class="space-y-3 pr-3 pb-3 pl-11">
-        <p class="text-xs leading-relaxed text-ink-muted">{{ sector.about }}</p>
-        <slot />
-      </div>
-    </li>
-  </ul>
+  <ExpandList v-model="model" :items="items" :label="label">
+    <slot />
+  </ExpandList>
 </template>

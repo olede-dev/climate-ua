@@ -6,7 +6,11 @@ import { formatDayMonth } from '../../lib/format'
 import type { ForecastOutlook } from '../../lib/river/anomaly'
 import { ANOMALY_CLASSES } from '../../lib/river/marks'
 
-const props = defineProps<{ outlook: ForecastOutlook }>()
+const props = defineProps<{
+  outlook: ForecastOutlook
+  /** Drop the grouped background and inset when the badge already sits on a grouped row. */
+  flat?: boolean
+}>()
 
 const { locale, t } = useLocale()
 const isHigh = computed(() => props.outlook.kind === 'high')
@@ -23,7 +27,7 @@ const detail = computed(() =>
 </script>
 
 <template>
-  <p class="flex items-start gap-3 rounded-xl bg-group px-3.5 py-3 text-sm">
+  <p class="flex items-start gap-3 text-sm" :class="!flat && 'rounded-xl bg-group px-3.5 py-3'">
     <span
       class="flex size-7 shrink-0 items-center justify-center rounded-full text-white"
       :style="{ background: color }"

@@ -89,13 +89,16 @@ export function parseUrlState(query: QueryInput): UrlState {
     waterScenario:
       WATER_SCENARIOS.find((v) => v === first(query.sc)) ?? DEFAULT_URL_STATE.waterScenario,
     bound: BOUNDS.find((v) => v === first(query.b)) ?? DEFAULT_URL_STATE.bound,
+    // The retired forecast span (`rs=forecast`) and the chart's 7-month horizon (`range=210`)
+    // open the forecast view.
     riverView:
-      RIVER_VIEWS.find((v) => v === first(query.rl)) ?? legacyView ?? DEFAULT_URL_STATE.riverView,
+      RIVER_VIEWS.find((v) => v === first(query.rl)) ??
+      legacyView ??
+      (first(query.rs) === 'forecast' || first(query.range) === '210'
+        ? 'forecast'
+        : DEFAULT_URL_STATE.riverView),
     basin: rawBasin !== null && SLUG.test(rawBasin) ? (rawBasin as RiverBasin) : 'all',
-    // The chart's retired 7-month horizon (`range=210`) opens the forecast span.
-    riverSpan:
-      RIVER_SPAN_IDS.find((v) => v === first(query.rs)) ??
-      (first(query.range) === '210' ? 'forecast' : DEFAULT_URL_STATE.riverSpan),
+    riverSpan: RIVER_SPAN_IDS.find((v) => v === first(query.rs)) ?? DEFAULT_URL_STATE.riverSpan,
   }
 }
 

@@ -7,7 +7,7 @@ import type {
   PaddingOptions,
   StyleSpecification,
 } from 'maplibre-gl'
-import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue'
+import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
 import { geometryBounds } from '../../lib/geometry'
@@ -72,6 +72,8 @@ const props = defineProps<{
   projection?: boolean
   insets?: Required<PaddingOptions>
   controls?: { right: number }
+  /** The parent's data for the current layer is still loading. */
+  loading?: boolean
 }>()
 const emit = defineEmits<{
   basemap: [kind: BasemapKind]
@@ -105,6 +107,8 @@ let hoveredId: string | null = null
 let shown: Record<string, number | null> = {}
 let tweenFrame = 0
 let styleReady = false
+/** The region source has parsed every tile in view; until then its layers stay transparent. */
+const regionsLoaded = ref(false)
 let animator: ReturnType<typeof createStationAnimator> | undefined
 /** Stations whose markers the source holds, and the station whose river reach is outlined. */
 let shownStations: Station[] | null = null
@@ -149,6 +153,8 @@ function clipShapes(regions: RegionsFile): (Polygon | MultiPolygon)[] {
 
 function applyGrid() {
   if (!map || !styleReady) return
+  // The previous layer's raster stays up under the spinner until the new one is ready.
+  if (props.loading) return applyFillOpacity()
   const grid = props.grid
   if (!grid || !props.regions) {
     setGridImage(map, null)
@@ -263,7 +269,7 @@ function popSelected(id: string | null) {
 
 function applyFillOpacity() {
   if (!map) return
-  setFillOpacity(map, hoveredId !== null, focused(), theme.value)
+  setFillOpacity(map, hoveredId !== null, focused(), theme.value, regionsLoaded.value)
 }
 
 function applyFocus() {
@@ -321,6 +327,7 @@ function redraw() {
 
 function installRegions() {
   if (!map || !props.regions || !styleReady) return
+  regionsLoaded.value = false
   addRegionLayers(map, props.regions, props.scale, theme.value)
   if (props.focusOutlines) addFocusLayers(map, props.focusOutlines)
   if (props.countryBorder) addCountryBorder(map, props.countryBorder, theme.value)
@@ -394,6 +401,16 @@ onMounted(() => {
     riverFocus = null
     installRegions()
   })
+  map.on('sourcedata', (event) => {
+    if (
+      regionsLoaded.value ||
+      event.sourceId !== REGION_SOURCE ||
+      !map?.isSourceLoaded(REGION_SOURCE)
+    )
+      return
+    regionsLoaded.value = true
+    applyFillOpacity()
+  })
   map.on('mousemove', onMove)
   map.on('mouseout', onLeave)
   map.on('click', onClick)
@@ -452,13 +469,26 @@ watch(
     applyFocus()
   },
 )
-watch(() => props.values, tweenTo)
+// While the next layer loads, the map holds the previous one's colours instead of blanking.
+watch(
+  () => props.values,
+  (values) => props.loading || tweenTo(values),
+)
 watch(() => props.grid, applyGrid)
 watch(
   () => props.scale,
   (scale) => {
-    if (map) setRegionScale(map, scale)
+    if (map && !props.loading) setRegionScale(map, scale)
     applyGrid()
+  },
+)
+watch(
+  () => props.loading,
+  (loading) => {
+    if (loading || !map) return
+    setRegionScale(map, props.scale)
+    applyGrid()
+    tweenTo(props.values)
   },
 )
 watch(
@@ -508,11 +538,44 @@ watch(
     "
   >
     <div ref="container" class="size-full" role="region" :aria-label="t.home.map"></div>
+    <div
+      v-if="loading || (regions && !rivers && !regionsLoaded)"
+      role="status"
+      class="pointer-events-none absolute inset-0 grid place-items-center"
+    >
+      <span class="sr-only">{{ t.home.loadingMap }}</span>
+      <span
+        class="spinner size-9 rounded-full border-[3px] border-fill border-t-accent"
+        aria-hidden="true"
+      ></span>
+    </div>
     <slot />
   </div>
 </template>
 
 <style scoped>
+/* Fast loads finish before it appears, so the spinner never just flashes. */
+.spinner {
+  opacity: 0;
+  animation:
+    spinner-turn 1s linear infinite,
+    spinner-in 200ms ease-out 300ms forwards;
+}
+@keyframes spinner-turn {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@keyframes spinner-in {
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: spinner-in 0s 300ms forwards;
+  }
+}
 :deep(.maplibregl-ctrl-bottom-right) {
   bottom: 14px;
   right: var(--controls-right, 0);

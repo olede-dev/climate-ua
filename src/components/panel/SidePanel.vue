@@ -9,7 +9,6 @@ import { summaryStory, type StoryInput } from '../../lib/narrative'
 import { BOUNDS } from '../../lib/series'
 import { summaryRows } from '../../lib/summary'
 import type { RegionLabel } from '../../lib/regions'
-import { RIVER_VIEWS, type RiverView } from '../../lib/river/marks'
 import { isFuture, type TimeStep } from '../../lib/time'
 import { countryColor, WATER_SCENARIOS, WATER_SECTORS, WATER_USE_VIEWS } from '../../lib/waterUse'
 import type {
@@ -37,7 +36,8 @@ const props = defineProps<{
   scenario?: WaterScenario
   projectionRange?: { bound: ProjectionBound; values: Record<ProjectionBound, number> } | null
   regionSectors?: Sectors | null
-  riverView?: RiverView | null
+  /** The rivers layer: whether its forecast view is open. */
+  river?: { forecast: boolean } | null
 }>()
 const emit = defineEmits<{
   close: []
@@ -46,26 +46,34 @@ const emit = defineEmits<{
   scenario: [WaterScenario]
   bound: [ProjectionBound]
   future: [boolean]
-  riverView: [RiverView]
+  riverForecast: [boolean]
 }>()
 
 const { t } = useLocale()
 
-const riverViews = computed(() => RIVER_VIEWS.map((id) => ({ id, label: t.value.river.views[id] })))
-
 const futureOn = computed(() =>
-  props.water ? props.water.view === 'future' : isFuture(props.step),
+  props.river
+    ? props.river.forecast
+    : props.water
+      ? props.water.view === 'future'
+      : isFuture(props.step),
 )
 const futureOffered = computed(() =>
-  props.water ? props.water.view === 'gap' : !futureOn.value && props.file.futurePeriods.length > 0,
+  props.river
+    ? !futureOn.value
+    : props.water
+      ? props.water.view === 'gap'
+      : !futureOn.value && props.file.futurePeriods.length > 0,
 )
 const futureHint = computed(() => {
+  if (props.river) return t.value.river.futureHint
   if (props.water) return t.value.waterUse.futureHint
   const last = props.file.futurePeriods[props.file.futurePeriods.length - 1]
   return last ? t.value.panel.futureHint.replace('{year}', last.split('-').pop()!) : ''
 })
 function openFuture(on: boolean) {
-  if (props.water) emit('view', on ? 'future' : 'gap')
+  if (props.river) emit('riverForecast', on)
+  else if (props.water) emit('view', on ? 'future' : 'gap')
   else emit('future', on)
 }
 
@@ -199,13 +207,6 @@ function onKeydown(event: KeyboardEvent) {
         @close="emit('close')"
       />
       <div v-else class="space-y-3">
-        <WaterTabs
-          v-if="riverView"
-          :model-value="riverView"
-          :views="riverViews"
-          :label="t.river.viewsLabel"
-          @update:model-value="emit('riverView', $event)"
-        />
         <WaterTabs
           v-if="water?.view === 'future' && scenario"
           :model-value="scenario"

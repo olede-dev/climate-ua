@@ -2,19 +2,16 @@
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
-import { RIVER_SPANS, type RiverSpan } from '../../config/discharge'
+import type { RiverWindow } from '../../config/discharge'
 import { formatDayMonth } from '../../lib/format'
 import { addDays, daysBetween } from '../../lib/river/dates'
-import SegmentedControl from '../ui/SegmentedControl.vue'
 
 /**
- * The rivers layer's day slider, in the look of `TimeSlider`: observed days on the solid track,
- * the forecast hatched like the projection periods, the window picker under it, the legend in
- * the default slot.
+ * The rivers layer's day slider, in the look of `TimeSlider`: the days of `window` on one solid
+ * track, the legend in the default slot.
  */
-const props = defineProps<{ today: string }>()
+const props = defineProps<{ today: string; window: RiverWindow }>()
 const date = defineModel<string>({ required: true })
-const span = defineModel<RiverSpan>('span', { required: true })
 
 /** One day per frame; any window plays in about 13 s, never faster than 30 ms a day. */
 const PLAY_MS = 13_000
@@ -24,15 +21,9 @@ const { locale, t } = useLocale()
 const copy = computed(() => t.value.river.timeline)
 const track = useTemplateRef<HTMLDivElement>('track')
 
-const pastDays = computed(() => RIVER_SPANS[span.value].pastDays)
+const pastDays = computed(() => props.window.pastDays)
 const start = computed(() => addDays(props.today, -pastDays.value))
-const total = computed(() => pastDays.value + RIVER_SPANS[span.value].futureDays)
-const spanOptions = computed(() =>
-  (Object.keys(RIVER_SPANS) as RiverSpan[]).map((value) => ({
-    value,
-    label: copy.value.spans[value],
-  })),
-)
+const total = computed(() => pastDays.value + props.window.futureDays)
 const index = computed({
   get: () => daysBetween(start.value, date.value),
   set: (value: number) =>
@@ -66,15 +57,16 @@ const months = computed(() => {
   return out
 })
 /**
- * Month names under the observed part only, clear of the today and forecast labels, and on a
- * long window only every other month so they never touch.
+ * Month names clear of the today label, and on a long window only every other month so they
+ * never touch.
  */
 const LABEL_GAP = 0.12
 const labelled = computed(() => {
   const gap = Math.max(12, LABEL_GAP * total.value)
   const step = total.value > 120 ? 2 : 1
   return months.value.filter(
-    (month, i) => (months.value.length - 1 - i) % step === 0 && month.day <= pastDays.value - gap,
+    (month, i) =>
+      (months.value.length - 1 - i) % step === 0 && Math.abs(month.day - pastDays.value) >= gap,
   )
 })
 
@@ -92,10 +84,13 @@ function toggle() {
   // From the end, start over; otherwise continue from the current day.
   if (index.value >= total.value) index.value = 0
   playing.value = true
-  timer = setInterval(() => {
-    if (index.value >= total.value) return stop()
-    index.value += 1
-  }, Math.max(MIN_FRAME_MS, PLAY_MS / total.value))
+  timer = setInterval(
+    () => {
+      if (index.value >= total.value) return stop()
+      index.value += 1
+    },
+    Math.max(MIN_FRAME_MS, PLAY_MS / total.value),
+  )
 }
 
 function moveTo(day: number) {
@@ -107,7 +102,7 @@ function moveTo(day: number) {
 watch(date, (value, previous) => {
   if (playing.value && daysBetween(previous, value) !== 1) stop()
 })
-watch(span, stop)
+watch(() => props.window, stop)
 onBeforeUnmount(stop)
 
 function onKeydown(event: KeyboardEvent) {
@@ -160,9 +155,6 @@ const preview = computed(() => {
     at: at(hoverAt.value),
   }
 })
-
-/** Share of the track the forecast needs before its label fits beside the today button. */
-const MIN_FORECAST_LABEL = 0.15
 
 const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 </script>
@@ -239,7 +231,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
       <div class="flex min-w-0 flex-1 flex-col sm:pt-3.5">
         <div
           ref="track"
-          class="relative h-6 touch-none rounded-full select-none focus-ring"
+          class="relative h-6 cursor-pointer touch-none rounded-full select-none focus-ring"
           role="slider"
           tabindex="0"
           :aria-label="copy.label"
@@ -255,20 +247,11 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
           @pointerleave="hoverAt = null"
         >
           <span
-            class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-fill-strong"
-            :style="{ left: 0, width: percent(todayAt) }"
+            class="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-fill-strong"
           ></span>
           <span
             class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-accent"
-            :style="{ left: 0, width: percent(Math.min(thumb, todayAt)) }"
-          ></span>
-          <span
-            class="hatch absolute top-1/2 h-3 -translate-y-1/2 rounded-full"
-            :class="isForecast ? 'bg-accent text-white/40' : 'bg-fill-strong text-ink/25'"
-            :style="{
-              left: `calc(${percent(todayAt)} + 2px)`,
-              width: `calc(${percent(1 - todayAt)} - 2px)`,
-            }"
+            :style="{ left: 0, width: percent(thumb) }"
           ></span>
           <span
             v-for="month in months"
@@ -288,8 +271,8 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
             >
           </template>
           <span
-            class="pointer-events-none absolute top-1/2 size-5 -translate-1/2 rounded-full bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_1px_4px_rgb(0_0_0/0.3)] transition-[left,transform] duration-150 ease-out motion-reduce:transition-none"
-            :class="{ 'scale-125': dragging }"
+            class="pointer-events-none absolute top-1/2 size-5 -translate-1/2 rounded-full bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_1px_4px_rgb(0_0_0/0.3)] duration-150 ease-out motion-reduce:transition-none"
+            :class="dragging ? 'scale-125 transition-transform' : 'transition-[left,transform]'"
             :style="{ left: percent(thumb) }"
           ></span>
           <span
@@ -312,24 +295,16 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
           >
           <button
             type="button"
-            class="absolute -translate-x-1/2 rounded font-semibold text-accent-ink hover:underline focus-ring"
+            class="absolute rounded font-semibold text-accent-ink hover:underline focus-ring"
+            :class="todayAt === 0 ? '' : '-translate-x-full'"
             :style="{ left: percent(todayAt) }"
             :aria-label="copy.todayLabel"
             @click="moveTo(pastDays)"
           >
             {{ copy.today }}
           </button>
-          <span
-            v-if="1 - todayAt >= MIN_FORECAST_LABEL"
-            class="absolute -translate-x-1/2 whitespace-nowrap"
-            :style="{ left: percent((1 + todayAt) / 2) }"
-            >{{ copy.forecast }}</span
-          >
         </div>
       </div>
-    </div>
-    <div class="mt-1.5 flex justify-center sm:justify-end">
-      <SegmentedControl v-model="span" :label="copy.spanLabel" :options="spanOptions" />
     </div>
     <div v-if="$slots.default" class="mt-1.5 border-t border-ink/10 pt-2">
       <slot />

@@ -259,7 +259,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
         <OutlookBadge v-if="outlook" :outlook="outlook" :flat="listed" />
 
         <section class="space-y-3" aria-labelledby="chart-heading">
-          <div class="flex items-center justify-between gap-2" :class="!listed && 'px-1'">
+          <div class="flex flex-col items-start gap-2" :class="!listed && 'px-1'">
             <h3 id="chart-heading" class="text-[13px] leading-snug font-semibold text-ink">
               {{ copy.chartHeading }}
             </h3>

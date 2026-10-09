@@ -173,7 +173,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
       <!-- Projection periods alone: a few named choices, not a track. -->
       <div
         v-if="periodsOnly"
-        class="flex min-w-0 flex-1 gap-1 rounded-full bg-fill-strong p-1"
+        class="flex min-w-0 flex-1 rounded-[9px] bg-fill p-0.5"
         role="radiogroup"
         :aria-label="t.timeline.label"
       >
@@ -182,8 +182,12 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
           :key="period"
           type="button"
           role="radio"
-          class="min-w-0 flex-1 truncate rounded-full px-1 py-1 text-[11px] sm:text-xs font-semibold tabular-nums transition-colors focus-ring"
-          :class="period === step ? 'bg-accent text-white shadow-card' : 'text-ink hover:bg-fill'"
+          class="min-w-0 flex-1 truncate rounded-[7px] px-1 py-1 text-[11px] font-semibold tabular-nums transition-colors focus-ring sm:text-xs"
+          :class="
+            period === step
+              ? 'bg-surface text-accent-ink shadow-[0_0_0_0.5px_rgb(0_0_0/0.04),0_1px_3px_rgb(0_0_0/0.12)] dark:bg-[#636366] dark:text-white'
+              : 'text-ink-muted hover:text-ink'
+          "
           :aria-checked="period === step"
           @click="moveTo(period)"
         >
@@ -259,11 +263,11 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
           @pointerleave="hoverAt = null"
         >
           <span
-            class="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-fill-strong"
+            class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-fill-strong"
             :style="{ left: 0, width: percent(historyEnd) }"
           ></span>
           <span
-            class="absolute top-1/2 h-1.5 -translate-y-1/2 rounded-full bg-accent"
+            class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-accent"
             :style="{ left: 0, width: percent(Math.min(thumb, historyEnd)) }"
           ></span>
           <span
@@ -296,7 +300,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
             >
           </template>
           <span
-            class="pointer-events-none absolute top-1/2 size-4 -translate-1/2 rounded-full border-2 border-white bg-accent shadow-card transition-[left,transform] duration-150 ease-out motion-reduce:transition-none"
+            class="pointer-events-none absolute top-1/2 size-5 -translate-1/2 rounded-full bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_1px_4px_rgb(0_0_0/0.3)] transition-[left,transform] duration-150 ease-out motion-reduce:transition-none"
             :class="{ 'scale-125': dragging }"
             :style="{ left: percent(thumb) }"
           ></span>

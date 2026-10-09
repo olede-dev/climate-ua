@@ -105,12 +105,12 @@ const waterViews = computed(() =>
 const SCENARIO_MARKS: Record<WaterScenario, { icon: string; tone: string }> = {
   'SSP1-2.6': {
     icon: 'M3 13c0-6 4-10 10-10 0 6-4 10-10 10zM3 13l5-5',
-    tone: 'text-emerald-600 dark:text-emerald-400',
+    tone: 'bg-emerald-500',
   },
-  'SSP3-7.0': { icon: 'M4 14V2.5M4 3h8l-1.5 3L12 9H4', tone: 'text-amber-600 dark:text-amber-400' },
+  'SSP3-7.0': { icon: 'M4 14V2.5M4 3h8l-1.5 3L12 9H4', tone: 'bg-amber-500' },
   'SSP5-8.5': {
     icon: 'M8 14.5c-2.8 0-4.5-1.8-4.5-4.3C3.5 7 7 5.5 7 1.5c2.5 1.5 5.5 4.5 5.5 8.7 0 2.5-1.7 4.3-4.5 4.3z',
-    tone: 'text-red-600 dark:text-red-400',
+    tone: 'bg-red-500',
   },
 }
 const scenarioViews = computed(() =>
@@ -127,12 +127,12 @@ const scenarioViews = computed(() =>
  * the high end: green, amber and red, as the water scale runs from little to much.
  */
 const BOUND_MARKS: Record<ProjectionBound, { icon: string; tone: string }> = {
-  min: { icon: 'M8 2.5v11M3.5 9 8 13.5 12.5 9', tone: 'text-emerald-600 dark:text-emerald-400' },
+  min: { icon: 'M8 2.5v11M3.5 9 8 13.5 12.5 9', tone: 'bg-emerald-500' },
   median: {
     icon: 'M2 8h3.5M10.5 8H14M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 1 0 0-5z',
-    tone: 'text-amber-600 dark:text-amber-400',
+    tone: 'bg-amber-500',
   },
-  max: { icon: 'M8 13.5v-11M3.5 7 8 2.5 12.5 7', tone: 'text-red-600 dark:text-red-400' },
+  max: { icon: 'M8 13.5v-11M3.5 7 8 2.5 12.5 7', tone: 'bg-red-500' },
 }
 /** Мін, the central value and Макс, each with the country's value there, as a list. */
 const boundViews = computed(() => {
@@ -255,7 +255,7 @@ function onKeydown(event: KeyboardEvent) {
           :focus="futureOn ? 'future' : 'observed'"
         />
         <section v-if="projectionRange" class="space-y-1.5">
-          <h3 class="text-xs font-medium text-ink-muted">{{ t.panel.boundsTitle }}</h3>
+          <h3 class="px-1 text-[13px] font-semibold text-ink">{{ t.panel.boundsTitle }}</h3>
           <WaterTabs
             :model-value="projectionRange.bound"
             stacked
@@ -278,7 +278,7 @@ function onKeydown(event: KeyboardEvent) {
           class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg text-white transition-transform group-hover:-translate-x-0.5"
           >←</span
         >
-        <span class="text-xs font-semibold tracking-wide text-white uppercase">{{
+        <span class="text-[15px] font-semibold text-white">{{
           t.waterUse.back
         }}</span>
       </button>
@@ -307,7 +307,7 @@ function onKeydown(event: KeyboardEvent) {
           </svg>
         </span>
         <span class="min-w-0 flex-1">
-          <span class="block text-xs font-semibold tracking-wide text-white uppercase">{{
+          <span class="block text-[15px] font-semibold text-white">{{
             t.waterUse.future
           }}</span>
           <span class="block text-xs text-white/90">{{ futureHint }}</span>

@@ -17,7 +17,7 @@ const buttonClass =
   <!-- A floating bar inset from every edge of the window, over whatever scrolls beneath it. -->
   <header v-if="inline" class="flex items-center gap-3">
     <img :src="logoUrl" alt="" class="size-8 shrink-0" width="32" height="32" />
-    <h1 class="min-w-0 flex-1 text-[15px] leading-tight font-semibold tracking-tight text-ink">
+    <h1 class="min-w-0 flex-1 text-[17px] leading-tight font-bold tracking-tight text-ink">
       {{ t.header.title }}
     </h1>
     <slot />

@@ -37,23 +37,26 @@ const analog = computed(() => {
 
 <template>
   <section v-if="analog" class="space-y-2" :title="analog.note">
-    <h3 class="text-xs font-medium text-ink-muted">{{ t.koppen.title }}</h3>
-    <ol class="space-y-1">
-      <template v-for="(chip, index) in analog.chips" :key="chip.when">
-        <li v-if="index > 0" class="pl-4 text-xs leading-none text-ink-muted" aria-hidden="true">
-          ↓
-        </li>
-        <li class="flex items-center gap-2.5 rounded-xl bg-fill px-2.5 py-2" :title="chip.meaning">
-          <span
-            class="w-10 shrink-0 rounded-md bg-ink px-1 py-0.5 text-center text-xs font-semibold text-surface"
-            >{{ chip.code }}</span
-          >
-          <span class="min-w-0 text-[13px] leading-snug text-ink">
-            <span class="block text-[11px] text-ink-muted">{{ chip.when }}</span>
-            {{ chip.name }}
-          </span>
-        </li>
-      </template>
+    <h3 class="px-1 text-[13px] font-semibold text-ink">{{ t.koppen.title }}</h3>
+    <!-- One settings group: today's class, then the one the end of the projection brings. -->
+    <ol class="overflow-hidden rounded-xl bg-group">
+      <li
+        v-for="chip in analog.chips"
+        :key="chip.when"
+        class="group/row flex items-center gap-2.5 pl-2.5"
+        :title="chip.meaning"
+      >
+        <span
+          class="w-10 shrink-0 rounded-md bg-ink px-1 py-0.5 text-center text-xs font-semibold text-surface"
+          >{{ chip.code }}</span
+        >
+        <span
+          class="min-w-0 flex-1 py-2 pr-3 text-[13px] leading-snug text-ink group-not-first/row:border-t group-not-first/row:border-line"
+        >
+          <span class="block text-[11px] text-ink-muted">{{ chip.when }}</span>
+          {{ chip.name }}
+        </span>
+      </li>
     </ol>
   </section>
 </template>

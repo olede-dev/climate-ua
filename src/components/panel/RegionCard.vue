@@ -106,15 +106,28 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <button
         type="button"
         :aria-label="t.panel.close"
-        class="mb-2 text-xs font-medium text-accent-ink hover:underline focus-ring"
+        class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-fill-strong focus-ring"
         @click="$emit('close')"
       >
-        ‹ {{ t.panel.back }}
+        <!-- The toolbar's back chevron, as in the macOS settings. -->
+        <svg
+          viewBox="0 0 16 16"
+          class="size-4 shrink-0"
+          aria-hidden="true"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M10 3.5 5.5 8l4.5 4.5" />
+        </svg>
+        {{ t.panel.back }}
       </button>
       <h2
         ref="heading"
         tabindex="-1"
-        class="text-xl leading-tight font-semibold tracking-tight text-ink focus-visible:outline-none"
+        class="text-[22px] leading-tight font-bold tracking-tight text-ink focus-visible:outline-none"
       >
         {{ name }}
       </h2>
@@ -152,6 +165,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       />
       <NormBar
         v-if="climate"
+        class="rounded-xl bg-group px-3 py-2.5"
         :rows="rows"
         :file="file"
         :series="series"
@@ -192,7 +206,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
     </p>
 
     <figure v-else class="space-y-2">
-      <figcaption class="text-sm font-medium leading-snug text-ink-muted">
+      <figcaption class="px-1 text-[13px] leading-snug font-semibold text-ink">
         {{ chartTitle }}
       </figcaption>
       <RegionChart

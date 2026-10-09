@@ -1,15 +1,16 @@
 import type { FeatureCollection, Point } from 'geojson'
-import {
+import type {
+  ExpressionSpecification,
+  GeoJSONSource,
+  Map as MaplibreMap,
   Marker,
-  type ExpressionSpecification,
-  type GeoJSONSource,
-  type Map as MaplibreMap,
 } from 'maplibre-gl'
 
 import type { Theme } from '../../composables/useTheme'
 import { NO_DATA_STROKE, type MapMark } from '../../lib/river/marks'
 import type { StationPoint } from '../../lib/rivers'
 import type { RiverLinesFile } from '../../types'
+import { NO_VALIDATE, addLayer, addSource, styleLayers } from './mapStyle'
 
 const LINES_SOURCE = 'river-lines'
 const LINE_CASING = 'river-casing'
@@ -94,17 +95,18 @@ export function addRiverLayers(
   theme: Theme,
 ) {
   const ink = INK[theme]
-  const beforeId = map
-    .getStyle()
-    .layers.find((layer) => layer.type === 'symbol' && layer['source-layer'] === 'place')?.id
+  const beforeId = styleLayers(map).find(
+    (layer) => layer.type === 'symbol' && layer.sourceLayer === 'place',
+  )?.id
   if (!map.getSource(STATIONS_SOURCE)) {
-    map.addSource(STATIONS_SOURCE, { type: 'geojson', data: stations, promoteId: 'id' })
+    addSource(map, STATIONS_SOURCE, { type: 'geojson', data: stations, promoteId: 'id' })
     const paint = {
       'circle-color': FILL,
       'circle-opacity': 0.95,
       'circle-radius': ['get', 'radius'] as ExpressionSpecification,
     }
-    map.addLayer(
+    addLayer(
+      map,
       {
         id: STATION,
         type: 'circle',
@@ -117,7 +119,8 @@ export function addRiverLayers(
       },
       beforeId,
     )
-    map.addLayer(
+    addLayer(
+      map,
       {
         id: STATION_SELECTED,
         type: 'circle',
@@ -129,9 +132,10 @@ export function addRiverLayers(
     )
   }
   if (lines && !map.getSource(LINES_SOURCE)) {
-    map.addSource(LINES_SOURCE, { type: 'geojson', data: lines, promoteId: 'tintId' })
+    addSource(map, LINES_SOURCE, { type: 'geojson', data: lines, promoteId: 'tintId' })
     const layout = { 'line-cap': 'round', 'line-join': 'round' } as const
-    map.addLayer(
+    addLayer(
+      map,
       {
         id: LINE_CASING,
         type: 'line',
@@ -145,7 +149,8 @@ export function addRiverLayers(
       },
       STATION,
     )
-    map.addLayer(
+    addLayer(
+      map,
       {
         id: LINE,
         type: 'line',
@@ -190,13 +195,13 @@ export function setRiverFocus(
   focus: { from: string | null; to: string | null },
 ) {
   if (map.getLayer(STATION_SELECTED))
-    map.setFilter(STATION_SELECTED, ['==', ['get', 'id'], selectedId ?? ''])
+    map.setFilter(STATION_SELECTED, ['==', ['get', 'id'], selectedId ?? ''], NO_VALIDATE)
   if (!map.getLayer(LINE)) return
   if (focus.from !== null && focus.from !== focus.to)
     map.setFeatureState({ source: LINES_SOURCE, id: focus.from }, { focused: false })
   if (focus.to !== null)
     map.setFeatureState({ source: LINES_SOURCE, id: focus.to }, { focused: true })
-  map.setPaintProperty(LINE, 'line-opacity', lineOpacity(selectedId !== null))
+  map.setPaintProperty(LINE, 'line-opacity', lineOpacity(selectedId !== null), NO_VALIDATE)
 }
 
 /** A station drawn by an HTML overlay: CSS animates it without redrawing the map. */
@@ -222,7 +227,12 @@ function overlayElement(className: string, { radius, fill }: StationOverlay): HT
  * Pulse rings and the selection pop as CSS-animated HTML markers. Animating paint
  * properties instead restyles and redraws the whole map every frame, which stalls weak GPUs.
  */
-export function createStationAnimator(map: MaplibreMap, reducedMotion: () => boolean) {
+/** `MarkerClass` comes from the MapLibre module ClimateMap loads on demand. */
+export function createStationAnimator(
+  map: MaplibreMap,
+  MarkerClass: typeof Marker,
+  reducedMotion: () => boolean,
+) {
   const rings = new Map<string, { marker: Marker; key: string }>()
   let popMarker: Marker | null = null
 
@@ -244,7 +254,7 @@ export function createStationAnimator(map: MaplibreMap, reducedMotion: () => boo
         }
       }
       for (const station of next.values()) {
-        const marker = new Marker({ element: overlayElement('station-pulse', station) })
+        const marker = new MarkerClass({ element: overlayElement('station-pulse', station) })
           .setLngLat(station.lngLat)
           .addTo(map)
         rings.set(station.id, { marker, key: `${station.fill}|${station.radius}` })
@@ -258,7 +268,7 @@ export function createStationAnimator(map: MaplibreMap, reducedMotion: () => boo
       inner.style.setProperty('--stroke', INK[theme].selected)
       inner.style.animationDuration = `${POP_MS}ms`
       inner.addEventListener('animationend', clearPop, { once: true })
-      popMarker = new Marker({ element }).setLngLat(station.lngLat).addTo(map)
+      popMarker = new MarkerClass({ element }).setLngLat(station.lngLat).addTo(map)
     },
     stop() {
       for (const ring of rings.values()) ring.marker.remove()

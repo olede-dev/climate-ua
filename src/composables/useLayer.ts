@@ -2,6 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 
 import { layerConfig } from '../config/layers'
+import { rememberUrl } from '../lib/fileUrls'
+import { firstPaint } from '../lib/firstPaint'
 import { riversLayer } from '../lib/rivers'
 import type {
   BasinsFile,
@@ -17,9 +19,10 @@ import type {
 } from '../types'
 
 async function fetchStatic<T>(path: string): Promise<T> {
-  const response = await fetch(`${import.meta.env.BASE_URL}${path}`)
+  const url = `${import.meta.env.BASE_URL}${path}`
+  const response = await fetch(url)
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`)
-  return (await response.json()) as T
+  return rememberUrl((await response.json()) as T & object, new URL(url, location.href).href)
 }
 
 const RIVERS_QUERY = {
@@ -73,14 +76,14 @@ export function useWaterUse(enabled: MaybeRefOrGetter<boolean>) {
 export function useOblasts() {
   return useQuery({
     queryKey: ['geometry', 'oblasts'],
-    queryFn: () => fetchStatic<OblastsFile>('data/oblasts.geojson'),
+    queryFn: () => firstPaint.then(() => fetchStatic<OblastsFile>('data/oblasts.geojson')),
   })
 }
 
 export function useBasins() {
   return useQuery({
     queryKey: ['geometry', 'basins'],
-    queryFn: () => fetchStatic<BasinsFile>('data/basins.geojson'),
+    queryFn: () => firstPaint.then(() => fetchStatic<BasinsFile>('data/basins.geojson')),
   })
 }
 

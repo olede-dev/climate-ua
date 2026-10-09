@@ -2,8 +2,10 @@ import type { MultiLineString } from 'geojson'
 import type { ExpressionSpecification, Map as MaplibreMap } from 'maplibre-gl'
 
 import type { Theme } from '../../composables/useTheme'
+import { geojsonData } from '../../lib/fileUrls'
 import { mapColorExpression, type ColorScale } from '../../lib/scale'
 import type { OblastsFile, RegionsFile } from '../../types'
+import { NO_VALIDATE, addLayer, addSource, styleLayers } from './mapStyle'
 
 export const REGION_SOURCE = 'regions'
 export const REGION_FILL = 'region-fill'
@@ -77,15 +79,16 @@ export function addRegionLayers(
 ) {
   const ink = INK[theme]
   if (map.getSource(REGION_SOURCE)) return
-  map.addSource(REGION_SOURCE, { type: 'geojson', data, promoteId: 'id' })
+  addSource(map, REGION_SOURCE, { type: 'geojson', data: geojsonData(data), promoteId: 'id' })
   if (!map.hasImage(HATCH_IMAGE)) map.addImage(HATCH_IMAGE, hatchImage(theme), { pixelRatio: 2 })
   // Over roads and the basemap's borders (no occupation line shows through), under place names.
-  const layers = map.getStyle().layers
+  const layers = styleLayers(map)
   const beforeId = (
-    layers.find((layer) => layer.type === 'symbol' && layer['source-layer'] === 'place') ??
+    layers.find((layer) => layer.type === 'symbol' && layer.sourceLayer === 'place') ??
     layers.find((layer) => layer.type === 'symbol')
   )?.id
-  map.addLayer(
+  addLayer(
+    map,
     {
       id: REGION_FILL,
       type: 'fill',
@@ -99,7 +102,8 @@ export function addRegionLayers(
     },
     beforeId,
   )
-  map.addLayer(
+  addLayer(
+    map,
     {
       id: REGION_HATCH,
       type: 'fill',
@@ -109,7 +113,8 @@ export function addRegionLayers(
     },
     beforeId,
   )
-  map.addLayer(
+  addLayer(
+    map,
     {
       id: REGION_LINE,
       type: 'line',
@@ -123,7 +128,8 @@ export function addRegionLayers(
     },
     beforeId,
   )
-  map.addLayer(
+  addLayer(
+    map,
     {
       id: REGION_HIGHLIGHT,
       type: 'line',
@@ -140,36 +146,38 @@ export function addRegionLayers(
 
 export function setRegionData(map: MaplibreMap, data: RegionsFile) {
   const source = map.getSource(REGION_SOURCE)
-  if (source && 'setData' in source && typeof source.setData === 'function') source.setData(data)
+  if (source && 'setData' in source && typeof source.setData === 'function')
+    source.setData(geojsonData(data))
 }
 
 export function setRegionScale(map: MaplibreMap, scale: ColorScale) {
   if (map.getLayer(REGION_FILL))
-    map.setPaintProperty(REGION_FILL, 'fill-color', mapColorExpression(scale, VALUE))
+    map.setPaintProperty(REGION_FILL, 'fill-color', mapColorExpression(scale, VALUE), NO_VALIDATE)
 }
 
 /** The rivers layer draws its own lines and markers; the region fill only gets in their way. */
 export function setRegionsShown(map: MaplibreMap, shown: boolean) {
   const visibility = shown ? 'visible' : 'none'
   for (const id of [REGION_FILL, REGION_HIGHLIGHT])
-    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visibility)
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', visibility, NO_VALIDATE)
 }
 
 export function setFutureHatch(map: MaplibreMap, visible: boolean) {
   if (map.getLayer(REGION_HATCH))
-    map.setLayoutProperty(REGION_HATCH, 'visibility', visible ? 'visible' : 'none')
+    map.setLayoutProperty(REGION_HATCH, 'visibility', visible ? 'visible' : 'none', NO_VALIDATE)
 }
 
 export function addFocusLayers(map: MaplibreMap, oblasts: OblastsFile) {
   if (map.getSource(FOCUS_OBLAST_SOURCE) || !map.getLayer(REGION_FILL)) return
-  map.addSource(FOCUS_SATELLITE, {
+  addSource(map, FOCUS_SATELLITE, {
     type: 'raster',
     tiles: [SATELLITE_URL],
     tileSize: 256,
     maxzoom: 18,
     attribution: 'Imagery © Esri, Maxar, Earthstar Geographics',
   })
-  map.addLayer(
+  addLayer(
+    map,
     {
       id: FOCUS_SATELLITE,
       type: 'raster',
@@ -184,8 +192,9 @@ export function addFocusLayers(map: MaplibreMap, oblasts: OblastsFile) {
     },
     REGION_FILL,
   )
-  map.addSource(FOCUS_OBLAST_SOURCE, { type: 'geojson', data: oblasts })
-  map.addLayer(
+  addSource(map, FOCUS_OBLAST_SOURCE, { type: 'geojson', data: geojsonData(oblasts) })
+  addLayer(
+    map,
     {
       id: FOCUS_OBLAST_LINE,
       type: 'line',
@@ -221,33 +230,42 @@ export function setFillOpacity(
         : hovering
           ? ['case', HOVER, FILL_OPACITY, DIMMED_OPACITY]
           : FILL_OPACITY,
+    NO_VALIDATE,
   )
   if (map.getLayer(GRID))
     map.setPaintProperty(
       GRID,
       'raster-opacity',
       !revealed ? 0 : focused ? FOCUS_GRID_OPACITY : FILL_OPACITY,
+      NO_VALIDATE,
     )
-  map.setPaintProperty(REGION_LINE, 'line-opacity', focused || !revealed ? 0 : 1)
+  map.setPaintProperty(REGION_LINE, 'line-opacity', focused || !revealed ? 0 : 1, NO_VALIDATE)
   // The theme's dark outline is lost on imagery; white reads on both.
-  map.setPaintProperty(REGION_HIGHLIGHT, 'line-color', focused ? '#ffffff' : INK[theme].outline)
+  map.setPaintProperty(
+    REGION_HIGHLIGHT,
+    'line-color',
+    focused ? '#ffffff' : INK[theme].outline,
+    NO_VALIDATE,
+  )
   map.setPaintProperty(
     REGION_HIGHLIGHT,
     'line-width',
     focused ? ['case', SELECTED, 3, HOVER, 1.6, 0] : ['case', SELECTED, 2.2, HOVER, 1.6, 0],
+    NO_VALIDATE,
   )
   if (map.getLayer(FOCUS_SATELLITE))
-    map.setPaintProperty(FOCUS_SATELLITE, 'raster-opacity', focused ? 1 : 0)
+    map.setPaintProperty(FOCUS_SATELLITE, 'raster-opacity', focused ? 1 : 0, NO_VALIDATE)
   if (map.getLayer(FOCUS_OBLAST_LINE))
-    map.setPaintProperty(FOCUS_OBLAST_LINE, 'line-opacity', focused ? 0.9 : 0)
+    map.setPaintProperty(FOCUS_OBLAST_LINE, 'line-opacity', focused ? 0.9 : 0, NO_VALIDATE)
 }
 
 export function addCountryBorder(map: MaplibreMap, border: MultiLineString, theme: Theme) {
   if (map.getSource(BORDER_SOURCE) || !map.getLayer(REGION_HIGHLIGHT)) return
-  map.addSource(BORDER_SOURCE, { type: 'geojson', data: border })
+  addSource(map, BORDER_SOURCE, { type: 'geojson', data: border })
   const color = FUTURE_INK[theme]
   const layout = { 'line-join': 'round', 'line-cap': 'round' } as const
-  map.addLayer(
+  addLayer(
+    map,
     {
       id: BORDER_GLOW,
       type: 'line',
@@ -263,7 +281,8 @@ export function addCountryBorder(map: MaplibreMap, border: MultiLineString, them
     },
     REGION_HIGHLIGHT,
   )
-  map.addLayer(
+  addLayer(
+    map,
     {
       id: BORDER_LINE,
       type: 'line',
@@ -278,7 +297,8 @@ export function addCountryBorder(map: MaplibreMap, border: MultiLineString, them
     },
     REGION_HIGHLIGHT,
   )
-  map.addLayer(
+  addLayer(
+    map,
     {
       id: RIVER_BORDER_LINE,
       type: 'line',
@@ -292,13 +312,19 @@ export function addCountryBorder(map: MaplibreMap, border: MultiLineString, them
 
 export function setRiverBorder(map: MaplibreMap, visible: boolean) {
   if (map.getLayer(RIVER_BORDER_LINE))
-    map.setLayoutProperty(RIVER_BORDER_LINE, 'visibility', visible ? 'visible' : 'none')
+    map.setLayoutProperty(
+      RIVER_BORDER_LINE,
+      'visibility',
+      visible ? 'visible' : 'none',
+      NO_VALIDATE,
+    )
 }
 
 export function setCountryBorder(map: MaplibreMap, visible: boolean) {
   if (map.getLayer(BORDER_GLOW))
-    map.setPaintProperty(BORDER_GLOW, 'line-opacity', visible ? 0.55 : 0)
-  if (map.getLayer(BORDER_LINE)) map.setPaintProperty(BORDER_LINE, 'line-opacity', visible ? 1 : 0)
+    map.setPaintProperty(BORDER_GLOW, 'line-opacity', visible ? 0.55 : 0, NO_VALIDATE)
+  if (map.getLayer(BORDER_LINE))
+    map.setPaintProperty(BORDER_LINE, 'line-opacity', visible ? 1 : 0, NO_VALIDATE)
 }
 
 export function setGridImage(
@@ -322,8 +348,9 @@ export function setGridImage(
     source.updateImage({ url: image.url, coordinates })
     return
   }
-  map.addSource(GRID, { type: 'image', url: image.url, coordinates })
-  map.addLayer(
+  addSource(map, GRID, { type: 'image', url: image.url, coordinates })
+  addLayer(
+    map,
     {
       id: GRID,
       type: 'raster',

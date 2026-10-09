@@ -175,7 +175,8 @@
 }
 
 .maplibregl-map {
-  background: #0e0e10;
+  /* Close to both basemaps' own background, so nothing flashes while MapLibre and the style load. */
+  background: var(--ui-canvas);
 }
 
 .maplibregl-ctrl-group:not(:empty) {

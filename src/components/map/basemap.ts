@@ -1,19 +1,14 @@
-import {
-  setWorkerUrl,
-  type FilterSpecification,
-  type LayerSpecification,
-  type Map as MaplibreMap,
-  type StyleSpecification,
+import type {
+  FilterSpecification,
+  LayerSpecification,
+  Map as MaplibreMap,
+  StyleSpecification,
 } from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
-// `?worker&url` bundles the worker with its shared chunk; a plain `?url` copy fails to start.
-import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 
 import { HIDDEN_LABELS_PATH, type HiddenLabelsFile } from '../../config/geo'
 import type { Theme } from '../../composables/useTheme'
 import type { Locale } from '../../i18n'
-
-setWorkerUrl(workerUrl)
+import { NO_VALIDATE, styleLayers } from './mapStyle'
 
 const PALETTES: Record<
   Theme,
@@ -149,10 +144,10 @@ const IMAGERY_LABEL = { color: '#ffffff', halo: 'rgba(0, 0, 0, 0.75)' }
 
 export function setPlaceLabelsOnImagery(map: MaplibreMap, theme: Theme, onImagery: boolean) {
   const { color, halo } = onImagery ? IMAGERY_LABEL : PALETTES[theme].placeLabel
-  for (const layer of map.getStyle().layers) {
-    if (layer.type !== 'symbol' || layer['source-layer'] !== 'place') continue
-    map.setPaintProperty(layer.id, 'text-color', color)
-    map.setPaintProperty(layer.id, 'text-halo-color', halo)
+  for (const layer of styleLayers(map)) {
+    if (layer.type !== 'symbol' || layer.sourceLayer !== 'place') continue
+    map.setPaintProperty(layer.id, 'text-color', color, NO_VALIDATE)
+    map.setPaintProperty(layer.id, 'text-halo-color', halo, NO_VALIDATE)
   }
 }
 

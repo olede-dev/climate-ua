@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { MultiLineString, MultiPolygon, Polygon } from 'geojson'
-import * as maplibregl from 'maplibre-gl'
 import type {
+  Map as MaplibreMap,
   LngLatBoundsLike,
   MapMouseEvent,
   PaddingOptions,
@@ -10,6 +10,7 @@ import type {
 import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
+import { firstPaint } from '../../lib/firstPaint'
 import { geometryBounds } from '../../lib/geometry'
 import { gridCorners, paintGrid } from '../../lib/grid'
 import type { ColorScale } from '../../lib/scale'
@@ -98,7 +99,9 @@ const { theme } = useTheme()
 const container = useTemplateRef<HTMLDivElement>('container')
 
 // MapLibre objects stay outside Vue reactivity: proxies break them.
-let map: maplibregl.Map | undefined
+let map: MaplibreMap | undefined
+/** Set on unmount so a MapLibre import still in flight builds no map. */
+let unmounted = false
 let resizeObserver: ResizeObserver | undefined
 let viewTouched = false
 /** Latest basemap request; an older style that arrives late is dropped. */
@@ -374,8 +377,25 @@ function onClick(event: MapMouseEvent) {
   emit('select', id === props.selectedId ? null : id)
 }
 
-onMounted(() => {
-  if (!container.value) return
+/**
+ * MapLibre is over half the app's JavaScript, so it loads after the first paint: the side panel
+ * and the spinner show while it arrives.
+ */
+async function loadMaplibre() {
+  await firstPaint
+  const [maplibregl, { default: workerUrl }] = await Promise.all([
+    import('maplibre-gl'),
+    // `?worker&url` bundles the worker with its shared chunk; a plain `?url` copy fails to start.
+    import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'),
+    import('maplibre-gl/dist/maplibre-gl.css'),
+  ])
+  maplibregl.setWorkerUrl(workerUrl)
+  return maplibregl
+}
+
+onMounted(async () => {
+  const maplibregl = await loadMaplibre()
+  if (unmounted || !container.value) return
   map = new maplibregl.Map({
     container: container.value,
     style: EMPTY_STYLE,
@@ -390,11 +410,13 @@ onMounted(() => {
     touchPitch: false,
     // Map credits live in the page footer (AppFooter), next to the map card.
     attributionControl: false,
+    // Validation is the costliest step of a style load on a phone; dev builds keep its errors.
+    validateStyle: import.meta.env.DEV,
   })
   map.touchZoomRotate.disableRotation()
   map.keyboard.disableRotation()
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
-  animator = createStationAnimator(map, () => reducedMotion.matches)
+  animator = createStationAnimator(map, maplibregl.Marker, () => reducedMotion.matches)
   map.on('style.load', () => {
     styleReady = true
     shownStations = null
@@ -431,6 +453,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  unmounted = true
   cancelAnimationFrame(tweenFrame)
   resizeObserver?.disconnect()
   animator?.stop()
@@ -537,7 +560,7 @@ watch(
       }
     "
   >
-    <div ref="container" class="size-full" role="region" :aria-label="t.home.map"></div>
+    <div ref="container" class="size-full bg-canvas" role="region" :aria-label="t.home.map"></div>
     <div
       v-if="loading || (regions && !rivers && !regionsLoaded)"
       role="status"

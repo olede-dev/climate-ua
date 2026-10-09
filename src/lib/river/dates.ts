@@ -59,14 +59,18 @@ export function nowMs(): number {
   return Date.now()
 }
 
+// Built once: a time-zone formatter costs tens of milliseconds to create on a phone.
+let kyivDate: Intl.DateTimeFormat | undefined
+
 /** Today's calendar date in Kyiv. */
 export function todayKyiv(now: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
+  kyivDate ??= new Intl.DateTimeFormat('en-CA', {
     timeZone: KYIV_TIME_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).formatToParts(now)
+  })
+  const parts = kyivDate.formatToParts(now)
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)!.value
   return `${part('year')}-${part('month')}-${part('day')}`
 }

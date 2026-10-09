@@ -1,70 +1,80 @@
 # Клімат України — минуле і майбутнє
 
-Інтерактивна карта: як змінювались клімат і водні ресурси України і що очікується до кінця століття. Одна карта, один повзунок часу, один регіон у фокусі: «днів сильної спеки було 2 на рік, стане 9».
+Інтерактивна карта змін клімату та водних ресурсів України: спостереження з 1950 року і проєкції до кінця XXI століття за даними кліматичних і гідрологічних моделей.
 
-**Сайт:** https://olede-dev.github.io/climate-ua/
+**Демо:** https://olede-dev.github.io/climate-ua/
 
-## Що на карті
+## Можливості
 
-| Шар | Регіони | Минуле | Майбутнє |
+- Шість тематичних шарів на рівні областей, суббасейнів і річкових станцій.
+- Єдина шкала часу для історичного періоду та проєкцій.
+- Картка регіону: порівняння «минуле — сучасність — проєкція», графік за весь період, тип клімату за Кеппеном–Гейгером зараз і в майбутньому.
+- Стан інтерфейсу (шар, період, регіон) зберігається в URL.
+
+## Шари даних
+
+| Шар | Просторова одиниця | Спостереження | Проєкції |
 |---|---|---|---|
-| Вода — дефіцит і попит на воду, км³ | 265 суббасейнів | 1980–2019 | дефіцит: 2021–2035, 2036–2050 (SSP1-2.6, SSP3-7.0, SSP5-8.5) |
-| Температура — відхилення від норми 1991–2020 | 25 областей | 1950–2025 | 2021–2040, 2041–2060, 2081–2100 (SSP2-4.5) |
-| Сильна спека — дні понад 35 °C | 25 областей | 1950–2025 | те саме |
-| Морози — дні з мінімумом нижче 0 °C | 25 областей | 1950–2025 | те саме |
-| Посуха — місяці зі SPEI-6 нижче −1 | 25 областей | 1950–2025 | те саме |
-| Річки — дні маловоддя (норма 1997–2020) | 10 річкових станцій | 1997–2025 | прогнозу немає |
+| Водний дефіцит і попит, км³ | 265 суббасейнів | 1980–2019 | Дефіцит: 2021–2035, 2036–2050 (SSP1-2.6, SSP3-7.0, SSP5-8.5) |
+| Аномалія температури відносно 1991–2020 | 25 областей | 1950–2025 | 2021–2040, 2041–2060, 2081–2100 (SSP2-4.5) |
+| Дні з максимумом понад 35 °C | 25 областей | 1950–2025 | 2021–2040, 2041–2060, 2081–2100 (SSP2-4.5) |
+| Дні з мінімумом нижче 0 °C | 25 областей | 1950–2025 | 2021–2040, 2041–2060, 2081–2100 (SSP2-4.5) |
+| Посуха: місяці зі SPEI-6 нижче −1 | 25 областей | 1950–2025 | 2021–2040, 2041–2060, 2081–2100 (SSP2-4.5) |
+| Маловоддя річок відносно норми 1997–2020 | 10 гідростанцій | 1997–2025 | — |
 
-Клік по регіону відкриває картку: речення «було → стало → буде», графік від початку спостережень до кінця століття, для областей — тип клімату за Кеппеном зараз і в майбутньому. Стан (шар, час, регіон) зберігається в URL, тож посиланням можна поділитися.
+## Методика
 
-Майбутнє — середнє за 20 років для клімату і за 15 років для води, за методом дельт: до спостережень додається зміна, яку дають кліматичні моделі. На карті за замовчуванням — медіана моделей (для води — середнє), за перемикачем — нижня чи верхня межа діапазону. Докладно — у вікні «Про дані та методику» на сайті і в [SPEC.md](SPEC.md).
+Проєкції побудовано методом дельт: до спостережуваної кліматології додається зміна, отримана з ансамблю моделей CMIP6. Кліматичні показники усереднено за 20-річні періоди, водні — за 15-річні. За замовчуванням показано медіану ансамблю (для водних шарів — середнє); також доступні нижня та верхня межі діапазону моделей.
 
-## Запуск
+Повний опис методики наведено у [SPEC.md](SPEC.md) та у розділі «Про дані та методику» на сайті.
+
+## Технології
+
+- **Frontend:** Vue 3, TypeScript, Vite, Pinia, TanStack Query, MapLibre GL, Chart.js, Tailwind CSS v4.
+- **Тестування:** Vitest.
+- **Обробка даних:** Python (xarray, geopandas, rasterio), керування середовищем через [uv](https://docs.astral.sh/uv/).
+- **Розгортання:** GitHub Pages через GitHub Actions при пуші в `main`.
+
+## Локальний запуск
 
 ```bash
 npm install
 npm run dev
 ```
 
-Перевірки (той самий порядок, що в CI):
+Перевірки, які виконує CI:
 
 ```bash
 npm run lint && npm test -- --run && npm run build
 ```
 
-## Дані
+## Конвеєр даних
 
-Сайт статичний: усе, що він показує, лежить у `public/data/` і закомічене. Ці файли будує конвеєр на Python у `pipeline/` (керується [uv](https://docs.astral.sh/uv/)). Його запускають вручну раз на рік, а не в CI.
+Застосунок статичний: усі дані містяться в `public/data/` і зберігаються в репозиторії. Їх генерує конвеєр у `pipeline/`, який запускається вручну під час щорічного оновлення.
 
-Перед першим запуском:
-
-1. Акаунт [Copernicus CDS](https://cds.climate.copernicus.eu/): ключ у `~/.cdsapirc` і прийнята ліцензія датасету [C3S Atlas](https://cds.climate.copernicus.eu/datasets/multi-origin-c3s-atlas).
+Передумови: обліковий запис [Copernicus CDS](https://cds.climate.copernicus.eu/), API-ключ у `~/.cdsapirc` і прийнята ліцензія датасету [C3S Atlas](https://cds.climate.copernicus.eu/datasets/multi-origin-c3s-atlas).
 
 ```bash
 cd pipeline
-uv run python build_oblasts.py   # межі областей → public/data/oblasts.geojson
-uv run python fetch_atlas.py     # ERA5 і CMIP6 → pipeline/data/raw (кілька хвилин)
-uv run python build_climate.py   # → public/data/layers/{temp,heat,frost,drought}.json
-uv run python fetch_wwm_basins.py # басейни World Water Map з даними й прогнозом (ArcGIS)
-uv run python build_basins.py    # суббасейни → public/data/basins.geojson
-uv run python build_water_use.py # попит і дефіцит по галузях → public/data/water-use.json
-uv run python fetch_koppen.py    # карти Кеппена–Гейгера, ~130 МБ
-uv run python build_koppen.py    # → public/data/koppen.json
-uv run python fetch_rivers.py    # GloFAS v4 через Open-Meteo (з паузами на ліміт запитів)
-uv run python build_rivers.py    # → public/data/rivers.json
+uv run python build_oblasts.py     # межі областей → public/data/oblasts.geojson
+uv run python fetch_atlas.py       # ERA5 і CMIP6 → pipeline/data/raw
+uv run python build_climate.py     # → public/data/layers/{temp,heat,frost,drought}.json
+uv run python fetch_wwm_basins.py  # басейни та проєкції World Water Map (ArcGIS)
+uv run python build_basins.py      # → public/data/basins.geojson
+uv run python build_water_use.py   # → public/data/water-use.json
+uv run python fetch_koppen.py      # карти Кеппена–Гейгера (~130 МБ)
+uv run python build_koppen.py      # → public/data/koppen.json
+uv run python fetch_rivers.py      # GloFAS v4 через Open-Meteo
+uv run python build_rivers.py      # → public/data/rivers.json
 ```
 
-Сирі завантаження лежать у `pipeline/data/raw/` і в git не потрапляють.
+Сирі завантаження зберігаються в `pipeline/data/raw/` і не входять до репозиторію.
 
-## Джерела
+## Джерела даних
 
-- Вода — модель PCR-GLOBWB 2 Утрехтського університету (Sutanudjaja et al. 2018) у вигляді [World Water Map](https://worldwatermap.nationalgeographic.org/) (National Geographic Society): суббасейни HydroBASINS рівня 7, попит і дефіцит 1980–2019 та прогноз дефіциту до 2050 з їхнього сервісу ArcGIS. Пакет даних — [doi:10.24416/UU01-0Q6SU6](https://doi.org/10.24416/UU01-0Q6SU6), CC BY 4.0.
-- Клімат — [Copernicus Interactive Climate Atlas](https://atlas.climate.copernicus.eu/) (C3S / ECMWF: ERA5, CMIP6), CC BY 4.0.
-- Тип клімату — [Beck et al. (2023)](https://doi.org/10.1038/s41597-023-02549-6), *Scientific Data* 10, 724, CC BY 4.0.
-- Річки — реаналіз GloFAS v4 (Copernicus Emergency Management Service) через [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api).
-- Межі областей — [geoBoundaries](https://www.geoboundaries.org/) (© OpenStreetMap, ODbL), суходіл — [Natural Earth](https://www.naturalearthdata.com/).
-- Підкладка — [OpenFreeMap](https://openfreemap.org/), © OpenMapTiles, © OpenStreetMap.
-
-## Стек
-
-Vue 3 + TypeScript, Vite, Pinia, TanStack Query, MapLibre GL, Chart.js, Tailwind CSS v4, Vitest. Конвеєр — Python: xarray, geopandas, rasterio. Деплой на GitHub Pages при пуші в `main`.
+- **Водні ресурси:** модель PCR-GLOBWB 2, Утрехтський університет (Sutanudjaja et al., 2018), у реалізації [World Water Map](https://worldwatermap.nationalgeographic.org/) (National Geographic Society); суббасейни HydroBASINS рівня 7. Дані: [doi:10.24416/UU01-0Q6SU6](https://doi.org/10.24416/UU01-0Q6SU6), CC BY 4.0.
+- **Клімат:** [Copernicus Interactive Climate Atlas](https://atlas.climate.copernicus.eu/) (C3S / ECMWF; ERA5, CMIP6), CC BY 4.0.
+- **Класифікація Кеппена–Гейгера:** [Beck et al. (2023)](https://doi.org/10.1038/s41597-023-02549-6), *Scientific Data* 10, 724, CC BY 4.0.
+- **Річковий стік:** реаналіз GloFAS v4 (Copernicus Emergency Management Service) через [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api).
+- **Адміністративні межі:** [geoBoundaries](https://www.geoboundaries.org/) (© OpenStreetMap, ODbL); суходіл — [Natural Earth](https://www.naturalearthdata.com/).
+- **Базова карта:** [OpenFreeMap](https://openfreemap.org/), © OpenMapTiles, © OpenStreetMap.

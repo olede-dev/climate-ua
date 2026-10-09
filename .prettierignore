@@ -4,7 +4,5 @@ node_modules
 package-lock.json
 public/data
 src/config/*.generated.json
-# Agent docs and the spec are formatted by hand / by their own tooling.
+# Markdown is formatted by hand.
 *.md
-docs
-.claude

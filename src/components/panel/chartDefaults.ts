@@ -1,4 +1,6 @@
 import { Chart as ChartJS, Tooltip } from 'chart.js'
+import type { AnnotationOptions } from 'chartjs-plugin-annotation'
+import { watch, type WatchSource } from 'vue'
 
 // Registered here too: its defaults exist only after registration, and imports run first.
 ChartJS.register(Tooltip)
@@ -22,4 +24,38 @@ export const Y_AXIS_WIDTH = 64
 
 export function fixedAxisWidth(axis: { width: number }): void {
   axis.width = Y_AXIS_WIDTH
+}
+
+/**
+ * The timeline's day as a line annotation that moves in place: rebuilding the options on every
+ * slider step redraws the whole chart, which stutters over a year of days. `annotation()` gives
+ * the line for the options with the day current when they are built, without tracking it.
+ */
+export function useSelectedLine(
+  chart: WatchSource<ChartJS | undefined>,
+  selected: () => string,
+  today: () => string,
+) {
+  let day = selected()
+  const annotation = (color: string): AnnotationOptions<'line'> => ({
+    type: 'line',
+    scaleID: 'x',
+    value: day,
+    display: day !== today(),
+    borderColor: color,
+    borderWidth: 2,
+  })
+  watch([selected, chart], ([value, instance]) => {
+    day = value
+    const line = (
+      instance?.options.plugins?.annotation?.annotations as
+        | Record<string, AnnotationOptions<'line'>>
+        | undefined
+    )?.selected
+    if (!instance || !line) return
+    line.value = value
+    line.display = value !== today()
+    instance.update('none')
+  })
+  return annotation
 }

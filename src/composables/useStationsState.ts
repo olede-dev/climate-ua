@@ -1,7 +1,12 @@
+import { useQuery } from '@tanstack/vue-query'
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 
+import { fetchDischargeHistories } from '../api/flood'
+import { shouldRetryQuery } from '../api/http'
+import { DISCHARGE_WINDOW } from '../config/discharge'
 import { anomalyPct, classifyDischarge } from '../lib/river/anomaly'
-import { dayOfYear, todayKyiv } from '../lib/river/dates'
+import { addDays, dayOfYear, todayKyiv } from '../lib/river/dates'
+import { withHistory } from '../lib/river/history'
 import type { DischargeSeries, RiverNormsFile, Station, StationState } from '../types'
 import { useDischarge } from './useDischarge'
 import { useRiverNorms, useRivers } from './useLayer'
@@ -42,25 +47,58 @@ export function stationState(
 /**
  * Joins today's discharge with the day-of-year norm for every station of `rivers.json`.
  * `mapDate`, when given, drives `mapStates` too: the same join for another day (the timelapse).
+ * `historyDays`, when above the live window, adds one request for the days before it.
  */
 export function useStationsState(
   enabled: MaybeRefOrGetter<boolean>,
   mapDate?: MaybeRefOrGetter<string>,
+  historyDays: MaybeRefOrGetter<number> = DISCHARGE_WINDOW.pastDays,
 ) {
   const rivers = useRivers(enabled)
   const discharge = useDischarge(enabled)
   const norms = useRiverNorms(enabled)
   const today = todayKyiv()
 
+  const points = computed(
+    () => rivers.data.value?.stations.map((s) => ({ id: s.id, ...s.cell })) ?? [],
+  )
+  // The day before the live window starts, so the two requests never overlap.
+  const historyEnd = addDays(today, -DISCHARGE_WINDOW.pastDays - 1)
+  const historyStart = computed(() => addDays(today, -toValue(historyDays)))
+  const history = useQuery({
+    queryKey: computed(() => ['discharge-history', points.value.map((p) => p.id), historyStart.value]),
+    queryFn: ({ signal }) =>
+      fetchDischargeHistories(
+        points.value,
+        { startDate: historyStart.value, endDate: historyEnd },
+        { signal },
+      ),
+    enabled: computed(
+      () =>
+        toValue(enabled) &&
+        points.value.length > 0 &&
+        toValue(historyDays) > DISCHARGE_WINDOW.pastDays,
+    ),
+    staleTime: Infinity,
+    retry: shouldRetryQuery,
+  })
+
+  /** Live discharge per station, with the history in front of it once loaded. */
+  const series = computed(() => {
+    const live = discharge.data.value?.series
+    const past = history.data.value
+    if (!live || !past || toValue(historyDays) <= DISCHARGE_WINDOW.pastDays) return live
+    return new Map(
+      [...live].map(([id, s]) => {
+        const days = past.get(id)
+        return [id, days ? withHistory(s, days) : s]
+      }),
+    )
+  })
+
   const statesOn = (date: string) =>
     (rivers.data.value?.stations ?? []).map((station) =>
-      stationState(
-        station,
-        discharge.data.value?.series.get(station.id),
-        norms.data.value,
-        today,
-        date,
-      ),
+      stationState(station, series.value?.get(station.id), norms.data.value, today, date),
     )
   const states = computed(() => statesOn(today))
   const mapStates = computed(() => {
@@ -68,5 +106,5 @@ export function useStationsState(
     return date === today ? states.value : statesOn(date)
   })
 
-  return { states, mapStates, today, discharge, norms }
+  return { states, mapStates, today, discharge, history, series, norms }
 }

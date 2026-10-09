@@ -14,9 +14,7 @@ describe('parseUrlState', () => {
       bound: 'median',
       riverView: 'state',
       basin: 'all',
-      range: 90,
-      mode: 'abs',
-      precip: false,
+      riverSpan: 'season',
     })
     expect(parseUrlState({ t: '1987' }).time).toBe(1987)
   })
@@ -59,9 +57,7 @@ describe('toUrlQuery', () => {
       bound: 'min',
       riverView: 'state',
       basin: 'all',
-      range: 90,
-      mode: 'abs',
-      precip: false,
+      riverSpan: 'season',
     }
     expect(parseUrlState(toUrlQuery(state))).toEqual(state)
   })
@@ -73,18 +69,14 @@ describe('toUrlQuery', () => {
       region: 'dnipro-kyiv',
       riverView: 'lowFlow',
       basin: 'dnister',
-      range: 210,
-      mode: 'pct',
-      precip: true,
+      riverSpan: 'year',
     }
     expect(toUrlQuery(state)).toEqual({
       layer: 'rivers',
       region: 'dnipro-kyiv',
       rl: 'lowFlow',
       basin: 'dnister',
-      range: '210',
-      mode: 'pct',
-      precip: '1',
+      rs: 'year',
     })
     expect(parseUrlState(toUrlQuery(state))).toEqual(state)
   })
@@ -92,7 +84,7 @@ describe('toUrlQuery', () => {
   it('writes the river keys only in the rivers layer and only off their defaults', () => {
     const rivers = { ...DEFAULT_URL_STATE, layer: 'rivers' as const }
     expect(toUrlQuery(rivers)).toEqual({ layer: 'rivers' })
-    expect(toUrlQuery({ ...rivers, layer: 'temp', basin: 'don', range: 30, precip: true })).toEqual(
+    expect(toUrlQuery({ ...rivers, layer: 'temp', basin: 'don', riverSpan: 'year' })).toEqual(
       { layer: 'temp' },
     )
   })
@@ -128,16 +120,17 @@ describe('toUrlQuery', () => {
 
 describe('river URL keys', () => {
   it('reads each key and falls back on a bad value', () => {
-    const query = { layer: 'rivers', basin: 'danube', range: '30', mode: 'pct', precip: '1' }
-    expect(parseUrlState(query)).toMatchObject({
-      basin: 'danube',
-      range: 30,
-      mode: 'pct',
-      precip: true,
+    const query = { layer: 'rivers', basin: 'danube', rs: 'forecast' }
+    expect(parseUrlState(query)).toMatchObject({ basin: 'danube', riverSpan: 'forecast' })
+    expect(parseUrlState({ layer: 'rivers', basin: '<b>', rs: 'decade' })).toMatchObject({
+      basin: 'all',
+      riverSpan: 'season',
     })
-    expect(
-      parseUrlState({ layer: 'rivers', basin: '<b>', range: '45', mode: 'log', precip: 'yes' }),
-    ).toMatchObject({ basin: 'all', range: 90, mode: 'abs', precip: false })
+  })
+
+  it('opens the forecast span from the retired 7-month chart horizon', () => {
+    expect(parseUrlState({ layer: 'rivers', range: '210' }).riverSpan).toBe('forecast')
+    expect(parseUrlState({ layer: 'rivers', range: '30' }).riverSpan).toBe('season')
   })
 
   it('accepts station as an alias for region under layer=rivers', () => {
@@ -154,9 +147,7 @@ describe('rivers-ua links', () => {
     ).toMatchObject({
       layer: 'rivers',
       region: 'dnipro-kyiv',
-      range: 210,
-      mode: 'pct',
-      precip: true,
+      riverSpan: 'forecast',
       riverView: 'state',
     })
   })

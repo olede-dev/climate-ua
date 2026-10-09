@@ -104,17 +104,35 @@ export interface DischargeHistory {
   discharge: DailyValues
 }
 
+/** Reanalysis and operational discharge for every station over a date range (no ensemble). */
+export async function fetchDischargeHistories<T extends LatLon & { id: string }>(
+  stations: readonly T[],
+  range: { startDate: string; endDate: string },
+  options?: RequestOptions,
+): Promise<Map<string, DischargeHistory>> {
+  const url = buildUrl(stations, {
+    daily: 'river_discharge',
+    start_date: range.startDate,
+    end_date: range.endDate,
+  })
+  const locations = toLocations(await getJson(url, options), stations.length)
+  return new Map(
+    stations.map((station, i) => {
+      const location = locations[i]!
+      return [
+        station.id,
+        { time: location.daily.time, discharge: readVariable(location, 'river_discharge') },
+      ]
+    }),
+  )
+}
+
 /** Reanalysis and operational discharge at one point over a date range (no ensemble). */
 export async function fetchDischargeHistory(
   point: LatLon,
   range: { startDate: string; endDate: string },
   options?: RequestOptions,
 ): Promise<DischargeHistory> {
-  const url = buildUrl([point], {
-    daily: 'river_discharge',
-    start_date: range.startDate,
-    end_date: range.endDate,
-  })
-  const [location] = toLocations(await getJson(url, options), 1)
-  return { time: location!.daily.time, discharge: readVariable(location!, 'river_discharge') }
+  const histories = await fetchDischargeHistories([{ ...point, id: '' }], range, options)
+  return histories.get('')!
 }

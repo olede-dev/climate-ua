@@ -11,30 +11,28 @@ import { forecastOutlook } from '../../../lib/river/anomaly'
 import { buildChartSeries } from '../../../lib/river/chartSeries'
 import { ANOMALY_CLASSES } from '../../../lib/river/marks'
 import {
-  formatCoordinates,
   formatDischarge,
   formatPct,
   formatYearRange,
 } from '../../../lib/river/format'
-import type { ChartRange } from '../../../lib/urlState'
-import { useUiStore } from '../../../stores/ui'
 import type { DischargeSeries, RiverNormsFile, RiversFile, StationState } from '../../../types'
 import ErrorState from '../../ui/ErrorState.vue'
+import InfoHint from '../../ui/InfoHint.vue'
 import LoadingSkeleton from '../../ui/LoadingSkeleton.vue'
 import OutlookBadge from '../../ui/OutlookBadge.vue'
-import ChartControls from './ChartControls.vue'
 import ClimateSection from './ClimateSection.vue'
 import DischargeChart from './DischargeChart.vue'
 import PrecipitationChart from './PrecipitationChart.vue'
 import RiverNormBar from './RiverNormBar.vue'
 
 /**
- * The rivers layer's station card, laid out like the climate layers' `RegionCard`: today's
- * discharge as the headline with its norm bar, the forecast outlook,
- * the discharge chart with precipitation, and the climate section. Loaded as its own
+ * The rivers layer's station card, laid out like the climate layers' `RegionCard`: discharge
+ * on the timeline's day as the headline with its norm bar, the forecast outlook, the
+ * discharge chart over the timeline's window with precipitation, and the climate section. Loaded as its own
  * chunk with Chart.js, only once a station opens.
  */
 const props = defineProps<{
+  /** The station on `date`. */
   state: StationState
   label: RegionLabel
   rivers: RiversFile | undefined
@@ -42,16 +40,15 @@ const props = defineProps<{
   /** `undefined` while discharge is loading or after it failed. */
   series: DischargeSeries | undefined
   today: string
+  /** The timeline's day and window, which the card follows. */
+  date: string
+  span: { pastDays: number; futureDays: number }
   status: 'pending' | 'error' | 'success'
   /** Shown when `status` is `error`. */
   errorMessage: string
 }>()
-const emit = defineEmits<{ close: []; retry: [] }>()
+const emit = defineEmits<{ close: []; retry: []; select: [date: string] }>()
 
-/** The short period shows 30 past days; the longer ones show 60, all the data request holds. */
-const PAST_DAYS: Record<ChartRange, number> = { 30: 30, 90: 60, 210: 60 }
-
-const ui = useUiStore()
 const { locale, t } = useLocale()
 const copy = computed(() => t.value.river.details)
 const heading = useTemplateRef<HTMLHeadingElement>('heading')
@@ -61,27 +58,9 @@ const stationNorms = computed(() => props.norms?.stations[station.value.id] ?? n
 const stateColor = computed(
   () => ANOMALY_CLASSES.find((c) => c.id === props.state.anomalyClass)?.color ?? null,
 )
-/** One sentence beside the headline number, like the climate layers' region card. */
-const headline = computed(() => {
-  const pct = props.state.anomalyPct
-  if (pct === null) return null
-  const rounded = Math.round(pct)
-  const size = `${Math.abs(rounded)}%`
-  const delta =
-    rounded === 0
-      ? copy.value.atNorm
-      : (rounded > 0 ? t.value.panel.moreThanUsual : t.value.panel.lessThanUsual).replace(
-          '{delta}',
-          size,
-        )
-  return copy.value.headline
-    .replace('{date}', formatDayMonth(props.today, locale.value))
-    .replace('{delta}', delta)
-})
-
-const precipitation = usePrecipitation(station, () => ui.precip)
+const precipitation = usePrecipitation(station, true)
 const precipitationError = computed(() => {
-  if (!ui.precip || !precipitation.isError.value) return null
+  if (!precipitation.isError.value) return null
   return isRateLimited(precipitation.error.value)
     ? copy.value.precipitationRateLimited
     : copy.value.precipitationFailed
@@ -102,9 +81,6 @@ const outlook = computed(
     forecastOutlook(props.series, stationNorms.value, props.today),
 )
 
-/** Relative mode needs a median norm to divide by; without norms the chart stays in m³/s. */
-const relative = computed(() => ui.mode === 'pct' && stationNorms.value !== null)
-
 const chartSeries = computed(
   () =>
     props.series &&
@@ -113,11 +89,10 @@ const chartSeries = computed(
       stationNorms.value,
       {
         today: props.today,
-        pastDays: PAST_DAYS[ui.range],
-        forecastDays: ui.range,
-        relative: relative.value,
+        pastDays: props.span.pastDays,
+        forecastDays: props.span.futureDays,
       },
-      ui.precip ? (precipitation.data.value ?? null) : null,
+      precipitation.data.value ?? null,
     ),
 )
 const normPeriod = computed(() => (props.rivers ? formatYearRange(props.rivers.norm) : ''))
@@ -178,9 +153,6 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
           >
             {{ t.river.list.focusBasin }}
           </span>
-          <span v-if="state.cell" class="basis-full">
-            {{ copy.cell.replace('{coordinates}', formatCoordinates(state.cell, locale)) }}
-          </span>
         </span>
       </p>
     </header>
@@ -205,7 +177,6 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
           >{{ formatPct(state.anomalyPct, locale) }}</span
         >
       </div>
-      <p v-if="headline" class="mt-1.5 text-[13px] leading-snug text-ink-muted">{{ headline }}</p>
       <p
         v-if="state.anomalyClass"
         class="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-ink"
@@ -225,7 +196,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       :norm="state.norm"
       :current="state.current"
       :anomaly-class="state.anomalyClass"
-      :when="formatDayMonth(today, locale)"
+      :when="formatDayMonth(date, locale)"
       :norm-period="rivers?.norm"
     />
 
@@ -255,23 +226,21 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <h3 id="chart-heading" class="px-1 text-[13px] leading-snug font-semibold text-ink">
         {{ copy.chartHeading }}
       </h3>
-      <ChartControls />
-      <p v-if="ui.mode === 'pct' && !stationNorms" class="text-xs text-ink-muted">
-        {{ copy.normsMissing }}
-      </p>
       <LoadingSkeleton v-if="status === 'pending'" :label="copy.loadingChart" class="h-56" />
       <ErrorState v-else-if="status === 'error'" :message="errorMessage" @retry="emit('retry')" />
       <DischargeChart
         v-else-if="chartSeries"
         :series="chartSeries"
         :today="today"
-        :relative="relative"
+        :selected="date"
+        @select="emit('select', $event)"
       >
         <PrecipitationChart
           v-if="chartSeries.precipitation"
           :time="chartSeries.time"
           :values="chartSeries.precipitation"
           :today="today"
+          :selected="date"
         />
       </DischargeChart>
       <div
@@ -283,10 +252,10 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <p v-if="precipitationError" role="status" class="text-xs text-warn-ink">
         {{ precipitationError }}
       </p>
-      <p class="text-xs leading-relaxed text-ink-muted">
-        {{ copy.chartNote.replace('{norm}', normPeriod) }}
-        <template v-if="ui.precip"> {{ copy.precipitationNote }}</template>
-      </p>
+      <InfoHint :label="copy.chartNoteToggle">
+        <p>{{ copy.chartNote.replace('{norm}', normPeriod) }}</p>
+        <p>{{ copy.precipitationNote }}</p>
+      </InfoHint>
     </section>
 
     <ClimateSection

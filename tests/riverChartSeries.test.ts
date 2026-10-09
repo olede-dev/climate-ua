@@ -26,7 +26,7 @@ const norms: RiverStationNorms = {
   doy: Array.from({ length: 365 }, (_, i) => (i === 1 ? { ...day, median: 0 } : day)),
 }
 
-const window: ChartWindow = { today: '2026-01-03', pastDays: 1, forecastDays: 1, relative: false }
+const window: ChartWindow = { today: '2026-01-03', pastDays: 1, forecastDays: 1 }
 
 describe('buildChartSeries', () => {
   it('keeps [today − pastDays, today + forecastDays] with both ends included', () => {
@@ -43,26 +43,16 @@ describe('buildChartSeries', () => {
     expect(result.forecast.median).toEqual([null, 30, 40])
   })
 
-  it('in relative mode divides by each date’s median norm and leaves a zero median empty', () => {
-    const result = buildChartSeries(series, norms, { ...window, relative: true })
-    expect(result.past).toEqual([null, 150, null])
-    expect(result.forecast.median).toEqual([null, 15, 20])
-    expect(result.norm?.median).toEqual([null, 100, 100])
-    expect(result.norm?.p25).toEqual([null, 50, 50])
-  })
-
-  it('matches precipitation by date, unscaled, and leaves days it does not cover empty', () => {
+  it('matches precipitation by date and leaves days it does not cover empty', () => {
     const precipitation = {
       time: ['2026-01-01', '2026-01-02', '2026-01-03'],
       precipitation: [1, 2.5, 0],
     }
-    const result = buildChartSeries(series, norms, { ...window, relative: true }, precipitation)
+    const result = buildChartSeries(series, norms, window, precipitation)
     expect(result.precipitation).toEqual([2.5, 0, null])
   })
 
-  it('omits the norm without norms data, and relative values with it', () => {
-    const result = buildChartSeries(series, null, { ...window, relative: true })
-    expect(result.norm).toBeNull()
-    expect(result.past).toEqual([null, null, null])
+  it('omits the norm without norms data', () => {
+    expect(buildChartSeries(series, null, window).norm).toBeNull()
   })
 })

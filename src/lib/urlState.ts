@@ -1,3 +1,4 @@
+import { DEFAULT_RIVER_SPAN, RIVER_SPANS, type RiverSpan } from '../config/discharge'
 import { DEFAULT_LAYER, LAYER_IDS, layerConfig } from '../config/layers'
 import type {
   LayerId,
@@ -12,14 +13,10 @@ import { BOUNDS } from './series'
 import { parseStep, type TimeStep } from './time'
 import { WATER_PERIODS, WATER_SCENARIOS, WATER_SECTORS } from './waterUse'
 
-/** Forecast horizon of the station chart, in days. */
-export type ChartRange = 30 | 90 | 210
-export type ChartMode = 'abs' | 'pct'
 /** A basin id from `rivers.json`, checked against it once loaded, or every basin. */
 export type BasinFilter = RiverBasin | 'all'
 
-export const CHART_RANGES: readonly ChartRange[] = [30, 90, 210]
-const CHART_MODES: readonly ChartMode[] = ['abs', 'pct']
+const RIVER_SPAN_IDS = Object.keys(RIVER_SPANS) as RiverSpan[]
 /** Keys only rivers-ua wrote; one of them without `layer` marks a rivers-ua link. */
 const RIVERS_UA_KEYS = ['station', 'basin', 'range', 'mode', 'precip'] as const
 const SLUG = /^[a-z0-9-]{1,40}$/
@@ -38,9 +35,7 @@ export interface UrlState {
   bound: ProjectionBound
   riverView: RiverView
   basin: BasinFilter
-  range: ChartRange
-  mode: ChartMode
-  precip: boolean
+  riverSpan: RiverSpan
 }
 
 export const DEFAULT_URL_STATE: Readonly<UrlState> = {
@@ -53,9 +48,7 @@ export const DEFAULT_URL_STATE: Readonly<UrlState> = {
   bound: 'median',
   riverView: 'state',
   basin: 'all',
-  range: 90,
-  mode: 'abs',
-  precip: false,
+  riverSpan: DEFAULT_RIVER_SPAN,
 }
 
 export type QueryInput = Record<string, string | null | (string | null)[] | undefined>
@@ -99,9 +92,10 @@ export function parseUrlState(query: QueryInput): UrlState {
     riverView:
       RIVER_VIEWS.find((v) => v === first(query.rl)) ?? legacyView ?? DEFAULT_URL_STATE.riverView,
     basin: rawBasin !== null && SLUG.test(rawBasin) ? (rawBasin as RiverBasin) : 'all',
-    range: CHART_RANGES.find((v) => String(v) === first(query.range)) ?? DEFAULT_URL_STATE.range,
-    mode: CHART_MODES.find((v) => v === first(query.mode)) ?? DEFAULT_URL_STATE.mode,
-    precip: first(query.precip) === '1',
+    // The chart's retired 7-month horizon (`range=210`) opens the forecast span.
+    riverSpan:
+      RIVER_SPAN_IDS.find((v) => v === first(query.rs)) ??
+      (first(query.range) === '210' ? 'forecast' : DEFAULT_URL_STATE.riverSpan),
   }
 }
 
@@ -117,8 +111,6 @@ export function toUrlQuery(state: UrlState): Record<string, string> {
   if (state.layer !== 'rivers') return query
   if (state.riverView !== DEFAULT_URL_STATE.riverView) query.rl = state.riverView
   if (state.basin !== DEFAULT_URL_STATE.basin) query.basin = state.basin
-  if (state.range !== DEFAULT_URL_STATE.range) query.range = String(state.range)
-  if (state.mode !== DEFAULT_URL_STATE.mode) query.mode = state.mode
-  if (state.precip) query.precip = '1'
+  if (state.riverSpan !== DEFAULT_URL_STATE.riverSpan) query.rs = state.riverSpan
   return query
 }

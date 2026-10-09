@@ -14,7 +14,7 @@ import {
 import annotationPlugin from 'chartjs-plugin-annotation'
 import { enGB } from 'date-fns/locale/en-GB'
 import { uk } from 'date-fns/locale/uk'
-import { computed } from 'vue'
+import { computed, useTemplateRef } from 'vue'
 import { Bar } from 'vue-chartjs'
 
 import { useLocale } from '../../../composables/useLocale'
@@ -22,7 +22,7 @@ import { useTheme } from '../../../composables/useTheme'
 import type { Locale } from '../../../i18n'
 import { formatPrecipitation } from '../../../lib/river/format'
 import type { DailyValues } from '../../../types'
-import { CHART_INK, fixedAxisWidth } from '../chartDefaults'
+import { CHART_INK, fixedAxisWidth, useSelectedLine } from '../chartDefaults'
 
 ChartJS.register(BarController, BarElement, LinearScale, TimeScale, Tooltip, annotationPlugin)
 
@@ -35,11 +35,12 @@ const props = defineProps<{
   /** mm per day, aligned with `time`. */
   values: DailyValues
   today: string
+  selected: string
 }>()
 
 const PALETTES = {
-  light: { bar: '#30b0c7', today: '#1d1d1f', ...CHART_INK.light },
-  dark: { bar: '#64d2ff', today: '#f5f5f7', ...CHART_INK.dark },
+  light: { bar: '#30b0c7', today: '#1d1d1f', selected: '#0071e3', ...CHART_INK.light },
+  dark: { bar: '#64d2ff', today: '#f5f5f7', selected: '#0a84ff', ...CHART_INK.dark },
 }
 
 const DATE_LOCALES = { uk, en: enGB } satisfies Record<Locale, unknown>
@@ -48,6 +49,12 @@ const { isDark } = useTheme()
 const { locale, t } = useLocale()
 const colors = computed(() => (isDark.value ? PALETTES.dark : PALETTES.light))
 const copy = computed(() => t.value.river.chart)
+const bar = useTemplateRef<{ chart?: ChartJS }>('bar')
+const selectedLine = useSelectedLine(
+  () => bar.value?.chart,
+  () => props.selected,
+  () => props.today,
+)
 
 const data = computed((): ChartData<'bar', DailyValues, string> => ({
   labels: props.time,
@@ -114,6 +121,7 @@ const options = computed((): ChartOptions<'bar'> => {
             borderWidth: 1,
             borderDash: [3, 3],
           },
+          selected: selectedLine(COLORS.selected),
         },
       },
     },
@@ -123,6 +131,6 @@ const options = computed((): ChartOptions<'bar'> => {
 
 <template>
   <div class="h-20">
-    <Bar :data="data" :options="options" :aria-label="copy.precipitationAria" role="img" />
+    <Bar ref="bar" :data="data" :options="options" :aria-label="copy.precipitationAria" role="img" />
   </div>
 </template>

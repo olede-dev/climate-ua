@@ -2,30 +2,37 @@
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
+import { RIVER_SPANS, type RiverSpan } from '../../config/discharge'
 import { formatDayMonth } from '../../lib/format'
 import { addDays, daysBetween } from '../../lib/river/dates'
+import SegmentedControl from '../ui/SegmentedControl.vue'
 
 /**
  * The rivers layer's day slider, in the look of `TimeSlider`: observed days on the solid track,
- * the forecast hatched like the projection periods, the legend in the default slot.
+ * the forecast hatched like the projection periods, the window picker under it, the legend in
+ * the default slot.
  */
-const props = defineProps<{
-  today: string
-  /** Days before and after today the slider covers. */
-  pastDays: number
-  futureDays: number
-}>()
+const props = defineProps<{ today: string }>()
 const date = defineModel<string>({ required: true })
+const span = defineModel<RiverSpan>('span', { required: true })
 
-/** One day per frame: the 90-day window plays in about 13 s. */
-const FRAME_MS = 140
+/** One day per frame; any window plays in about 13 s, never faster than 30 ms a day. */
+const PLAY_MS = 13_000
+const MIN_FRAME_MS = 30
 
 const { locale, t } = useLocale()
 const copy = computed(() => t.value.river.timeline)
 const track = useTemplateRef<HTMLDivElement>('track')
 
-const start = computed(() => addDays(props.today, -props.pastDays))
-const total = computed(() => props.pastDays + props.futureDays)
+const pastDays = computed(() => RIVER_SPANS[span.value].pastDays)
+const start = computed(() => addDays(props.today, -pastDays.value))
+const total = computed(() => pastDays.value + RIVER_SPANS[span.value].futureDays)
+const spanOptions = computed(() =>
+  (Object.keys(RIVER_SPANS) as RiverSpan[]).map((value) => ({
+    value,
+    label: copy.value.spans[value],
+  })),
+)
 const index = computed({
   get: () => daysBetween(start.value, date.value),
   set: (value: number) =>
@@ -34,7 +41,7 @@ const index = computed({
 const isForecast = computed(() => date.value > props.today)
 const at = (day: number) => day / total.value
 const thumb = computed(() => at(index.value))
-const todayAt = computed(() => at(props.pastDays))
+const todayAt = computed(() => at(pastDays.value))
 const label = computed(() => formatDayMonth(date.value, locale.value))
 const valueText = computed(() =>
   isForecast.value ? `${label.value}, ${copy.value.forecast}` : label.value,
@@ -58,11 +65,18 @@ const months = computed(() => {
   }
   return out
 })
-/** Month names under the observed part only, clear of the today and forecast labels. */
-const LABEL_GAP_DAYS = 12
-const labelled = computed(() =>
-  months.value.filter((month) => month.day <= props.pastDays - LABEL_GAP_DAYS),
-)
+/**
+ * Month names under the observed part only, clear of the today and forecast labels, and on a
+ * long window only every other month so they never touch.
+ */
+const LABEL_GAP = 0.12
+const labelled = computed(() => {
+  const gap = Math.max(12, LABEL_GAP * total.value)
+  const step = total.value > 120 ? 2 : 1
+  return months.value.filter(
+    (month, i) => (months.value.length - 1 - i) % step === 0 && month.day <= pastDays.value - gap,
+  )
+})
 
 const playing = ref(false)
 let timer: ReturnType<typeof setInterval> | undefined
@@ -81,7 +95,7 @@ function toggle() {
   timer = setInterval(() => {
     if (index.value >= total.value) return stop()
     index.value += 1
-  }, FRAME_MS)
+  }, Math.max(MIN_FRAME_MS, PLAY_MS / total.value))
 }
 
 function moveTo(day: number) {
@@ -93,6 +107,7 @@ function moveTo(day: number) {
 watch(date, (value, previous) => {
   if (playing.value && daysBetween(previous, value) !== 1) stop()
 })
+watch(span, stop)
 onBeforeUnmount(stop)
 
 function onKeydown(event: KeyboardEvent) {
@@ -145,6 +160,9 @@ const preview = computed(() => {
     at: at(hoverAt.value),
   }
 })
+
+/** Share of the track the forecast needs before its label fits beside the today button. */
+const MIN_FORECAST_LABEL = 0.15
 
 const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 </script>
@@ -302,12 +320,16 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
             {{ copy.today }}
           </button>
           <span
+            v-if="1 - todayAt >= MIN_FORECAST_LABEL"
             class="absolute -translate-x-1/2 whitespace-nowrap"
             :style="{ left: percent((1 + todayAt) / 2) }"
             >{{ copy.forecast }}</span
           >
         </div>
       </div>
+    </div>
+    <div class="mt-1.5 flex justify-center sm:justify-end">
+      <SegmentedControl v-model="span" :label="copy.spanLabel" :options="spanOptions" />
     </div>
     <div v-if="$slots.default" class="mt-1.5 border-t border-ink/10 pt-2">
       <slot />

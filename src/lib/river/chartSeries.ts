@@ -7,11 +7,9 @@ export interface ChartWindow {
   today: string
   pastDays: number
   forecastDays: number
-  /** Express every value as percent of the median norm for its day of year. */
-  relative: boolean
 }
 
-/** Chart-ready columns aligned by index with `time`; values are m³/s or % of norm. */
+/** Chart-ready columns aligned by index with `time`, in m³/s. */
 export interface ChartSeries {
   time: string[]
   past: DailyValues
@@ -26,15 +24,9 @@ export interface ChartSeries {
   precipitation: DailyValues | null
 }
 
-function toPercent(value: number | null, median: number | null): number | null {
-  if (value === null || median === null || median <= 0) return null
-  return Math.round((value / median) * 1000) / 10
-}
-
 /**
  * Cuts a station's discharge to `[today − pastDays, today + forecastDays]` and splits it into
  * the past line (up to today) and the ensemble forecast (from today), plus the norm per date.
- * In relative mode every value, norm bounds included, is divided by that date's median norm.
  * Precipitation is matched by date; days it does not cover (beyond its 16-day forecast) stay empty.
  */
 export function buildChartSeries(
@@ -48,12 +40,9 @@ export function buildChartSeries(
   const indices = series.time.flatMap((date, i) => (date >= from && date <= to ? [i] : []))
   const time = indices.map((i) => series.time[i]!)
   const normDays = norms ? time.map((date) => norms.doy[dayOfYear(date) - 1]!) : null
-  const medians = normDays?.map((day) => day.median) ?? null
 
-  const scale = (values: DailyValues): DailyValues =>
-    window.relative ? values.map((v, k) => toPercent(v, medians?.[k] ?? null)) : values
   const pick = (values: DailyValues, keep: (date: string) => boolean): DailyValues =>
-    scale(indices.map((i) => (keep(series.time[i]!) ? (values[i] ?? null) : null)))
+    indices.map((i) => (keep(series.time[i]!) ? (values[i] ?? null) : null))
   const isPast = (date: string) => date <= window.today
   const isForecast = (date: string) => date >= window.today
   const { ensemble } = series
@@ -67,9 +56,9 @@ export function buildChartSeries(
       p75: pick(ensemble.p75, isForecast),
     },
     norm: normDays && {
-      median: scale(normDays.map((day) => day.median)),
-      p25: scale(normDays.map((day) => day.p25)),
-      p75: scale(normDays.map((day) => day.p75)),
+      median: normDays.map((day) => day.median),
+      p25: normDays.map((day) => day.p25),
+      p75: normDays.map((day) => day.p75),
     },
     precipitation:
       precipitation && alignByDate(time, precipitation.time, precipitation.precipitation),

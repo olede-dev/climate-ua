@@ -4,10 +4,9 @@ import { ref } from 'vue'
 import {
   DEFAULT_URL_STATE,
   type BasinFilter,
-  type ChartMode,
-  type ChartRange,
   type UrlState,
 } from '../lib/urlState'
+import type { RiverSpan } from '../config/discharge'
 import type { RiverView } from '../lib/river/marks'
 import type { TimeStep } from '../lib/time'
 import type { LayerId, ProjectionBound, WaterScenario, WaterSector, WaterView } from '../types'
@@ -23,9 +22,7 @@ export const useUiStore = defineStore('ui', () => {
   const bound = ref<ProjectionBound>(DEFAULT_URL_STATE.bound)
   const riverView = ref<RiverView>(DEFAULT_URL_STATE.riverView)
   const basin = ref<BasinFilter>(DEFAULT_URL_STATE.basin)
-  const range = ref<ChartRange>(DEFAULT_URL_STATE.range)
-  const mode = ref<ChartMode>(DEFAULT_URL_STATE.mode)
-  const precip = ref(DEFAULT_URL_STATE.precip)
+  const riverSpan = ref<RiverSpan>(DEFAULT_URL_STATE.riverSpan)
 
   function toUrlState(): UrlState {
     return {
@@ -38,9 +35,7 @@ export const useUiStore = defineStore('ui', () => {
       bound: bound.value,
       riverView: riverView.value,
       basin: basin.value,
-      range: range.value,
-      mode: mode.value,
-      precip: precip.value,
+      riverSpan: riverSpan.value,
     }
   }
 
@@ -54,9 +49,7 @@ export const useUiStore = defineStore('ui', () => {
     bound.value = state.bound
     riverView.value = state.riverView
     basin.value = state.basin
-    range.value = state.range
-    mode.value = state.mode
-    precip.value = state.precip
+    riverSpan.value = state.riverSpan
   }
 
   return {
@@ -70,9 +63,7 @@ export const useUiStore = defineStore('ui', () => {
     bound,
     riverView,
     basin,
-    range,
-    mode,
-    precip,
+    riverSpan,
     toUrlState,
     applyUrlState,
   }

@@ -59,12 +59,6 @@ export function formatPct(value: number | null, locale: Locale = 'uk'): string {
   return `${sign}${formatters(locale).largeNumber.format(Math.abs(value))}%`
 }
 
-/** Share of the norm, unsigned and whole: `115%`. */
-export function formatPctOfNorm(value: number | null, locale: Locale = 'uk'): string {
-  if (value === null) return '—'
-  return `${formatters(locale).largeNumber.format(value)}%`
-}
-
 /**
  * Geographic position with hemispheres: `50,475° пн. ш., 30,525° сх. д.` in Ukrainian,
  * `50.475° N, 30.525° E` in English.

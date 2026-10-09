@@ -7,7 +7,7 @@ import type { ClimateSummary, YearRange } from '../../../lib/river/climate'
 import { formatPct, formatYearRange } from '../../../lib/river/format'
 import LoadingSkeleton from '../../ui/LoadingSkeleton.vue'
 import LowFlowChart from './LowFlowChart.vue'
-import StatRow from './StatRow.vue'
+import InfoHint from '../../ui/InfoHint.vue'
 
 const props = defineProps<{
   periods: { baseline: YearRange; recent: YearRange; norm: YearRange } | undefined
@@ -20,10 +20,59 @@ const props = defineProps<{
 const { locale, t } = useLocale()
 const copy = computed(() => t.value.river.climate)
 const currentYear = computed(() => Number(props.today.slice(0, 4)))
-const rounded = (value: number | null) => (value === null ? '—' : String(Math.round(value)))
 const days = (n: number) => formatWithUnit(n, t.value.river.days, locale.value, { decimals: 0 })
 const meanOver = (range: YearRange) =>
   copy.value.baselineMean.replace('{period}', formatYearRange(range))
+
+/** Drier reads warm, wetter reads blue; changes within ±10% are treated as no change. */
+type Tone = 'drier' | 'wetter' | 'neutral'
+const TONE_CLASS: Record<Tone, string> = {
+  drier: 'text-[#b4530f] dark:text-[#fdba74]',
+  wetter: 'text-[#1d6fb8] dark:text-[#7cc0f5]',
+  neutral: 'text-ink',
+}
+const flowTone = (pct: number): Tone => (pct <= -10 ? 'drier' : pct >= 10 ? 'wetter' : 'neutral')
+
+const tiles = computed(() => {
+  const s = props.summary
+  const p = props.periods
+  if (!s || !p) return []
+  const base = s.baselineMean
+  const lowFlowTone: Tone =
+    s.thisYear === null || base === null || Math.abs(s.thisYear - base) <= Math.max(1, base * 0.1)
+      ? 'neutral'
+      : s.thisYear > base
+        ? 'drier'
+        : 'wetter'
+  return [
+    {
+      label: copy.value.meanChange,
+      value: formatPct(s.meanChangePct, locale.value),
+      tone: flowTone(s.meanChangePct),
+      up: s.meanChangePct > 0,
+      detail: null,
+    },
+    {
+      label: copy.value.lowSeasonChange,
+      value: formatPct(s.lowSeasonChangePct, locale.value),
+      tone: flowTone(s.lowSeasonChangePct),
+      up: s.lowSeasonChangePct > 0,
+      detail: null,
+    },
+    {
+      label: copy.value.thisYear,
+      value: s.thisYear === null ? '—' : days(s.thisYear),
+      tone: lowFlowTone,
+      up: s.thisYear !== null && base !== null && s.thisYear > base,
+      detail:
+        base === null
+          ? null
+          : copy.value.usually
+              .replace('{n}', String(Math.round(base)))
+              .replace('{period}', formatYearRange(p.baseline)),
+    },
+  ]
+})
 </script>
 
 <template>
@@ -33,26 +82,40 @@ const meanOver = (range: YearRange) =>
     </h3>
     <LoadingSkeleton v-if="!periods || !summary" :label="copy.loading" class="h-48" />
     <template v-else>
-      <dl class="divide-y divide-line rounded-xl bg-group text-ink">
-        <StatRow :label="copy.meanChange" :value="formatPct(summary.meanChangePct, locale)" />
-        <StatRow
-          :label="copy.lowSeasonChange"
-          :value="formatPct(summary.lowSeasonChangePct, locale)"
-        />
-        <StatRow
-          :label="copy.thisYear"
-          :value="summary.thisYear === null ? '—' : days(summary.thisYear)"
-        />
-        <StatRow :label="meanOver(periods.baseline)" :value="rounded(summary.baselineMean)" />
-        <StatRow :label="meanOver(periods.recent)" :value="rounded(summary.recentMean)" />
-      </dl>
-      <p class="text-xs text-ink-muted">
-        {{
-          copy.periods
-            .replace('{recent}', formatYearRange(periods.recent))
-            .replace('{baseline}', formatYearRange(periods.baseline))
-        }}
-      </p>
+      <ul class="divide-y divide-line rounded-xl bg-group">
+        <li
+          v-for="tile in tiles"
+          :key="tile.label"
+          class="flex items-center justify-between gap-3 px-4 py-2.5"
+        >
+          <div class="min-w-0">
+            <p class="text-sm leading-snug text-ink">{{ tile.label }}</p>
+            <p v-if="tile.detail" class="text-xs leading-snug text-ink-muted tabular-nums">
+              {{ tile.detail }}
+            </p>
+          </div>
+          <p
+            class="flex shrink-0 items-center gap-1 text-lg leading-none font-semibold tracking-tight whitespace-nowrap tabular-nums"
+            :class="TONE_CLASS[tile.tone]"
+          >
+            <svg
+              v-if="tile.tone !== 'neutral'"
+              viewBox="0 0 16 16"
+              class="size-4 shrink-0"
+              :class="tile.up ? '' : 'rotate-180'"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M8 13V3M3.5 7.5 8 3l4.5 4.5" />
+            </svg>
+            {{ tile.value }}
+          </p>
+        </li>
+      </ul>
       <h4 class="px-1 pt-1 text-[13px] leading-snug font-semibold text-ink">
         {{ copy.chartHeading.replace('{date}', formatDayMonth(today, locale)) }}
       </h4>
@@ -83,9 +146,16 @@ const meanOver = (range: YearRange) =>
       <p v-if="thisYearFailed" role="status" class="text-xs text-warn-ink">
         {{ copy.thisYearFailed }}
       </p>
-      <p class="text-xs leading-relaxed text-ink-muted">
-        {{ copy.chartNote.replace('{norm}', formatYearRange(periods.norm)) }}
-      </p>
+      <InfoHint :label="copy.noteToggle">
+        <p>
+          {{
+            copy.periods
+              .replace('{recent}', formatYearRange(periods.recent))
+              .replace('{baseline}', formatYearRange(periods.baseline))
+          }}
+        </p>
+        <p>{{ copy.chartNote.replace('{norm}', formatYearRange(periods.norm)) }}</p>
+      </InfoHint>
     </template>
   </section>
 </template>

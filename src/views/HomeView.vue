@@ -40,12 +40,11 @@ import {
 import { useLocale } from '../composables/useLocale'
 import { useMediaQuery } from '../composables/useMediaQuery'
 import { useStationsState } from '../composables/useStationsState'
-import { DISCHARGE_WINDOW } from '../config/discharge'
+import { RIVER_SPANS } from '../config/discharge'
 import { useUrlSync } from '../composables/useUrlSync'
 import { formatDayMonth, formatNumber, formatPeriod, valueFormat } from '../lib/format'
 import { basinLabel, oblastLabel, oblastName, stationLabel, type RegionLabel } from '../lib/regions'
-import { OUTLOOK_DAYS } from '../lib/river/anomaly'
-import { todayKyiv } from '../lib/river/dates'
+import { addDays, todayKyiv } from '../lib/river/dates'
 import { riverLegend, riverMarks } from '../lib/river/marks'
 import { dischargeErrorMessage, snapshotNotice } from '../lib/river/messages'
 import { cssGradient, scalePosition } from '../lib/scale'
@@ -124,7 +123,8 @@ const isRivers = computed(() => ui.layer === 'rivers')
 const riversQuery = useRivers(isRivers)
 const riverLinesQuery = useRiverLines(isRivers)
 const mapDate = ref(todayKyiv())
-const stations = useStationsState(isRivers, mapDate)
+const riverSpan = computed(() => RIVER_SPANS[ui.riverSpan])
+const stations = useStationsState(isRivers, mapDate, () => riverSpan.value.pastDays)
 const inBasin = (s: { basin: string }) => ui.basin === 'all' || s.basin === ui.basin
 const shownStations = computed(() => riversQuery.data.value?.stations.filter(inBasin) ?? [])
 const listStates = computed(() => stations.states.value.filter((s) => inBasin(s.station)))
@@ -139,11 +139,25 @@ const riverError = computed(() =>
 const riverNotice = computed(() =>
   snapshotNotice(stations.discharge.data.value?.source, t.value.river.errors, locale.value),
 )
+// The card follows the timeline's day, as the map does.
 const selectedStation = computed(() =>
-  isRivers.value ? (stations.states.value.find((s) => s.station.id === ui.regionId) ?? null) : null,
+  isRivers.value
+    ? (stations.mapStates.value.find((s) => s.station.id === ui.regionId) ?? null)
+    : null,
 )
 // The timelapse belongs to the state view; any other view shows today again.
 watch([isRivers, () => ui.riverView], () => (mapDate.value = stations.today))
+/** A day picked on the station chart; only the state view has a timeline to move. */
+function selectDay(date: string) {
+  if (ui.riverView === 'state') mapDate.value = date
+}
+// A shorter window that no longer holds the day returns to today.
+watch(riverSpan, ({ pastDays, futureDays }) => {
+  const { today } = stations
+  if (mapDate.value < addDays(today, -pastDays) || mapDate.value > addDays(today, futureDays)) {
+    mapDate.value = today
+  }
+})
 const regionsFile = computed<RegionsFile | undefined>(() => geometryQuery.value.data.value)
 const loadError = computed(
   () =>
@@ -682,9 +696,8 @@ const tooltip = computed(() => {
             <RiverTimeline
               v-if="isRivers && ui.riverView === 'state'"
               v-model="mapDate"
+              v-model:span="ui.riverSpan"
               :today="stations.today"
-              :past-days="DISCHARGE_WINDOW.pastDays"
-              :future-days="OUTLOOK_DAYS"
             />
             <TimeSlider
               v-else-if="sliderAxis && layer && (!isRivers || ui.riverView === 'lowFlow')"
@@ -740,12 +753,15 @@ const tooltip = computed(() => {
               :label="selected"
               :rivers="riversQuery.data.value"
               :norms="stations.norms.data.value"
-              :series="stations.discharge.data.value?.series.get(selectedStation.station.id)"
+              :series="stations.series.value?.get(selectedStation.station.id)"
               :today="stations.today"
+              :date="mapDate"
+              :span="riverSpan"
               :status="stations.discharge.status.value"
               :error-message="riverError ?? ''"
               @close="ui.regionId = null"
               @retry="stations.discharge.refetch()"
+              @select="selectDay"
             />
           </template>
           <template v-if="isRivers" #overview>
@@ -770,10 +786,9 @@ const tooltip = computed(() => {
           <RiverTimeline
             v-if="isRivers && ui.riverView === 'state'"
             v-model="mapDate"
+            v-model:span="ui.riverSpan"
             class="w-full max-w-xl min-w-0"
             :today="stations.today"
-            :past-days="DISCHARGE_WINDOW.pastDays"
-            :future-days="OUTLOOK_DAYS"
           >
             <MapLegend v-bind="legendProps" />
           </RiverTimeline>
@@ -868,12 +883,15 @@ const tooltip = computed(() => {
             :label="selected"
             :rivers="riversQuery.data.value"
             :norms="stations.norms.data.value"
-            :series="stations.discharge.data.value?.series.get(selectedStation.station.id)"
+            :series="stations.series.value?.get(selectedStation.station.id)"
             :today="stations.today"
+            :date="mapDate"
+            :span="riverSpan"
             :status="stations.discharge.status.value"
             :error-message="riverError ?? ''"
             @close="ui.regionId = null"
             @retry="stations.discharge.refetch()"
+            @select="selectDay"
           />
         </template>
         <template v-if="isRivers" #overview>

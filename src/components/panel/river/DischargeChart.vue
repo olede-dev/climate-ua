@@ -25,9 +25,9 @@ import { useLocale } from '../../../composables/useLocale'
 import { useTheme } from '../../../composables/useTheme'
 import type { Locale } from '../../../i18n'
 import type { ChartSeries } from '../../../lib/river/chartSeries'
-import { formatDischarge, formatPctOfNorm } from '../../../lib/river/format'
+import { formatDischarge } from '../../../lib/river/format'
 import type { DailyValues } from '../../../types'
-import { CHART_INK, fixedAxisWidth } from '../chartDefaults'
+import { CHART_INK, fixedAxisWidth, useSelectedLine } from '../chartDefaults'
 
 // Only the pieces this chart uses, so the rest of Chart.js is tree-shaken away.
 ChartJS.register(
@@ -44,9 +44,10 @@ ChartJS.register(
 const props = defineProps<{
   series: ChartSeries
   today: string
-  /** Values are % of the median norm instead of m³/s. */
-  relative: boolean
+  /** The timeline's day, marked on the chart; a click on the chart picks another. */
+  selected: string
 }>()
+const emit = defineEmits<{ select: [date: string] }>()
 
 const PALETTES = {
   light: {
@@ -57,6 +58,7 @@ const PALETTES = {
     past: '#1d1d1f',
     today: '#1d1d1f',
     todayText: '#ffffff',
+    selected: '#0071e3',
     ...CHART_INK.light,
   },
   dark: {
@@ -67,6 +69,7 @@ const PALETTES = {
     past: '#f5f5f7',
     today: '#f5f5f7',
     todayText: '#1d1d1f',
+    selected: '#0a84ff',
     ...CHART_INK.dark,
   },
 }
@@ -104,9 +107,7 @@ interface Group {
 }
 
 const formatValue = (value: number | null) =>
-  props.relative
-    ? formatPctOfNorm(value, locale.value)
-    : `${formatDischarge(value, locale.value)} ${t.value.river.dischargeUnit}`
+  `${formatDischarge(value, locale.value)} ${t.value.river.dischargeUnit}`
 
 function line(label: string, data: DailyValues, style: Partial<Dataset>): Dataset {
   return { label, data, pointRadius: 0, pointHoverRadius: 3, borderWidth: 1.5, ...style }
@@ -125,7 +126,7 @@ function groupLine(group: Group): Dataset {
 }
 
 const chart = computed(() => {
-  const { series, relative } = props
+  const { series } = props
   const COLORS = colors.value
   const labels = t.value.river.chart
   const groups: Group[] = []
@@ -133,7 +134,7 @@ const chart = computed(() => {
   // Listed bottom to top; datasets are reversed below because Chart.js draws index 0 last.
   if (series.norm) {
     groups.push({
-      label: relative ? labels.normRelative : labels.norm,
+      label: labels.norm,
       data: series.norm.median,
       color: COLORS.norm,
       style: { borderDash: [5, 4] },
@@ -212,6 +213,11 @@ function tooltipLabel(item: TooltipItem<'line'>): string {
 }
 
 const canvas = useTemplateRef<{ chart?: ChartJS }>('canvas')
+const selectedLine = useSelectedLine(
+  () => canvas.value?.chart,
+  () => props.selected,
+  () => props.today,
+)
 const hidden = ref(new Set<number>())
 watch(chart, () => (hidden.value = new Set()))
 
@@ -240,6 +246,10 @@ const options = computed((): ChartOptions<'line'> => {
     animation: false,
     spanGaps: false,
     interaction: { mode: 'index', intersect: false },
+    onClick: (_event, elements) => {
+      const date = props.series.time[elements[0]?.index ?? -1]
+      if (date) emit('select', date)
+    },
     scales: {
       x: {
         type: 'time',
@@ -260,7 +270,7 @@ const options = computed((): ChartOptions<'line'> => {
         beginAtZero: true,
         title: {
           display: true,
-          text: props.relative ? t.value.river.chart.pctOfNorm : t.value.river.chart.dischargeAxis,
+          text: t.value.river.chart.dischargeAxis,
           color: COLORS.text,
         },
         grid: { color: COLORS.grid },
@@ -268,8 +278,7 @@ const options = computed((): ChartOptions<'line'> => {
         afterFit: fixedAxisWidth,
         ticks: {
           color: COLORS.text,
-          callback: (value) =>
-            props.relative ? `${value}%` : formatDischarge(+value, locale.value),
+          callback: (value) => formatDischarge(+value, locale.value),
         },
       },
     },
@@ -299,6 +308,7 @@ const options = computed((): ChartOptions<'line'> => {
               borderRadius: 6,
             },
           },
+          selected: selectedLine(COLORS.selected),
         },
       },
     },

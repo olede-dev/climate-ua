@@ -76,14 +76,14 @@ export function useWaterUse(enabled: MaybeRefOrGetter<boolean>) {
 export function useOblasts() {
   return useQuery({
     queryKey: ['geometry', 'oblasts'],
-    queryFn: () => firstPaint.then(() => fetchStatic<OblastsFile>('data/oblasts.geojson')),
+    queryFn: () => firstPaint().then(() => fetchStatic<OblastsFile>('data/oblasts.geojson')),
   })
 }
 
 export function useBasins() {
   return useQuery({
     queryKey: ['geometry', 'basins'],
-    queryFn: () => firstPaint.then(() => fetchStatic<BasinsFile>('data/basins.geojson')),
+    queryFn: () => firstPaint().then(() => fetchStatic<BasinsFile>('data/basins.geojson')),
   })
 }
 

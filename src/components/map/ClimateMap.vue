@@ -382,7 +382,7 @@ function onClick(event: MapMouseEvent) {
  * and the spinner show while it arrives.
  */
 async function loadMaplibre() {
-  await firstPaint
+  await firstPaint()
   const [maplibregl, { default: workerUrl }] = await Promise.all([
     import('maplibre-gl'),
     // `?worker&url` bundles the worker with its shared chunk; a plain `?url` copy fails to start.

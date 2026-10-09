@@ -1,11 +1,12 @@
 import { effectScope, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-function stubBrowser() {
+function stubBrowser(search = '') {
   const documentStub = { documentElement: { lang: '' }, title: '', querySelector: () => null }
   const storage = new Map<string, string>()
   vi.stubGlobal('document', documentStub)
   vi.stubGlobal('window', {
+    location: { search },
     localStorage: {
       getItem: (key: string) => storage.get(key) ?? null,
       setItem: (key: string, value: string) => storage.set(key, value),
@@ -39,5 +40,13 @@ describe('useLocale', () => {
     await nextTick()
     expect(documentStub.documentElement.lang).toBe('uk')
     expect(storage.has('lang')).toBe(false)
+  })
+  it('takes the locale from ?lang= so each language has its own URL', async () => {
+    const { documentStub } = stubBrowser('?lang=en')
+    const { useLocale } = await import('../src/composables/useLocale')
+
+    expect(useLocale().locale.value).toBe('en')
+    await nextTick()
+    expect(documentStub.documentElement.lang).toBe('en')
   })
 })

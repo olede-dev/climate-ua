@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://olede-dev.github.io/climate-ua/</loc>
+    <xhtml:link rel="alternate" hreflang="uk" href="https://olede-dev.github.io/climate-ua/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://olede-dev.github.io/climate-ua/?lang=en" />
+  </url>
+  <url>
+    <loc>https://olede-dev.github.io/climate-ua/?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="uk" href="https://olede-dev.github.io/climate-ua/" />
+    <xhtml:link rel="alternate" hreflang="en" href="https://olede-dev.github.io/climate-ua/?lang=en" />
+  </url>
+</urlset>

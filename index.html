@@ -17,6 +17,25 @@
       content="Вода, спека, морози й посуха по регіонах України: спостереження з 1950 року і прогнози до 2100."
     />
     <meta property="og:url" content="https://olede-dev.github.io/climate-ua/" />
+    <meta property="og:image" content="https://olede-dev.github.io/climate-ua/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://olede-dev.github.io/climate-ua/" />
+    <link rel="alternate" hreflang="uk" href="https://olede-dev.github.io/climate-ua/" />
+    <link rel="alternate" hreflang="en" href="https://olede-dev.github.io/climate-ua/?lang=en" />
+    <link rel="alternate" hreflang="x-default" href="https://olede-dev.github.io/climate-ua/" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Клімат України — минуле і майбутнє",
+        "alternateName": "Climate of Ukraine — past and future",
+        "url": "https://olede-dev.github.io/climate-ua/",
+        "inLanguage": ["uk", "en"],
+        "description": "Інтерактивна карта клімату і водних ресурсів України: спека, морози, посуха, опади і дефіцит води по регіонах з 1950 року та прогнози до 2100."
+      }
+    </script>
     <!-- The default layer, which the side panel reads. The map's geometry waits for the first
          paint (src/lib/firstPaint.ts), so it is not preloaded. -->
     <link rel="preload" href="/data/water-use.json" as="fetch" crossorigin />
@@ -38,13 +57,31 @@
       // Sets the page language before first paint; src/composables/useLocale.ts takes over after mount.
       ;(function () {
         try {
-          if (localStorage.getItem('lang') === 'en') document.documentElement.lang = 'en'
+          var lang =
+            new URLSearchParams(location.search).get('lang') || localStorage.getItem('lang')
+          if (lang === 'en') document.documentElement.lang = 'en'
         } catch (e) {}
       })()
     </script>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <!-- Visually hidden summary for crawlers before the app renders; Vue replaces it on mount. -->
+      <div
+        style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)"
+      >
+        <h1>Клімат України — минуле і майбутнє</h1>
+        <p>
+          Інтерактивна карта зміни клімату в Україні: водний дефіцит і водокористування по річкових
+          басейнах, спека, морози, посуха та опади по областях. Спостереження з 1950 року і
+          кліматичні прогнози до 2100 року.
+        </p>
+        <p lang="en">
+          Interactive map of climate change in Ukraine: water stress, heat, frost, drought and
+          precipitation by region, observed since 1950 and projected to 2100.
+        </p>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

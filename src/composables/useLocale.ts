@@ -4,6 +4,8 @@ import { DEFAULT_LOCALE, isLocale, MESSAGES, type Locale, type Messages } from '
 
 /** Same key as the inline script in `index.html`, which sets `<html lang>` before paint. */
 const STORAGE_KEY = 'lang'
+const URL_PARAM = 'lang'
+const SITE_URL = 'https://olede-dev.github.io/climate-ua/'
 
 function browserStorage(): Storage | null {
   try {
@@ -22,7 +24,9 @@ let state: LocaleState | undefined
 
 function createLocaleState(): LocaleState {
   const storage = browserStorage()
-  const stored = storage?.getItem(STORAGE_KEY)
+  // `?lang=` sits before the hash, so each language has its own indexable URL (hreflang).
+  const fromUrl = new URLSearchParams(window.location.search).get(URL_PARAM)
+  const stored = isLocale(fromUrl) ? fromUrl : storage?.getItem(STORAGE_KEY)
   const locale = ref<Locale>(isLocale(stored) ? stored : DEFAULT_LOCALE)
   const t = computed(() => MESSAGES[locale.value])
 
@@ -32,6 +36,9 @@ function createLocaleState(): LocaleState {
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute('content', t.value.documentDescription)
+    const canonical =
+      locale.value === DEFAULT_LOCALE ? SITE_URL : `${SITE_URL}?lang=${locale.value}`
+    document.querySelector('link[rel="canonical"]')?.setAttribute('href', canonical)
   })
   watchEffect(() => {
     if (locale.value === DEFAULT_LOCALE) storage?.removeItem(STORAGE_KEY)

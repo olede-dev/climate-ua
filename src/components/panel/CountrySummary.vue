@@ -9,7 +9,7 @@ import { colorAt } from '../../lib/scale'
 import type { SummaryRow } from '../../lib/summary'
 import type { LayerFile } from '../../types'
 
-/** The country at a glance (SPEC §8.2): one big number, its gap from the norm, and what the norm is. */
+/** The country at a glance: one big number, its gap from the norm, and what the norm is. */
 const props = defineProps<{
   rows: SummaryRow[]
   file: LayerFile

@@ -1,4 +1,4 @@
-"""Shared settings of the data pipeline: periods, sources, layers and paths (SPEC §4–5)."""
+"""Shared settings of the data pipeline: periods, sources, layers and paths."""
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,7 +8,7 @@ PIPELINE_DIR = Path(__file__).parent
 RAW_DIR = PIPELINE_DIR / "data" / "raw"
 PUBLIC_DATA = PIPELINE_DIR.parent / "public" / "data"
 
-# --- Periods -------------------------------------------------------------------------------
+# --- Periods ----------------------------------------------------------------------------------
 
 #: WMO climate normal; the reference for every climate layer and for the model deltas.
 NORM = (1991, 2020)
@@ -18,7 +18,7 @@ HISTORY_FROM = 1950
 #: IPCC AR6 periods: near, mid and long term.
 FUTURE_PERIODS = {"2021-2040": (2021, 2040), "2041-2060": (2041, 2060), "2081-2100": (2081, 2100)}
 
-# --- Geometry ------------------------------------------------------------------------------
+# --- Geometry ---------------------------------------------------------------------------------
 
 #: Atlas request box [N, W, S, E]; ERA5 (0.25°) and CMIP6 (1°) cells inside it cover all of
 #: Ukraine (22.1–40.2°E, 44.4–52.4°N).
@@ -46,8 +46,8 @@ class Region:
     en: str
 
 
-#: ISO 3166-2 code → region. Kyiv city joins Kyiv Oblast and Sevastopol joins Crimea
-#: (SPEC §4.6): at 1° model resolution a city has no climate of its own.
+#: ISO 3166-2 code → region. Kyiv city joins Kyiv Oblast and Sevastopol joins Crimea:
+#: at 1° model resolution a city has no climate of its own.
 REGIONS: dict[str, Region] = {
     "UA-05": Region("vinnytsia", "Вінницька область", "Vinnytsia Oblast"),
     "UA-07": Region("volyn", "Волинська область", "Volyn Oblast"),
@@ -78,7 +78,7 @@ REGIONS: dict[str, Region] = {
     "UA-77": Region("chernivtsi", "Чернівецька область", "Chernivtsi Oblast"),
 }
 OBLASTS_PATH = PUBLIC_DATA / "oblasts.geojson"
-#: ≈500 m: invisible at country zoom, keeps the file under 300 KB (SPEC §4.6).
+#: ≈500 m: invisible at country zoom, keeps the file under 300 KB.
 OBLASTS_SIMPLIFY_DEG = 0.005
 
 # --- Climate layers (C3S Atlas, CDS dataset multi-origin-c3s-atlas) ------------------------
@@ -101,11 +101,11 @@ class ClimateLayer:
     #: How twelve monthly values make a year: day-weighted mean, sum or count of months with
     #: SPEI below DRY_SPEI.
     annual: Literal["mean", "sum", "dry_months"]
-    #: Lower and upper bound of a valid annual value; deltas are clipped to it (SPEC §5.2).
+    #: Lower and upper bound of a valid annual value; deltas are clipped to it.
     bounds: tuple[float | None, float | None]
     decimals: int
     #: How a model's change joins the observed norm: added as it is, or scaled by how the
-    #: observed norm compares with the model's own (`scaled_delta`, SPEC §5.2).
+    #: observed norm compares with the model's own (`scaled_delta`).
     delta: Literal["add", "scale"] = "add"
     #: Also write the ERA5 grid cell by cell, `public/data/grids/<id>.json`, for the map raster.
     grid: bool = False
@@ -163,12 +163,12 @@ GRID_DECIMALS = 1
 #: almost no such days, the ratio is unstable, and the change falls back to being added.
 SCALE_PSEUDO_DAYS = 1.0
 
-#: SPEI-6 below this marks a dry month (moderate drought and worse, SPEC §4.3).
+#: SPEI-6 below this marks a dry month (moderate drought and worse).
 DRY_SPEI = -1.0
 
 ATLAS_SOURCE = "Copernicus Interactive Climate Atlas (C3S): ERA5, CMIP6"
 
-# --- Water layer (SPEC §4.1, §4.2, §5.3) ---------------------------------------------------
+# --- Water layer ------------------------------------------------------------------------------
 
 #: World Water Map downloads (Utrecht University, CC BY 4.0).
 WWM_DIR = RAW_DIR / "wwm"
@@ -188,16 +188,16 @@ WWM_FUTURE = (2020, 2050)
 #: The projection as period means: a modelled year is one possible year, not a forecast of it.
 #: Fifteen years each, as long as the service's record allows (the climate layers take twenty).
 WATER_FUTURE_PERIODS = {"2021-2035": (2021, 2035), "2036-2050": (2036, 2050)}
-#: Delta method (SPEC §5.2) without the models' own historical runs, which the service lacks: the
+#: Delta method without the models' own historical runs, which the service lacks: the
 #: change from the projection's first decade is added to the observed decade just before it.
 WATER_MODEL_BASE = (2020, 2029)
 WATER_OBSERVED_BASE = (2010, 2019)
 WWM_SCENARIOS = {"SSP1-2.6": "A_126", "SSP3-7.0": "A_370", "SSP5-8.5": "A_585"}
 
 WATER_HISTORY = (1980, 2019)
-#: SPEC §5.1: the last 30 years of the Utrecht record.
+#: The last 30 years of the Utrecht record.
 WATER_NORM = (1990, 2019)
-#: SPEC §4.6: a basin with less of Ukraine than this joins its neighbour.
+#: A basin with less of Ukraine than this joins its neighbour.
 BASIN_MIN_KM2 = 200
 #: ≈800 m; keeps the 265 subbasins under 700 KB.
 BASINS_SIMPLIFY_DEG = 0.008
@@ -205,13 +205,13 @@ BASINS_PATH = PUBLIC_DATA / "basins.geojson"
 #: An oblast is listed for a basin when it holds at least this share of the basin's area in Ukraine.
 BASIN_OBLAST_MIN_SHARE = 0.05
 
-#: Natural Earth rivers for basin names (SPEC §13.6).
+#: Natural Earth rivers for basin names.
 NATURAL_EARTH_RIVERS_URLS = [
     "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_rivers_lake_centerlines.geojson",
     "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_rivers_europe.geojson",
 ]
 
-#: Natural Earth lakes, for the Kakhovka Reservoir (destroyed in June 2023, SPEC §13.7): basins
+#: Natural Earth lakes, for the Kakhovka Reservoir (destroyed in June 2023): basins
 #: it touched get a note that the data predate its loss.
 NATURAL_EARTH_LAKES_URL = (
     "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_lakes.geojson"
@@ -254,7 +254,7 @@ RIVER_NAMES = {
 
 WWM_SOURCE = "Utrecht University, World Water Map (PCR-GLOBWB 2)"
 
-# --- Climate analogue (SPEC §4.4) ----------------------------------------------------------
+# --- Climate analogue -------------------------------------------------------------------------
 
 #: Beck et al. (2023), Köppen–Geiger maps at 1 km, 1901–2099 (figshare article 21789074, v2).
 KOPPEN_URL = "https://ndownloader.figshare.com/files/61012822"
@@ -273,7 +273,7 @@ KOPPEN_CLASSES = [
 ]
 KOPPEN_PATH = PUBLIC_DATA / "koppen.json"
 
-# --- Rivers (SPEC §4.5) --------------------------------------------------------------------
+# --- Rivers -----------------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class RiverStation:

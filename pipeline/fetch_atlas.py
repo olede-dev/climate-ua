@@ -1,4 +1,4 @@
-"""Downloads the C3S Atlas files every climate layer needs into data/raw/atlas (SPEC §4.3).
+"""Downloads the C3S Atlas files every climate layer needs into data/raw/atlas.
 
 Needs a CDS account: the API key in ~/.cdsapirc and the dataset licence accepted on its page.
 Files already on disk are kept; delete one to download it again.
@@ -28,7 +28,7 @@ def requests(layer: config.ClimateLayer):
             "origin": "cmip6",
             "experiment": experiment,
             "period": period,
-            # Raw model output: the deltas of SPEC §5.2 take the place of bias adjustment.
+            # Raw model output: the deltas take the place of bias adjustment.
             "bias_adjustment": "no_bias_adjustment",
         }
         yield atlas_file("cmip6", experiment, layer), request

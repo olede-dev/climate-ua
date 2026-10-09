@@ -5,8 +5,8 @@ import type { LayerFile, RegionSeries, RiversFile } from '../types'
 const mean = (values: number[]) => values.reduce((sum, v) => sum + v, 0) / values.length
 
 /**
- * The river stations as a layer: one series of low-flow days per station, no projection
- * (SPEC §4.5). «Ukraine» is the mean of the stations, year by year, against the mean of their
+ * The river stations as a layer: one series of low-flow days per station, no projection.
+ * «Ukraine» is the mean of the stations, year by year, against the mean of their
  * norms: every norm is taken over the threshold's own period, `file.norm`.
  */
 export function riversLayer(file: RiversFile): LayerFile {

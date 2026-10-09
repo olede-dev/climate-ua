@@ -29,7 +29,7 @@ An interactive map of changes in Ukraine's climate and water resources: observat
 
 Projections use the delta method: the change derived from the CMIP6 model ensemble is added to the observed climatology. Climate indicators are averaged over 20-year periods and water indicators over 15-year periods. The map shows the ensemble median by default (the mean for water layers); the lower and upper bounds of the model range are also available.
 
-The full methodology is described in [SPEC.md](SPEC.md) and in the "About the data and methodology" section of the site.
+The full methodology is described in the "About the data and methodology" section of the site.
 
 ## Tech stack
 

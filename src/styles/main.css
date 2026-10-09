@@ -16,7 +16,7 @@
   /* Muted text on glass over the dark map: 4.9:1 at worst (over the darkest map colour). */
   --ui-ink-muted-glass: #5c5c61;
   --ui-ink: #1d1d1f;
-  /* 4.7:1 on the selected-row fill, the lightest background it sits on (SPEC §8.8). */
+  /* 4.7:1 on the selected-row fill, the lightest background it sits on. */
   --ui-ink-muted: #6a6a6f;
   --ui-line: rgb(0 0 0 / 0.08);
   --ui-fill: rgb(118 118 128 / 0.12);
@@ -89,7 +89,7 @@
 
 /*
  * Translucent panel over the map or page; opaque enough that text keeps its contrast. Whatever
- * the map shows beneath, muted text inside stays at 4.5:1 or more (SPEC §8.8).
+ * the map shows beneath, muted text inside stays at 4.5:1 or more.
  */
 @utility glass {
   --ui-ink-muted: var(--ui-ink-muted-glass);
@@ -181,7 +181,7 @@
   }
 }
 
-/* The map is dark in both themes (SPEC §7); its background shows before tiles arrive. */
+/* The map is dark in both themes; its background shows before tiles arrive. */
 .maplibregl-map {
   background: #0e0e10;
 }

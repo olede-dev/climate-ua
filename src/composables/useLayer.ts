@@ -44,7 +44,7 @@ export function useLayer(id: MaybeRefOrGetter<LayerId | null>) {
   })
 }
 
-/** River stations with their places and coordinates (SPEC §4.5). */
+/** River stations with their places and coordinates. */
 export function useRivers(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({ ...RIVERS_QUERY, enabled: computed(() => toValue(enabled)) })
 }
@@ -72,7 +72,7 @@ export function useBasins() {
   })
 }
 
-/** Köppen–Geiger classes by oblast, for the climate analogue (SPEC §8.5). */
+/** Köppen–Geiger classes by oblast, for the climate analogue. */
 export function useKoppen() {
   return useQuery({
     queryKey: ['koppen'],

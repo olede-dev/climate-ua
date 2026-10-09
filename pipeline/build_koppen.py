@@ -1,4 +1,4 @@
-"""Writes public/data/koppen.json: each oblast's dominant Köppen–Geiger class (SPEC §4.4).
+"""Writes public/data/koppen.json: each oblast's dominant Köppen–Geiger class.
 
 For 1991–2020 and two SSP2-4.5 periods; a class dominates when it covers the largest area of
 the oblast on the 1 km map, with pixels weighted by their area (cosine of latitude).

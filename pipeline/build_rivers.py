@@ -1,4 +1,4 @@
-"""Writes public/data/rivers.json from the GloFAS discharge in data/raw/rivers (SPEC §4.5).
+"""Writes public/data/rivers.json from the GloFAS discharge in data/raw/rivers.
 
 Per station: the yearly count of low-flow days and their mean over the norm period 1997–2020. A low-flow day is
 one whose discharge falls below that day's p10 norm: the 10th percentile of 1997–2020 values

@@ -1,4 +1,4 @@
-"""Downloads Beck et al. (2023) Köppen–Geiger maps into data/raw/koppen (SPEC §4.4), ~130 MB.
+"""Downloads Beck et al. (2023) Köppen–Geiger maps into data/raw/koppen, ~130 MB.
 
 Unpacks only the three 1 km GeoTIFFs of `config.KOPPEN_FILES` and the legend.
 """

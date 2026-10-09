@@ -10,7 +10,7 @@ export interface RegionLabel {
   /** Under the name: the oblasts a basin spans. */
   subtitle: string | null
   /**
-   * A caveat the card shows under the numbers: the former Kakhovka Reservoir (SPEC §13.7), or a
+   * A caveat the card shows under the numbers: the former Kakhovka Reservoir, or a
    * river whose flow the dams set; null where there is none.
    */
   note: string | null
@@ -26,8 +26,8 @@ export function oblastLabel(oblast: OblastProperties, locale: Locale): RegionLab
 }
 
 /**
- * A basin is named after its river; without one, after the oblast that holds most of it
- * (SPEC §13.6). `oblastNames` maps oblast ids to names in the current locale.
+ * A basin is named after its river; without one, after the oblast that holds most of it.
+ * `oblastNames` maps oblast ids to names in the current locale.
  */
 export function basinLabel(
   basin: BasinProperties,

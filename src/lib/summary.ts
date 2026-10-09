@@ -2,7 +2,7 @@ import type { FuturePeriod, LayerFile, RegionSeries } from '../types'
 import { valueAt } from './series'
 import { isFuture, type TimeStep } from './time'
 
-/** One line of the visual summary (SPEC §8.2): the norm, the observed year, the projection. */
+/** One line of the visual summary: the norm, the observed year, the projection. */
 export interface SummaryRow {
   kind: 'norm' | 'observed' | 'future'
   /** The year or period the row is about; null for the norm. */

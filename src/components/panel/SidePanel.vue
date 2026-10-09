@@ -31,7 +31,7 @@ const props = defineProps<{
   copy: LayerCopy
   step: TimeStep
   format: ValueFormat
-  /** The open region; null shows the summary for all of Ukraine (SPEC §8.2). */
+  /** The open region; null shows the summary for all of Ukraine. */
   region: (RegionLabel & { id: string }) | null
   /** The water layer's view and sector; null on the other layers. */
   water?: { view: WaterView; sector: WaterSector } | null

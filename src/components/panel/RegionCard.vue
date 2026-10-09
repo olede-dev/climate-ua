@@ -48,7 +48,7 @@ const hasData = computed(
     Object.keys(props.series.future).length > 0,
 )
 
-/** The same summary as the country's, for this region (SPEC §8.2). */
+/** The same summary as the country's, for this region. */
 const rows = computed(() =>
   summaryRows(
     props.file,

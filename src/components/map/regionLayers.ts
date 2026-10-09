@@ -31,7 +31,7 @@ const SELECTED: ExpressionSpecification = ['boolean', ['feature-state', 'selecte
 
 /** Opaque enough that the basemap's own borders inside Ukraine do not show through. */
 const FILL_OPACITY = 0.9
-/** While a region is hovered, the rest dim (SPEC §7). */
+/** While a region is hovered, the rest dim. */
 const DIMMED_OPACITY = 0.45
 /** The grid raster in focus: the gradient still reads, fields and towns show through. */
 const FOCUS_GRID_OPACITY = 0.75
@@ -57,7 +57,7 @@ const INK: Record<Theme, { hatch: string; border: string; outline: string; ring:
   },
 }
 
-/** Thin diagonal strokes over the fill: the future is an estimate (SPEC §7). */
+/** Thin diagonal strokes over the fill: the future is an estimate. */
 function hatchImage(theme: Theme): ImageData {
   const size = 16
   const canvas = document.createElement('canvas')

@@ -117,7 +117,7 @@ export function niceCeil(value: number): number {
 }
 
 /**
- * A scale fixed for the whole timeline (SPEC §6), from 0 to nice values at the quantiles of
+ * A scale fixed for the whole timeline, from 0 to nice values at the quantiles of
  * every basin and year. Volumes differ a hundredfold between sectors, so each has its own.
  */
 export function waterUseScale(layer: LayerFile): ColorScale {

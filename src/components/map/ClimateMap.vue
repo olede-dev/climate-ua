@@ -93,7 +93,7 @@ const PADDING = { top: 48, bottom: 96, left: 16, right: 56 }
 const INSET_GAP = { top: 16, bottom: 16, left: 16, right: 56 }
 /** Shown until the basemap style arrives. */
 const EMPTY_STYLE: StyleSpecification = { version: 8, sources: {}, layers: [] }
-/** Colours slide between timeline steps (SPEC §7). */
+/** Colours slide between timeline steps. */
 const TWEEN_MS = 300
 /** Pixels around the pointer that still hit a marker. */
 const MARKER_HIT = 6

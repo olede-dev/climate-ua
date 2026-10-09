@@ -1,4 +1,4 @@
-"""Writes public/data/oblasts.geojson: the 25 regions of SPEC §4.6, clipped to land.
+"""Writes public/data/oblasts.geojson: the 25 regions, clipped to land.
 
 Properties: `id` (Latin slug), `nameUk`, `nameEn`. Shared borders are simplified together, so
 neighbours keep meeting without gaps or overlaps.

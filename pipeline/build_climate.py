@@ -1,7 +1,7 @@
-"""Writes public/data/layers/<id>.json for the climate layers (SPEC §5).
+"""Writes public/data/layers/<id>.json for the climate layers.
 
 History: ERA5 by year, averaged over each region by the area each grid cell shares with it.
-Future: the delta method of SPEC §5.2, per CMIP6 model, then the median and p10–p90 across
+Future: the delta method, per CMIP6 model, then the median and p10–p90 across
 models. Day counts above or below a threshold (heat, frost) scale the change (`scaled_delta`).
 Run `fetch_atlas.py` and `build_oblasts.py` first.
 """
@@ -93,7 +93,7 @@ def scaled_delta(delta: np.ndarray, norm: float, model_norm: np.ndarray) -> np.n
 def build_grid(
     layer: config.ClimateLayer, observed: xr.DataArray, modelled: xr.DataArray, inside: xr.DataArray
 ) -> dict:
-    """ERA5 cell by cell for the map raster, with the delta method of SPEC §5.2 per cell.
+    """ERA5 cell by cell for the map raster, with the delta method per cell.
 
     Each model's change is interpolated from its ~1° grid onto the 0.25° ERA5 cells (clamped at
     the edge, not extrapolated) and added to the cell's observed norm: the pattern inside a

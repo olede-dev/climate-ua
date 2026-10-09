@@ -1,6 +1,6 @@
 import type { Locale } from '../i18n'
 
-/** A Köppen–Geiger class in plain words: its name and what it means for a person (SPEC §8.5). */
+/** A Köppen–Geiger class in plain words: its name and what it means for a person. */
 export interface KoppenText {
   name: string
   meaning: string

@@ -10,7 +10,7 @@ defineProps<{
 </script>
 
 <template>
-  <!-- A compact strip; the page gives it its card: numbers beside the gradient (SPEC §7). -->
+  <!-- A compact strip; the page gives it its card: numbers beside the gradient. -->
   <figure class="text-[11px] leading-tight" :title="title">
     <figcaption class="sr-only">{{ title }}</figcaption>
     <div class="flex items-center gap-2 font-semibold text-ink tabular-nums">

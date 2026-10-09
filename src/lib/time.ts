@@ -1,6 +1,6 @@
 import type { FuturePeriod } from '../types'
 
-/** A point on a layer's timeline: an observed year or a future period (SPEC §5.1). */
+/** A point on a layer's timeline: an observed year or a future period. */
 export type TimeStep = number | FuturePeriod
 
 /** One layer's timeline: observed years `from`–`to`, then the future periods in order. */

@@ -21,7 +21,7 @@ const props = defineProps<{
 const step = defineModel<TimeStep>({ required: true })
 const playing = defineModel<boolean>('playing', { required: true })
 
-/** Pace of the timelapse (SPEC §8.3): a year flicks by, a period holds. */
+/** Pace of the timelapse: a year flicks by, a period holds. */
 const YEAR_MS = 150
 const PERIOD_MS = 1000
 

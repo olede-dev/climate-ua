@@ -92,7 +92,7 @@ const config = computed(() =>
     ? waterUseConfig(waterUseScale(layer.value))
     : layerConfig(ui.layer),
 )
-// Stations are drawn over the oblast outlines (SPEC §6).
+// Stations are drawn over the oblast outlines.
 const geometryQuery = computed(() =>
   config.value.geometry === 'basins' ? basinsQuery : oblastsQuery,
 )
@@ -325,7 +325,7 @@ const selected = computed(() =>
   ui.regionId === null ? null : { id: ui.regionId, ...regionLabel(ui.regionId) },
 )
 
-/** The map as a table, by name (SPEC §8.8). */
+/** The map as a table, by name. */
 const tableRows = computed<RegionRow[]>(() =>
   Object.keys(layer.value?.regions ?? {})
     .map((id) => {
@@ -618,16 +618,16 @@ const tooltip = computed(() => {
           </div>
         </ClimateMap>
       </section>
-      <!-- Narrow: the legend in a card right under the map (SPEC §7). -->
+      <!-- Narrow: the legend in a card right under the map. -->
       <MapLegend
         v-if="!isWide && layer"
         v-bind="legendProps"
         class="rounded-2xl bg-surface px-3 py-2 shadow-card"
       />
       <!-- Wide: the panel on the left, the layers on the right, the timeline
-           between them at the bottom (SPEC §8.1). -->
+           between them at the bottom. -->
       <!-- Wide: one card down the left with the brand on top, the controls down the right,
-           and the legend and timeline as one island between them (SPEC §8.1). -->
+           and the legend and timeline as one island between them. -->
       <div
         v-if="isWide"
         ref="panelCard"

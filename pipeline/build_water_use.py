@@ -9,7 +9,7 @@ it, so the basins add up to the country. Both are in km³.
 The projection is the total gap only, for three scenarios; the sectors and demand have none.
 The service gives it by year, 2020–2050, as the mean, min and max of the climate models; a
 modelled year is one possible year, so it is written as period means (`WATER_FUTURE_PERIODS`)
-with the delta method of SPEC §5.2: the observed gap of 2010–2019 plus the models' mean change
+with the delta method: the observed gap of 2010–2019 plus the models' mean change
 from 2020–2029. Their own historical runs are not in the service, so the projection's first
 decade stands in for the model baseline. `low` and `high` are the lowest and highest single
 year any model gives in the period, shifted the same way: the spread of years and models

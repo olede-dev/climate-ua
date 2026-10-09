@@ -1,4 +1,4 @@
-"""Downloads daily GloFAS v4 discharge of every river station into data/raw/rivers (SPEC §4.5).
+"""Downloads daily GloFAS v4 discharge of every river station into data/raw/rivers.
 
 Open-Meteo weighs long history requests as many calls, so a run can hit the per-minute limit;
 only HTTP 429 is retried, after the minute is over.

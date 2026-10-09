@@ -5,7 +5,7 @@ import type { LayerFile, WaterUseFile } from '../src/types'
 import cckp from './fixtures/cckp-ukraine-temperature.json'
 
 // The committed data against independent references and against itself across the boundary of
-// the observed record and the projection (SPEC §12).
+// the observed record and the projection.
 const layers = import.meta.glob<LayerFile>('../public/data/layers/*.json', {
   eager: true,
   import: 'default',

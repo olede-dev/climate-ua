@@ -4,7 +4,7 @@ import { formatPeriod, type ValueFormat } from './format'
 import { valueAt } from './series'
 import { isFuture, type TimeStep } from './time'
 
-/** A run of sentence text; `strong` runs are the numbers the reader came for (SPEC §8.2). */
+/** A run of sentence text; `strong` runs are the numbers the reader came for. */
 export interface Segment {
   text: string
   strong?: boolean

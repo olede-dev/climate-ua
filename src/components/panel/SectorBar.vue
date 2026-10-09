@@ -16,7 +16,7 @@ const { locale, t } = useLocale()
 /**
  * Three colours of the water scale, distinct in lightness (bright yellow, mid orange, dark
  * green) so the segments read apart without colour; each is also named with its share below
- * the bar (SPEC §8.5).
+ * the bar.
  */
 const ORDER = [
   ['irrigation', '#f58a2c'],

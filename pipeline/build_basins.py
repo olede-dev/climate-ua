@@ -1,8 +1,8 @@
 """Writes public/data/basins.geojson: World Water Map subbasins (HydroBASINS level 7) clipped to
-Ukraine (SPEC §4.6).
+Ukraine.
 
 Properties: `id` (the service's basinid), `riverUk` / `riverEn` (the river with the longest course
-through the basin, or null; HydroBASINS has no names, SPEC §13.6), `oblasts` (ids of the
+through the basin, or null; HydroBASINS has no names), `oblasts` (ids of the
 oblasts that hold at least `BASIN_OBLAST_MIN_SHARE` of the basin, largest first), `point`
 (a [lon, lat] inside the basin, for the hotspot marker) and `kakhovka` (true where the former
 Kakhovka Reservoir was). Run `fetch_wwm_basins.py` first.

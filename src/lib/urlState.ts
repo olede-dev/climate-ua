@@ -8,7 +8,7 @@ const WATER_VIEWS: readonly WaterView[] = ['gap', 'demand', 'future']
 /** The periods of the retired stress projection, still in shared links; they open the projection. */
 const LEGACY_WATER_PERIODS = ['2030', '2050', '2080']
 
-/** The part of the UI state that is shared through the URL (SPEC §8.7). */
+/** The part of the UI state that is shared through the URL. */
 export interface UrlState {
   layer: LayerId
   /** null: the layer's latest observed year. */

@@ -11,7 +11,7 @@ import type {
   WaterUseFile,
 } from '../src/types'
 
-// The pipeline output under public/data, checked as committed (SPEC §9).
+// The pipeline output under public/data, checked as committed.
 const layers = import.meta.glob<LayerFile>('../public/data/layers/*.json', {
   eager: true,
   import: 'default',

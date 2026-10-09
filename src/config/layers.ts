@@ -6,19 +6,19 @@ export interface LayerConfig {
   geometry: LayerFile['geometry']
   /** Path under `public/`. */
   path: string
-  /** Known before the file loads, so a URL can name a period (SPEC §5.1). */
+  /** Known before the file loads, so a URL can name a period. */
   futurePeriods: readonly FuturePeriod[]
   /** What the map shows: the value itself or its difference from the region's norm. */
   display: 'value' | 'anomaly'
   decimals: number
   /**
-   * The projection the sentences name while the timeline is on an observed year (SPEC §8.2);
+   * The projection the sentences name while the timeline is on an observed year;
    * null for a layer without one.
    */
   headlinePeriod: FuturePeriod | null
   /** ERA5 cells under `public/`, drawn as a raster instead of the region fill; absent: regions only. */
   gridPath?: string
-  /** Fixed for the whole timeline, so 1960 and 2080 compare (SPEC §6). */
+  /** Fixed for the whole timeline, so 1960 and 2080 compare. */
   scale: ColorScale
 }
 
@@ -41,7 +41,7 @@ const WATER_SCALE: ColorScale = {
 }
 
 /**
- * Diverging blue–red around a dark neutral (SPEC §6): the dark basemap is the surface, so the
+ * Diverging blue–red around a dark neutral: the dark basemap is the surface, so the
  * norm recedes into it and both arms brighten with distance from it. Each arm is one hue with
  * monotone lightness, checked with the `dataviz` validator (`--ordinal --mode dark`).
  * ±3 °C covers every future median; only a few cold years of the 1980s go past it.
@@ -62,7 +62,7 @@ const TEMP_SCALE: ColorScale = {
 }
 
 /**
- * One orange hue (SPEC §6), dim to bright, at hue 50° in OKLCH with even lightness steps from
+ * One orange hue, dim to bright, at hue 50° in OKLCH with even lightness steps from
  * L 0.465 to 0.87, checked with the `dataviz` validator (`--ordinal --mode dark`). Stops crowd
  * the low end: most oblasts had under 5 such days a year; by 2081–2100 the south reaches 10–15.
  */
@@ -78,7 +78,7 @@ const HEAT_SCALE: ColorScale = {
 }
 
 /**
- * One ice-blue hue (SPEC §6), at hue 235° and the same lightness steps as `HEAT_SCALE`, checked
+ * One ice-blue hue, at hue 235° and the same lightness steps as `HEAT_SCALE`, checked
  * with the `dataviz` validator; brighter means more frost. Oblast norms run from 64 days in
  * Crimea to 129 in the north-east.
  */
@@ -94,7 +94,7 @@ const FROST_SCALE: ColorScale = {
 }
 
 /**
- * One ochre hue (SPEC §6), at hue 80° and the same lightness steps as `HEAT_SCALE`, checked
+ * One ochre hue, at hue 80° and the same lightness steps as `HEAT_SCALE`, checked
  * with the `dataviz` validator. A year has 0 to 12 dry months; oblast norms are 3 to 5.5.
  */
 const DROUGHT_SCALE: ColorScale = {
@@ -198,7 +198,7 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
 /** Layers with data, in switcher order. */
 export const LAYER_IDS = Object.keys(LAYERS) as LayerId[]
 
-/** The main layer (SPEC §1). */
+/** The main layer. */
 export const DEFAULT_LAYER: LayerId = 'water'
 
 export function layerConfig(id: LayerId): LayerConfig {
@@ -206,7 +206,7 @@ export function layerConfig(id: LayerId): LayerConfig {
 }
 
 /**
- * The water layer's demand and gap views (SPEC §4.1): years only, no projection. The scale is
+ * The water layer's demand and gap views: years only, no projection. The scale is
  * set from the data, per sector (`waterUseScale`).
  */
 export function waterUseConfig(scale: ColorScale): LayerConfig {

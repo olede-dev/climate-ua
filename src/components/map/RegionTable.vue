@@ -9,7 +9,7 @@ export interface RegionRow {
 }
 
 /**
- * The map as a table (SPEC §8.8): every region with its value now, for screen readers, and a
+ * The map as a table: every region with its value now, for screen readers, and a
  * way to open a region without a pointer. Hidden until focus enters it, like a skip link, then
  * shown over the map so sighted keyboard users see where they are.
  */

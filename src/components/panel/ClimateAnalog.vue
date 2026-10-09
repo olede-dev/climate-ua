@@ -6,7 +6,7 @@ import { useLocale } from '../../composables/useLocale'
 import { koppenText } from '../../config/koppen'
 import { formatPeriod } from '../../lib/format'
 
-/** The oblast's Köppen–Geiger class now and at the end of the century (SPEC §8.5), as two chips. */
+/** The oblast's Köppen–Geiger class now and at the end of the century, as two chips. */
 const props = defineProps<{ regionId: string }>()
 
 const { locale, t } = useLocale()

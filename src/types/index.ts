@@ -21,13 +21,13 @@ export interface BasinProperties {
   oblasts: string[]
   /** [lon, lat] inside the basin, e.g. for a marker. */
   point: [number, number]
-  /** The former Kakhovka Reservoir lay here (SPEC §13.7). */
+  /** The former Kakhovka Reservoir lay here. */
   kakhovka: boolean
 }
 
 export type BasinsFile = FeatureCollection<Polygon | MultiPolygon, BasinProperties>
 
-/** `public/data/rivers.json`, written by `pipeline/build_rivers.py` (SPEC §4.5). */
+/** `public/data/rivers.json`, written by `pipeline/build_rivers.py`. */
 export interface RiversFile {
   years: { from: number; to: number }
   /** The period the day-of-year p10 threshold and `normLowFlowDays` are taken over. */
@@ -55,7 +55,7 @@ export type Station = RiversFile['stations'][number]
 
 export type KoppenPeriod = '1991-2020' | '2041-2070' | '2071-2099'
 
-/** `public/data/koppen.json`, written by `pipeline/build_koppen.py` (SPEC §4.4). */
+/** `public/data/koppen.json`, written by `pipeline/build_koppen.py`. */
 export interface KoppenFile {
   periods: KoppenPeriod[]
   scenario: 'SSP2-4.5'
@@ -97,7 +97,7 @@ export interface Sectors {
 }
 
 /**
- * `public/data/layers/<id>.json`, written by the pipeline (SPEC §5.4); the rivers layer is
+ * `public/data/layers/<id>.json`, written by the pipeline; the rivers layer is
  * built from `RiversFile` in the app.
  */
 export interface LayerFile {
@@ -136,12 +136,12 @@ export interface GridFile {
   norm: (number | null)[]
   /** One cell list per year from `history.from`. */
   values: (number | null)[][]
-  /** Each cell's observed norm plus the models' change (SPEC §5.2). */
+  /** Each cell's observed norm plus the models' change. */
   future: Partial<Record<ClimatePeriod, Record<'median' | 'p10' | 'p90', (number | null)[]>>>
   source: string
 }
 
-/** The views of the water layer (SPEC §4.1): demand and gap by year, or the stress projection. */
+/** The views of the water layer: demand and gap by year, or the stress projection. */
 /** The World Water Map's projection scenarios: sustainable, nationalist, fossil-powered. */
 export type WaterScenario = 'SSP1-2.6' | 'SSP3-7.0' | 'SSP5-8.5'
 /**

@@ -15,7 +15,7 @@ import type { Locale } from '../../i18n'
 
 setWorkerUrl(workerUrl)
 
-/** Basemap colours for each page theme; the map follows the page (SPEC §7). */
+/** Basemap colours for each page theme; the map follows the page. */
 const PALETTES: Record<
   Theme,
   {
@@ -50,7 +50,7 @@ const PALETTES: Record<
 
 /**
  * Region names come from the data layers. The basemap's own first-level labels would repeat
- * them, and OSM names Crimea twice there (SPEC §4.6), so that layer is left out.
+ * them, and OSM names Crimea twice there, so that layer is left out.
  */
 const DROPPED_LAYERS = new Set(['place_state'])
 

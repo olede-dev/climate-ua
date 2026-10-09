@@ -31,7 +31,7 @@ def write_json(path: Path, data: Any) -> int:
 
 
 def land_regions() -> gpd.GeoDataFrame:
-    """The 25 regions of SPEC §4.6, clipped to land, in full detail: `id`, `uk`, `en`, geometry."""
+    """The 25 regions, clipped to land, in full detail: `id`, `uk`, `en`, geometry."""
     adm1 = gpd.read_file(download(config.GEOBOUNDARIES_URL, config.RAW_DIR / "geoboundaries-UKR-ADM1.geojson"))
     land = gpd.read_file(download(config.NATURAL_EARTH_UKR_URL, config.RAW_DIR / "ne_10m_admin_0_countries_ukr.geojson"))
     ukraine = land[land["ADM0_A3"] == "UKR"].geometry.union_all()

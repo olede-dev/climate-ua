@@ -131,6 +131,7 @@ export const en: Messages = {
     code: 'Code and data pipeline',
   },
   home: {
+    showMap: 'Show the interactive map',
     loadingMap: 'Loading the map…',
     map: 'Map',
     loadError: 'The map data could not be loaded. Reload the page.',

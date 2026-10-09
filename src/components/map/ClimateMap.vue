@@ -7,15 +7,17 @@ import type {
   PaddingOptions,
   StyleSpecification,
 } from 'maplibre-gl'
-import { onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
 import { firstPaint } from '../../lib/firstPaint'
-import { geometryBounds } from '../../lib/geometry'
+import { geometryBounds, type Bounds } from '../../lib/geometry'
 import { gridCorners, paintGrid } from '../../lib/grid'
-import type { ColorScale } from '../../lib/scale'
+import { posterPaths } from '../../lib/poster'
+import { colorAt, type ColorScale } from '../../lib/scale'
 import type { MapMark } from '../../lib/river/marks'
 import { markerRadius, stationPoints } from '../../lib/rivers'
+import { softwareWebgl } from '../../lib/webgl'
 import type { GridFile, OblastsFile, RegionsFile, RiverLinesFile, Station } from '../../types'
 import { useTheme } from '../../composables/useTheme'
 import {
@@ -88,7 +90,7 @@ const emit = defineEmits<{
   select: [id: string | null]
 }>()
 
-const UKRAINE_BOUNDS: LngLatBoundsLike = [
+const UKRAINE_BOUNDS: Bounds = [
   [22.0, 44.0],
   [40.3, 52.5],
 ]
@@ -128,6 +130,39 @@ let labelFilters: LabelFilter[] = []
 const gridCanvas = document.createElement('canvas')
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
+
+/**
+ * Without a GPU MapLibre blocks the main thread for seconds (PageSpeed measured 7.7 s), so such
+ * a browser gets a static SVG of the regions and starts the real map only on request.
+ */
+const poster = ref(false)
+const POSTER_WIDTH = 1000
+const posterView = computed(() => {
+  if (!poster.value || !props.regions) return null
+  const { paths, height } = posterPaths(
+    props.regions.features.map(({ properties, geometry }) => ({ id: properties.id, geometry })),
+    UKRAINE_BOUNDS,
+    POSTER_WIDTH,
+  )
+  return {
+    height,
+    paths: paths.map(({ id, d }) => {
+      const value = props.values[id]
+      return { id, d, fill: value == null ? props.scale.noData : colorAt(props.scale, value) }
+    }),
+  }
+})
+
+/** The poster sits where `fitUkraine` would frame the country, clear of the floating panels. */
+const posterInset = computed(() => {
+  const { top, right, bottom, left } = padding()
+  return { top: `${top}px`, right: `${right}px`, bottom: `${bottom}px`, left: `${left}px` }
+})
+
+function showMap() {
+  poster.value = false
+  void startMap()
+}
 
 function applyStyle() {
   const own = ++styleRequest
@@ -403,6 +438,13 @@ async function loadMaplibre() {
 }
 
 onMounted(async () => {
+  // A CPU renderer stalls every frame while it starts, so the page paints before the probe.
+  await firstPaint()
+  poster.value = await softwareWebgl()
+  if (!poster.value && !unmounted) void startMap()
+})
+
+async function startMap() {
   const maplibregl = await loadMaplibre()
   if (unmounted || !container.value) return
   map = new maplibregl.Map({
@@ -461,7 +503,7 @@ onMounted(async () => {
   })
   resizeObserver.observe(container.value)
   applyStyle()
-})
+}
 
 onBeforeUnmount(() => {
   unmounted = true
@@ -573,7 +615,7 @@ watch(
   >
     <div ref="container" class="size-full bg-canvas" role="region" :aria-label="t.home.map"></div>
     <div
-      v-if="loading || (regions && !rivers && !regionsLoaded)"
+      v-if="!poster && (loading || (regions && !rivers && !regionsLoaded))"
       role="status"
       class="pointer-events-none absolute inset-0 grid place-items-center"
     >
@@ -582,6 +624,32 @@ watch(
         class="spinner size-9 rounded-full border-[3px] border-fill border-t-accent"
         aria-hidden="true"
       ></span>
+    </div>
+    <div v-if="poster" class="absolute inset-0 grid place-items-center bg-canvas">
+      <svg
+        v-if="posterView"
+        class="absolute"
+        :style="posterInset"
+        :viewBox="`0 0 ${POSTER_WIDTH} ${posterView.height}`"
+        aria-hidden="true"
+      >
+        <path
+          v-for="path in posterView.paths"
+          :key="path.id"
+          :d="path.d"
+          :fill="path.fill"
+          class="stroke-canvas"
+          stroke-width="1.5"
+          stroke-linejoin="round"
+        />
+      </svg>
+      <button
+        type="button"
+        class="glass relative rounded-xl px-4 py-2.5 text-sm font-medium text-ink shadow-float"
+        @click="showMap"
+      >
+        {{ t.home.showMap }}
+      </button>
     </div>
     <slot />
   </div>

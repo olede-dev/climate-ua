@@ -17,38 +17,29 @@ import SectorBar from './SectorBar.vue'
 const props = defineProps<{
   id: string
   name: string
-  /** Under the name: the oblasts a basin spans. */
   subtitle?: string | null
-  /** A caveat under the numbers, e.g. the data predate the loss of the Kakhovka Reservoir. */
   note?: string | null
   file: LayerFile
   series: RegionSeries
   config: LayerConfig
   step: TimeStep
   format: ValueFormat
-  /** What the chart measures; the legend title of the layer. */
   chartTitle: string
-  /** The layer's copy, for the big number's caption. */
   copy: LayerCopy
-  /** The water history views: the big number alone, without the norm and projection lines. */
   compact?: boolean
-  /** The water basin's split between the uses in the year on screen. */
   sectors?: Sectors | null
-  /** Shown instead of the chart when every value is zero, e.g. a basin with no water gap. */
   zeroNote?: string | null
 }>()
 defineEmits<{ close: [] }>()
 
 const { t } = useLocale()
 
-/** Basins blanked for having no water data (`blankEmptyBasins`) show a note, not an empty chart. */
 const hasData = computed(
   () =>
     props.series.history.some((value) => value !== null) ||
     Object.keys(props.series.future).length > 0,
 )
 
-/** The same summary as the country's, for this region. */
 const rows = computed(() =>
   summaryRows(
     props.file,
@@ -58,7 +49,6 @@ const rows = computed(() =>
     props.config.display,
   ),
 )
-/** On a projection period the big number is the projection, as in the country summary. */
 const focus = computed(() => (isFuture(props.step) ? 'future' : 'observed'))
 const valueColor = computed(() => {
   const mapValue = rows.value.find((row) => row.kind === focus.value)?.mapValue
@@ -72,7 +62,6 @@ const rank = computed(() => {
   )
 })
 
-/** Climate layers draw the norm as a bar (`NormBar`) in place of the summary's two sentences. */
 const climate = computed(() => props.config.geometry === 'oblasts')
 
 const allZero = computed(
@@ -109,7 +98,6 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
         class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-fill-strong focus-ring"
         @click="$emit('close')"
       >
-        <!-- The toolbar's back chevron, as in the macOS settings. -->
         <svg
           viewBox="0 0 16 16"
           class="size-4 shrink-0"
@@ -149,7 +137,6 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       </p>
     </header>
 
-    <!-- The country's summary, mirrored: big number, then what it is made of. -->
     <template v-if="hasData">
       <CountrySummary
         :rows="rows"
@@ -181,7 +168,6 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       role="note"
       class="flex gap-2.5 rounded-xl border-l-4 border-warn bg-warn-fill px-3 py-2.5 text-[13px] leading-relaxed text-warn-ink"
     >
-      <!-- A warning triangle. -->
       <svg
         viewBox="0 0 24 24"
         class="mt-0.5 size-4 shrink-0 text-warn"

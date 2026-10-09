@@ -4,15 +4,9 @@ import { ref } from 'vue'
 export interface RegionRow {
   id: string
   name: string
-  /** Formatted with its unit; null when the region has no value at this step. */
   value: string | null
 }
 
-/**
- * The map as a table: every region with its value now, for screen readers, and a
- * way to open a region without a pointer. Hidden until focus enters it, like a skip link, then
- * shown over the map so sighted keyboard users see where they are.
- */
 defineProps<{
   rows: RegionRow[]
   caption: string
@@ -25,7 +19,6 @@ const emit = defineEmits<{ select: [id: string] }>()
 
 const open = ref(false)
 
-/** Focus left for somewhere outside the table, not just moved between its buttons. */
 function onFocusOut(event: FocusEvent) {
   const to = event.relatedTarget
   if (!(to instanceof Node) || !(event.currentTarget as HTMLElement).contains(to))

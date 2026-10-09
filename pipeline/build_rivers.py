@@ -16,7 +16,6 @@ import config
 from common import write_json
 
 DAYS = 365
-#: Day of year at the start of each month in a non-leap year.
 MONTH_START = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334]
 
 
@@ -26,7 +25,6 @@ def day_of_year(day: str) -> int:
 
 
 def p10_norm(days: list[str], discharge: list[float | None]) -> np.ndarray:
-    """The p10 of each day of year over the norm period, rounded to 0.1 m³/s."""
     first, last = config.RIVERS_NORM
     buckets: list[list[float]] = [[] for _ in range(DAYS)]
     for day, q in zip(days, discharge):

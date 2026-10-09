@@ -19,7 +19,6 @@ def atlas_file(origin: str, experiment: str, layer: config.ClimateLayer) -> Path
 
 
 def requests(layer: config.ClimateLayer):
-    """(target file, CDS request) for ERA5 and each CMIP6 run of the layer."""
     common = {"domain": "global", "variable": layer.variable, "area": config.AREA}
     yield atlas_file("era5", "observed", layer), {**common, "origin": "era5", "period": config.ERA5_PERIOD}
     for experiment, period in config.CMIP6_RUNS.items():

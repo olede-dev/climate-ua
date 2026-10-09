@@ -4,30 +4,17 @@ import type { FuturePeriod, LayerFile, LayerId } from '../types'
 export interface LayerConfig {
   id: LayerId
   geometry: LayerFile['geometry']
-  /** Path under `public/`. */
   path: string
-  /** Known before the file loads, so a URL can name a period. */
   futurePeriods: readonly FuturePeriod[]
-  /** What the map shows: the value itself or its difference from the region's norm. */
   display: 'value' | 'anomaly'
   decimals: number
-  /**
-   * The projection the sentences name while the timeline is on an observed year;
-   * null for a layer without one.
-   */
   headlinePeriod: FuturePeriod | null
-  /** ERA5 cells under `public/`, drawn as a raster instead of the region fill; absent: regions only. */
   gridPath?: string
-  /** Fixed for the whole timeline, so 1960 and 2080 compare. */
   scale: ColorScale
 }
 
 const CLIMATE_PERIODS: readonly FuturePeriod[] = ['2021-2040', '2041-2060', '2081-2100']
 
-/**
- * The water layer's swatch in the layer list: its views set their own stops from the data
- * (`waterUseScale`), on this ramp.
- */
 const WATER_SCALE: ColorScale = {
   stops: [
     [0, '#1d3b28'],
@@ -178,7 +165,6 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     gridPath: 'data/grids/drought.json',
     futurePeriods: CLIMATE_PERIODS,
     display: 'value',
-    // A year counts whole months; one decimal keeps the averages apart.
     decimals: 1,
     headlinePeriod: '2041-2060',
     scale: DROUGHT_SCALE,
@@ -195,20 +181,14 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
   },
 }
 
-/** Layers with data, in switcher order. */
 export const LAYER_IDS = Object.keys(LAYERS) as LayerId[]
 
-/** The main layer. */
 export const DEFAULT_LAYER: LayerId = 'water'
 
 export function layerConfig(id: LayerId): LayerConfig {
   return LAYERS[id] ?? LAYERS[DEFAULT_LAYER]!
 }
 
-/**
- * The water layer's demand and gap views: years only, no projection. The scale is
- * set from the data, per sector (`waterUseScale`).
- */
 export function waterUseConfig(scale: ColorScale): LayerConfig {
   return {
     id: 'water',
@@ -216,7 +196,6 @@ export function waterUseConfig(scale: ColorScale): LayerConfig {
     path: 'data/water-use.json',
     futurePeriods: [],
     display: 'value',
-    // Both in km³: most basins need or lack a fraction of one.
     decimals: 2,
     headlinePeriod: null,
     scale,

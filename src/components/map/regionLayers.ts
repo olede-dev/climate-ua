@@ -20,7 +20,6 @@ const GRID = 'grid'
 const BORDER_SOURCE = 'country-border'
 const BORDER_GLOW = 'country-border-glow'
 const BORDER_LINE = 'country-border-line'
-/** The projection's violet, as `--ui-future` in main.css. */
 const FUTURE_INK: Record<Theme, string> = { light: '#7c3aed', dark: '#a78bfa' }
 const SATELLITE_URL =
   'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
@@ -31,17 +30,13 @@ const SELECTED: ExpressionSpecification = ['boolean', ['feature-state', 'selecte
 
 /** Opaque enough that the basemap's own borders inside Ukraine do not show through. */
 const FILL_OPACITY = 0.9
-/** While a region is hovered, the rest dim. */
 const DIMMED_OPACITY = 0.45
-/** The grid raster in focus: the gradient still reads, fields and towns show through. */
 const FOCUS_GRID_OPACITY = 0.75
 
-/** In focus the selected basin is a tint over the imagery; the hovered one stays findable. */
 const FOCUS_SELECTED_OPACITY = 0.5
 const FOCUS_HOVER_OPACITY = 0.3
 const FOCUS_FADE = { duration: 400 }
 
-/** Lines over the regions in each theme: hatching, borders, the outline and the dot rings. */
 const INK: Record<Theme, { hatch: string; border: string; outline: string; ring: string }> = {
   dark: {
     hatch: 'rgba(255, 255, 255, 0.16)',
@@ -57,7 +52,6 @@ const INK: Record<Theme, { hatch: string; border: string; outline: string; ring:
   },
 }
 
-/** Thin diagonal strokes over the fill: the future is an estimate. */
 function hatchImage(theme: Theme): ImageData {
   const size = 16
   const canvas = document.createElement('canvas')
@@ -75,7 +69,6 @@ function hatchImage(theme: Theme): ImageData {
   return ctx.getImageData(0, 0, size, size)
 }
 
-/** Fill, future hatching, borders and the hover/selection outline, under the place labels. */
 export function addRegionLayers(
   map: MaplibreMap,
   data: RegionsFile,
@@ -139,7 +132,6 @@ export function addRegionLayers(
   )
 }
 
-/** River stations: dots coloured by value, over the regions and under the place names. */
 export function addStationLayers(
   map: MaplibreMap,
   data: FeatureCollection<Point>,
@@ -160,7 +152,6 @@ export function addStationLayers(
       paint: {
         'circle-radius': ['case', SELECTED, 9, HOVER, 8.5, 7],
         'circle-color': mapColorExpression(scale, VALUE),
-        // A ring of the background keeps the dots apart from the regions under them.
         'circle-stroke-color': ['case', SELECTED, ink.outline, HOVER, ink.outline, ink.ring],
         'circle-stroke-width': ['case', SELECTED, 2.5, HOVER, 2, 1.5],
       },
@@ -191,10 +182,6 @@ export function setFutureHatch(map: MaplibreMap, visible: boolean) {
     map.setLayoutProperty(REGION_HATCH, 'visibility', visible ? 'visible' : 'none')
 }
 
-/**
- * Satellite imagery and oblast borders for the focus view, hidden until a region is selected:
- * without them a zoomed-in basin floats among look-alike neighbours with nothing to place it.
- */
 export function addFocusLayers(map: MaplibreMap, oblasts: OblastsFile) {
   if (map.getSource(FOCUS_OBLAST_SOURCE) || !map.getLayer(REGION_FILL)) return
   map.addSource(FOCUS_SATELLITE, {
@@ -237,10 +224,6 @@ export function addFocusLayers(map: MaplibreMap, oblasts: OblastsFile) {
   )
 }
 
-/**
- * Fill opacity and the focus view. A hovered region dims the rest; in focus only the
- * selected region keeps a tint, over satellite imagery and oblast borders.
- */
 export function setFillOpacity(
   map: MaplibreMap,
   hovering: boolean,
@@ -260,8 +243,6 @@ export function setFillOpacity(
           ? ['case', HOVER, FILL_OPACITY, DIMMED_OPACITY]
           : FILL_OPACITY,
   )
-  // In focus the raster is clipped to the selected region and laid over the imagery,
-  // so the differences inside the region stay readable.
   if (map.getLayer(GRID))
     map.setPaintProperty(GRID, 'raster-opacity', focused ? FOCUS_GRID_OPACITY : FILL_OPACITY)
   map.setPaintProperty(REGION_LINE, 'line-opacity', focused ? 0 : 1)
@@ -278,10 +259,6 @@ export function setFillOpacity(
     map.setPaintProperty(FOCUS_OBLAST_LINE, 'line-opacity', focused ? 0.9 : 0)
 }
 
-/**
- * Ukraine's border in the projection's violet with a soft glow, hidden until a future step
- * is shown: the whole map is then an estimate.
- */
 export function addCountryBorder(map: MaplibreMap, border: MultiLineString, theme: Theme) {
   if (map.getSource(BORDER_SOURCE) || !map.getLayer(REGION_HIGHLIGHT)) return
   map.addSource(BORDER_SOURCE, { type: 'geojson', data: border })
@@ -326,10 +303,6 @@ export function setCountryBorder(map: MaplibreMap, visible: boolean) {
   if (map.getLayer(BORDER_LINE)) map.setPaintProperty(BORDER_LINE, 'line-opacity', visible ? 1 : 0)
 }
 
-/**
- * The grid raster (`paintGrid`) under the region borders, in place of the fill; an image
- * source, since its canvas is repainted only when the step changes. Null removes it.
- */
 export function setGridImage(
   map: MaplibreMap,
   image: { url: string; coordinates: [number, number][] } | null,

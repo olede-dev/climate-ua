@@ -7,7 +7,6 @@ import type { Sectors } from '../../types'
 
 const props = defineProps<{
   sectors: Sectors
-  /** The year the shares are for. */
   year: number
 }>()
 
@@ -40,7 +39,6 @@ const parts = computed(() =>
     <figcaption class="text-xs leading-snug text-ink-muted">
       {{ t.basin.sectors.replace('{year}', String(year)) }}
     </figcaption>
-    <!-- A 2px gap between segments, so neighbours stay apart. -->
     <div class="flex h-2 gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
       <div
         v-for="part in parts"

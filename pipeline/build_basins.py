@@ -17,13 +17,11 @@ import shapely
 import config
 from common import download, land_regions, ukraine_subbasins, write_json
 
-#: ≈10 m: more digits only add bytes.
 COORD_DECIMALS = 4
 MAX_BYTES = 700 * 1024
 
 
 def rivers() -> gpd.GeoDataFrame:
-    """Natural Earth rivers near Ukraine, one row per name, in the equal-area CRS."""
     frames = []
     for url in config.NATURAL_EARTH_RIVERS_URLS:
         frames.append(gpd.read_file(download(url, config.RAW_DIR / url.rsplit("/", 1)[1]))[["name", "geometry"]])

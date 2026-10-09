@@ -9,22 +9,16 @@ import { colorAt } from '../../lib/scale'
 import type { SummaryRow } from '../../lib/summary'
 import type { LayerFile } from '../../types'
 
-/** The country at a glance: one big number, its gap from the norm, and what the norm is. */
 const props = defineProps<{
   rows: SummaryRow[]
   file: LayerFile
   config: LayerConfig
   copy: LayerCopy
   format: ValueFormat
-  /** Only the big number and its title: no change against the norm, no columns. */
   compact?: boolean
-  /** Colours the big number; mixed with the text colour so it reads in both themes. */
   valueColor?: string | null
-  /** Which row is the big number: the observed year (default) or the projection. */
   focus?: 'observed' | 'future'
-  /** A line under the caption, e.g. the region's place among the rest. */
   note?: string | null
-  /** The gap from the norm as a chip beside the number, and one sentence for the caption. */
   headline?: boolean
 }>()
 
@@ -38,7 +32,6 @@ const focusKind = computed(() =>
 const focused = computed(() => props.rows.find((row) => row.kind === focusKind.value))
 const norm = computed(() => props.rows.find((row) => row.kind === 'norm'))
 
-/** The focused row against the norm, signed, as the numbers are shown. */
 const delta = computed(() => {
   if (focused.value?.value == null || norm.value?.value == null) return null
   const places = props.config.decimals
@@ -57,7 +50,6 @@ const delta = computed(() => {
   }
 })
 
-/** «Норма — середнє за 1991–2020 роки: 9,3 °C.» */
 const normNote = computed(() =>
   norm.value?.value == null
     ? null
@@ -66,7 +58,6 @@ const normNote = computed(() =>
         .replace('{value}', props.format(norm.value.value)),
 )
 
-/** «Середня температура року у 2025 — на 1,2 °C більше за норму.» */
 const caption = computed(() => {
   const when = focused.value?.when
   if (!props.headline || !delta.value || when == null) return props.copy.legendTitle
@@ -76,7 +67,6 @@ const caption = computed(() => {
     .replace('{delta}', delta.value.sentence)
 })
 
-/** The big number's colour: the one passed, or where it sits on the map's scale. */
 const bigColor = computed(
   () =>
     props.valueColor ??

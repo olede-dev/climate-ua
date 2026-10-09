@@ -14,18 +14,15 @@ import config
 from common import cell_weights, land_regions, write_json
 from fetch_atlas import atlas_file
 
-#: Key of the whole-country series, next to the regions.
 COUNTRY_ID = "ukraine"
 
 
 def grid_weights(ds: xr.Dataset, regions: gpd.GeoDataFrame) -> xr.DataArray:
-    """`cell_weights` on an Atlas grid, with its coordinates attached."""
     weights = cell_weights(ds["lat_bnds"].values, ds["lon_bnds"].values, regions)
     return weights.assign_coords(lat=ds["lat"], lon=ds["lon"])
 
 
 def regional_mean(values: xr.DataArray, weights: xr.DataArray) -> xr.DataArray:
-    """Weighted mean over each region's cells, skipping cells without a value."""
     valid = values.notnull()
     total = (values.fillna(0) * weights).sum(("lat", "lon"))
     return total / (weights * valid).sum(("lat", "lon"))
@@ -62,7 +59,6 @@ def period_mean(series: xr.DataArray, period: tuple[int, int]) -> xr.DataArray:
 
 
 def open_cmip6(layer: config.ClimateLayer) -> xr.DataArray:
-    """Monthly CMIP6 values of the models that ran both the historical and the scenario experiment."""
     runs = []
     for experiment in config.CMIP6_RUNS:
         ds = xr.open_dataset(atlas_file("cmip6", experiment, layer))
@@ -147,7 +143,6 @@ def build_grid(
     return {
         "layer": layer.id,
         "unit": layer.unit,
-        # Outer edges of the cell block, degrees: cells are `step` wide around their centres.
         "west": round(float(lon[0]) - step / 2, 4),
         "south": round(float(lat[0]) - step / 2, 4),
         "step": step,

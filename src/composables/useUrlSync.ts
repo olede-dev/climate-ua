@@ -21,7 +21,6 @@ export function useUrlSync() {
     (query) => {
       const state = parseUrlState(query)
       ui.applyUrlState(state)
-      // Normalise unknown values away so the address bar matches what is shown.
       const normalised = toUrlQuery(state)
       if (!sameQuery(normalised, query)) void router.replace({ query: normalised })
     },

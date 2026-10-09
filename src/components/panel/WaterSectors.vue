@@ -3,24 +3,18 @@ import type { WaterSector } from '../../types'
 import CheckMark from '../ui/CheckMark.vue'
 import IconTile from '../ui/IconTile.vue'
 
-/**
- * The sectors as a grouped settings list that opens like an accordion: the picked row shows its
- * explanation and the summary passed in the slot, the others are one line each.
- */
 defineProps<{
   sectors: readonly { id: WaterSector; name: string; about: string }[]
   label: string
 }>()
 const model = defineModel<WaterSector>({ required: true })
 
-/** Line icons on a 24 grid: a drop for all uses, a sprout, a house, a factory. */
 const ICONS: Record<WaterSector, string> = {
   total: 'M12 3s-6 6.5-6 11a6 6 0 0 0 12 0c0-4.5-6-11-6-11z',
   irrigation: 'M12 21v-9 M12 12c0-4-3-6-7-6 0 4 3 6 7 6z M12 14c0-4 3-6 7-6 0 4-3 6-7 6z M7 21h10',
   domestic: 'M4 11l8-7 8 7 M6 9.5V20h12V9.5 M10 20v-5h4v5',
   industrial: 'M3 20V10l5 3v-3l5 3v-3l5 3V4h3v16z M3 20h18',
 }
-/** Each use's tile in its colour of the sector bar (`SectorBar`); all uses in water blue. */
 const TONES: Record<WaterSector, string> = {
   total: 'bg-sky-500',
   irrigation: 'bg-orange-500',
@@ -39,7 +33,6 @@ const TONES: Record<WaterSector, string> = {
         @click="model = sector.id"
       >
         <IconTile :path="ICONS[sector.id]" :tone="TONES[sector.id]" />
-        <!-- The hairline between rows starts at the label, clear of the tile. -->
         <span
           class="flex min-w-0 flex-1 items-center gap-2 py-2 pr-3 group-not-first/row:border-t group-not-first/row:border-line"
         >

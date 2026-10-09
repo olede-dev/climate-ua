@@ -1,7 +1,6 @@
 import { effectScope, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-/** The browser surface `useLocale` touches: `<html lang>`, the title and `localStorage`. */
 function stubBrowser() {
   const documentStub = { documentElement: { lang: '' }, title: '', querySelector: () => null }
   const storage = new Map<string, string>()

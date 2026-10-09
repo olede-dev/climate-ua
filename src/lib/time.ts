@@ -1,16 +1,13 @@
 import type { FuturePeriod } from '../types'
 
-/** A point on a layer's timeline: an observed year or a future period. */
 export type TimeStep = number | FuturePeriod
 
-/** One layer's timeline: observed years `from`–`to`, then the future periods in order. */
 export interface TimeAxis {
   from: number
   to: number
   periods: readonly FuturePeriod[]
 }
 
-/** Share of the slider track the observed years take; the future steps follow a gap. */
 const HISTORY_SHARE = 0.7
 const GAP_SHARE = 0.04
 
@@ -18,12 +15,10 @@ export function isFuture(step: TimeStep): step is FuturePeriod {
   return typeof step === 'string'
 }
 
-/** The years a period covers, inclusive: `2041-2060` → [2041, 2060]. */
 export function periodRange(period: FuturePeriod): [start: number, end: number] {
   return period.split('-').map(Number) as [number, number]
 }
 
-/** Middle year of a period: `2041-2060` → 2050.5. */
 export function periodYear(period: FuturePeriod): number {
   const [start, end] = periodRange(period)
   return (start + end) / 2
@@ -35,10 +30,6 @@ function nearestPeriod(periods: readonly FuturePeriod[], year: number): FuturePe
   )
 }
 
-/**
- * The period that holds a year, or else the one with the nearest middle year: a year from an old
- * link opens the projection where it falls. Undefined when there are no periods.
- */
 export function periodFor(
   periods: readonly FuturePeriod[],
   year: number,
@@ -51,8 +42,6 @@ export function periodFor(
   return holding ?? nearestPeriod(periods, year)
 }
 
-/** The part of an axis the timeline shows at once: its observed years, or its future periods
- * alone when `step` is one of them; the two are switched from the side panel. */
 export function shownAxis(axis: TimeAxis, step: TimeStep): TimeAxis {
   return isFuture(step)
     ? { from: axis.from, to: axis.from - 1, periods: axis.periods }
@@ -71,7 +60,6 @@ export function axisSteps(axis: TimeAxis): TimeStep[] {
   return [...years, ...axis.periods]
 }
 
-/** Position of a step in `axisSteps`, or -1 when the axis has no such step. */
 export function stepIndex(axis: TimeAxis, step: TimeStep): number {
   if (isFuture(step)) {
     const at = axis.periods.indexOf(step)
@@ -80,12 +68,10 @@ export function stepIndex(axis: TimeAxis, step: TimeStep): number {
   return Number.isInteger(step) && step >= axis.from && step <= axis.to ? step - axis.from : -1
 }
 
-/** The step after `step`, or null at the end of the axis. */
 export function nextStep(axis: TimeAxis, step: TimeStep): TimeStep | null {
   return axisSteps(axis)[stepIndex(axis, step) + 1] ?? null
 }
 
-/** The step before `step`, or null at the start of the axis. */
 export function prevStep(axis: TimeAxis, step: TimeStep): TimeStep | null {
   const at = stepIndex(axis, step)
   return at > 0 ? (axisSteps(axis)[at - 1] ?? null) : null
@@ -105,7 +91,6 @@ export function snapStep(axis: TimeAxis, step: TimeStep): TimeStep {
   return nearestPeriod(axis.periods, periodYear(step))
 }
 
-/** Reads a step from its URL form (`1987`, `2041-2060`); null when it is neither. */
 export function parseStep(raw: string, periods: readonly FuturePeriod[]): TimeStep | null {
   const period = periods.find((p) => p === raw)
   if (period) return period
@@ -121,7 +106,6 @@ function gapShare(axis: TimeAxis): number {
   return hasYears(axis) && axis.periods.length > 0 ? GAP_SHARE : 0
 }
 
-/** Where a step sits on the slider track, 0 (left) to 1 (right). */
 export function stepPosition(axis: TimeAxis, step: TimeStep): number {
   const share = historyShare(axis)
   const gap = gapShare(axis)
@@ -133,7 +117,6 @@ export function stepPosition(axis: TimeAxis, step: TimeStep): number {
   return span === 0 ? 0 : ((step - axis.from) / span) * share
 }
 
-/** The future periods' slots on the track, as `[start, end]` fractions. */
 export function periodSlots(
   axis: TimeAxis,
 ): { period: FuturePeriod; start: number; end: number }[] {
@@ -147,7 +130,6 @@ export function periodSlots(
   }))
 }
 
-/** The step under a point of the slider track (0–1), for pointer drags. */
 export function stepAtPosition(axis: TimeAxis, position: number): TimeStep {
   const share = historyShare(axis)
   const gap = gapShare(axis)

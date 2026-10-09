@@ -8,18 +8,13 @@ const WATER_VIEWS: readonly WaterView[] = ['gap', 'demand', 'future']
 /** The periods of the retired stress projection, still in shared links; they open the projection. */
 const LEGACY_WATER_PERIODS = ['2030', '2050', '2080']
 
-/** The part of the UI state that is shared through the URL. */
 export interface UrlState {
   layer: LayerId
-  /** null: the layer's latest observed year. */
   time: TimeStep | null
   region: string | null
-  /** The water layer's view and sector; kept while another layer is on. */
   waterView: WaterView
   waterSector: WaterSector
-  /** The projection scenario of the water layer's future view. */
   waterScenario: WaterScenario
-  /** The value of the models' range the projection shows; the central one by default. */
   bound: ProjectionBound
 }
 
@@ -33,18 +28,12 @@ export const DEFAULT_URL_STATE: Readonly<UrlState> = {
   bound: 'median',
 }
 
-/** Query values as vue-router exposes them: repeated keys become arrays. */
 export type QueryInput = Record<string, string | null | (string | null)[] | undefined>
 
 function first(value: QueryInput[string]): string | null {
   return (Array.isArray(value) ? value[0] : value) ?? null
 }
 
-/**
- * Reads the shared state from a route query; unknown or malformed values fall back to
- * defaults. A year outside the layer's range and a region missing from its file are settled
- * once the file loads.
- */
 export function parseUrlState(query: QueryInput): UrlState {
   const rawLayer = first(query.layer)
   const layer = LAYER_IDS.find((id) => id === rawLayer) ?? DEFAULT_LAYER
@@ -74,7 +63,6 @@ export function parseUrlState(query: QueryInput): UrlState {
   }
 }
 
-/** Builds the route query for a state, omitting defaults so the plain URL stays clean. */
 export function toUrlQuery(state: UrlState): Record<string, string> {
   const query: Record<string, string> = {}
   if (state.layer !== DEFAULT_URL_STATE.layer) query.layer = state.layer

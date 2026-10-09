@@ -2,24 +2,15 @@ import type { FuturePeriod, LayerFile, RegionSeries } from '../types'
 import { valueAt } from './series'
 import { isFuture, type TimeStep } from './time'
 
-/** One line of the visual summary: the norm, the observed year, the projection. */
 export interface SummaryRow {
   kind: 'norm' | 'observed' | 'future'
-  /** The year or period the row is about; null for the norm. */
   when: number | FuturePeriod | null
-  /** The value itself, as the sentences name it; null where the file has none. */
   value: number | null
-  /** The model range of a projection, where the file has it. */
   low?: number
   high?: number
-  /** The value in the units the map colours: the value or its difference from the norm. */
   mapValue: number | null
 }
 
-/**
- * The rows for a series at a step: an observed step is «now» and the headline period the
- * future; a future step is the future and the last observed year «now».
- */
 export function summaryRows(
   file: LayerFile,
   series: RegionSeries,
@@ -50,10 +41,6 @@ export function summaryRows(
   return rows
 }
 
-/**
- * Where a region's value at a step sits among all regions with a value then: 1 is the highest.
- * Null when the region has no value; ties share the better place.
- */
 export function rankAt(
   file: LayerFile,
   id: string,

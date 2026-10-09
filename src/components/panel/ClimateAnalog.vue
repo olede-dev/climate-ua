@@ -6,7 +6,6 @@ import { useLocale } from '../../composables/useLocale'
 import { koppenText } from '../../config/koppen'
 import { formatPeriod } from '../../lib/format'
 
-/** The oblast's Köppen–Geiger class now and at the end of the century, as two chips. */
 const props = defineProps<{ regionId: string }>()
 
 const { locale, t } = useLocale()
@@ -25,7 +24,6 @@ const analog = computed(() => {
   const endText = koppenText(end, locale.value)
   if (!nowText || !endText) return null
   return {
-    // The same class twice is one chip: no change to show.
     chips: [
       { when: t.value.koppen.now, code: now, ...nowText },
       ...(now === end ? [] : [{ when: formatPeriod(endPeriod), code: end, ...endText }]),
@@ -38,7 +36,6 @@ const analog = computed(() => {
 <template>
   <section v-if="analog" class="space-y-2" :title="analog.note">
     <h3 class="px-1 text-[13px] font-semibold text-ink">{{ t.koppen.title }}</h3>
-    <!-- One settings group: today's class, then the one the end of the projection brings. -->
     <ol class="overflow-hidden rounded-xl bg-group">
       <li
         v-for="chip in analog.chips"

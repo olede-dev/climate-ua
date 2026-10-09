@@ -19,7 +19,6 @@ function positions(geometry: Geometry): Position[] {
   }
 }
 
-/** Bounding box of a geometry, or null when it has no coordinates. */
 export function geometryBounds(geometry: Geometry): Bounds | null {
   const points = positions(geometry)
   if (points.length === 0) return null
@@ -57,7 +56,6 @@ export function outerBorder(geometries: (Polygon | MultiPolygon)[]): MultiLineSt
       }
     }
   }
-  // Chain the remaining edges into lines, so the stroke joins cleanly at every vertex.
   const from = new Map<string, [Position, Position][]>()
   for (const edge of edges.values()) {
     if (!edge) continue

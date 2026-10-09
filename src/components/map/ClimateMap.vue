@@ -34,7 +34,6 @@ import {
   STATION_SOURCE,
 } from './regionLayers'
 
-/** A region under the pointer, at a point in the map container's pixels. */
 export interface RegionHover {
   id: string
   x: number
@@ -43,38 +42,16 @@ export interface RegionHover {
 
 const props = defineProps<{
   regions: RegionsFile | undefined
-  /**
-   * Points drawn over the regions (river stations). When set, they carry the values, the
-   * hover and the selection, and the regions are plain outlines.
-   */
   markers: FeatureCollection<Point> | null
-  /** The value each region (or marker) shows now; a missing or null value draws no data. */
   values: Record<string, number | null>
   scale: ColorScale
-  /**
-   * Grid cells drawn as a raster in place of the region fill, clipped to the regions; the
-   * regions still carry the hover, the selection and the tooltip. Null: the fill shows values.
-   */
   grid?: { file: GridFile; values: (number | null)[] } | null
-  /** Hatch the fill: the current step is a projection. */
   future: boolean
   selectedId: string | null
-  /**
-   * Oblast borders for the focus view: when set, selecting a region swaps its neighbours for
-   * satellite imagery with these borders, so the zoomed-in region keeps its bearings.
-   */
   focusOutlines?: OblastsFile | null
-  /** Ukraine's outer border, drawn in the projection's violet while `projection` is on. */
   countryBorder?: MultiLineString | null
-  /** A projection is shown: a future period, or the water layer's future view (in years). */
   projection?: boolean
-  /**
-   * Pixels on each side covered by the panels floating over a full-screen map; framing keeps
-   * Ukraine clear of them and the zoom buttons sit inside them. Unset: nothing covers the map
-   * but its own timeline.
-   */
   insets?: Required<PaddingOptions>
-  /** Where the zoom buttons sit, from the top right corner, when panels float over the map. */
   controls?: { right: number }
 }>()
 const emit = defineEmits<{
@@ -87,19 +64,12 @@ const UKRAINE_BOUNDS: LngLatBoundsLike = [
   [22.0, 44.0],
   [40.3, 52.5],
 ]
-/** Room for the zoom buttons above and the timeline below. */
 const PADDING = { top: 48, bottom: 96, left: 16, right: 56 }
-/** Gap between Ukraine and the panels around it; the right one leaves room for the zoom buttons. */
 const INSET_GAP = { top: 16, bottom: 16, left: 16, right: 56 }
-/** Shown until the basemap style arrives. */
 const EMPTY_STYLE: StyleSpecification = { version: 8, sources: {}, layers: [] }
-/** Colours slide between timeline steps. */
 const TWEEN_MS = 300
-/** Pixels around the pointer that still hit a marker. */
 const MARKER_HIT = 6
-/** Half the box a selected marker is framed in, degrees. */
 const MARKER_FRAME = { lon: 2.4, lat: 1.5 }
-/** Closest a selection is framed: the smallest basins still fill the free space. */
 const MAX_FRAME_ZOOM = 10
 const NO_POINTS: FeatureCollection<Point> = { type: 'FeatureCollection', features: [] }
 
@@ -110,23 +80,18 @@ const container = useTemplateRef<HTMLDivElement>('container')
 // MapLibre objects stay outside Vue reactivity: proxies break them.
 let map: maplibregl.Map | undefined
 let resizeObserver: ResizeObserver | undefined
-/** Set once the user pans or zooms; until then a resize restores the initial view. */
 let viewTouched = false
 /** Latest basemap request; an older style that arrives late is dropped. */
 let styleRequest = 0
 let hoveredId: string | null = null
-/** Values as drawn right now, mid-tween included. */
 let shown: Record<string, number | null> = {}
 let tweenFrame = 0
-/** The current style has loaded; data layers can be added. */
 let styleReady = false
 
-/** Where the grid raster is painted; MapLibre gets it as an image. */
 const gridCanvas = document.createElement('canvas')
 
 const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
 
-/** Basemap for the label language and the page theme. */
 function applyStyle() {
   const own = ++styleRequest
   void basemapStyle(locale.value, theme.value).then(({ style, kind }) => {
@@ -140,7 +105,6 @@ function applyStyle() {
   })
 }
 
-/** The source that carries values, hover and selection. */
 function valueSource(): string {
   return props.markers ? STATION_SOURCE : REGION_SOURCE
 }
@@ -158,7 +122,6 @@ function setValue(id: string, value: number | null) {
 let clip: { regions: RegionsFile; only: string | null; shapes: (Polygon | MultiPolygon)[] } | null =
   null
 
-/** The polygons the raster is clipped to: in focus only the selected region, imagery around it. */
 function clipShapes(regions: RegionsFile): (Polygon | MultiPolygon)[] {
   const only = focused() ? props.selectedId : null
   if (clip?.regions !== regions || clip.only !== only) {
@@ -170,7 +133,6 @@ function clipShapes(regions: RegionsFile): (Polygon | MultiPolygon)[] {
   return clip.shapes
 }
 
-/** Repaints the grid raster for the current values, or removes it. */
 function applyGrid() {
   if (!map || !styleReady) return
   const grid = props.grid
@@ -183,7 +145,6 @@ function applyGrid() {
   applyFillOpacity()
 }
 
-/** Moves every region from its drawn value to the new one; a gap in either jumps. */
 function tweenTo(target: Record<string, number | null>) {
   cancelAnimationFrame(tweenFrame)
   if (!styleReady || !map?.getSource(valueSource())) return
@@ -217,13 +178,11 @@ function setHovered(id: string | null) {
   if (!map || id === hoveredId) return
   if (hoveredId) map.setFeatureState({ source: valueSource(), id: hoveredId }, { hover: false })
   if (id) map.setFeatureState({ source: valueSource(), id }, { hover: true })
-  // Regions dim around a hovered region; a hovered marker grows instead.
   hoveredId = id
   if (!props.markers) applyFillOpacity()
   map.getCanvas().style.cursor = id ? 'pointer' : ''
 }
 
-/** Focus view: a region is selected and oblast borders were given for it. */
 function focused(): boolean {
   return !props.markers && !!props.focusOutlines && props.selectedId !== null
 }
@@ -233,7 +192,6 @@ function applyFillOpacity() {
   setFillOpacity(map, hoveredId !== null, focused(), theme.value)
 }
 
-/** Switches the focus view on or off; labels follow, but not on every hover. */
 function applyFocus() {
   applyGrid()
   if (map && styleReady) setPlaceLabelsOnImagery(map, theme.value, focused())
@@ -268,7 +226,6 @@ function selectionBounds(): LngLatBoundsLike | null {
   return (feature && geometryBounds(feature.geometry)) ?? null
 }
 
-/** Zooms to the selected region, or back to all of Ukraine. */
 function frameSelection(animate: boolean) {
   const bounds = selectionBounds()
   if (!map) return
@@ -276,10 +233,6 @@ function frameSelection(animate: boolean) {
   map.fitBounds(bounds, { padding: padding(), maxZoom: MAX_FRAME_ZOOM, animate })
 }
 
-/**
- * Draws the current values, selection from scratch: after the layers are built
- * and whenever the regions or the markers change, since nothing drawn before belongs to them.
- */
 function redraw() {
   if (!map?.getSource(REGION_SOURCE)) return
   cancelAnimationFrame(tweenFrame)
@@ -294,7 +247,6 @@ function redraw() {
   applyFocus()
 }
 
-/** (Re)builds the data layers: on the first style and after every basemap swap. */
 function installRegions() {
   if (!map || !props.regions || !styleReady) return
   addRegionLayers(map, props.regions, props.scale, theme.value)
@@ -307,7 +259,6 @@ function installRegions() {
   applyGrid()
 }
 
-/** The region or marker under the pointer. */
 function featureAt(event: MapMouseEvent): string | null {
   const layer = targetLayer()
   if (!map?.getLayer(layer)) return null
@@ -365,7 +316,6 @@ onMounted(() => {
   map.on('mousemove', onMove)
   map.on('mouseout', onLeave)
   map.on('click', onClick)
-  // The tooltip is pinned to a point; once the map moves, the point is stale.
   map.on('movestart', () => emit('hover', null))
 
   // A container measured while hidden or mid-layout gives a wrong initial view; reset it on resize.
@@ -476,7 +426,6 @@ watch(
 </template>
 
 <style scoped>
-/* The zoom buttons sit in the bottom corner under the layer column, above the credits line. */
 :deep(.maplibregl-ctrl-bottom-right) {
   bottom: 14px;
   right: var(--controls-right, 0);

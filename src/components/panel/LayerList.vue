@@ -2,18 +2,13 @@
 import type { LayerId } from '../../types'
 import IconTile from '../ui/IconTile.vue'
 
-/**
- * The map layers as a list beside the map: one radio per layer with its icon and what it shows; arrows move between them.
- */
 defineProps<{
   layers: { id: LayerId; name: string; description: string }[]
   label: string
-  /** Icons only, for the folded column; the names stay for screen readers and as tooltips. */
   compact?: boolean
 }>()
 const model = defineModel<LayerId>({ required: true })
 
-/** Each layer's icon: SVG path data on a 24-unit stroked grid. */
 const ICONS: Record<LayerId, string> = {
   water: 'M12 3s-6 6.5-6 11a6 6 0 0 0 12 0c0-4.5-6-11-6-11z',
   temp: 'M14 14.76V4a2 2 0 0 0-4 0v10.76a4 4 0 1 0 4 0zM12 9v8',
@@ -23,7 +18,6 @@ const ICONS: Record<LayerId, string> = {
   rivers:
     'M2 6c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2M2 12c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2M2 18c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2',
 }
-/** Each layer's tile colour, as the macOS settings sidebar. */
 const TONES: Record<LayerId, string> = {
   water: 'bg-blue-500',
   temp: 'bg-red-500',
@@ -43,7 +37,6 @@ const TONES: Record<LayerId, string> = {
       >
         {{ label }}
       </legend>
-      <!-- A control beside the title, such as the drawer's close button. -->
       <slot v-if="!compact" name="action" />
     </div>
     <div
@@ -70,8 +63,6 @@ const TONES: Record<LayerId, string> = {
         <IconTile :path="ICONS[layer.id]" :tone="TONES[layer.id]" size="lg" />
         <template v-if="compact">
           <span class="sr-only">{{ layer.name }}</span>
-          <!-- Left of the rail: the active layer's name stays, any other icon names itself and
-               what it shows on hover or focus; the active name steps aside meanwhile. -->
           <span
             v-if="model === layer.id"
             aria-hidden="true"
@@ -102,7 +93,6 @@ const TONES: Record<LayerId, string> = {
         </span>
       </label>
     </div>
-    <!-- A control under the list, such as the button that folds it away or back. -->
     <div v-if="$slots.footer" class="mt-1 border-t border-line pt-1">
       <slot name="footer" />
     </div>

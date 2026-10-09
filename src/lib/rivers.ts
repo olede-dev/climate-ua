@@ -34,7 +34,6 @@ export function riversLayer(file: RiversFile): LayerFile {
   }
 }
 
-/** Station markers for the map, keyed by `id` like the regions. */
 export function stationPoints(file: RiversFile): FeatureCollection<Point, { id: string }> {
   return {
     type: 'FeatureCollection',

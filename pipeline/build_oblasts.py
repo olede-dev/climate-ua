@@ -11,7 +11,6 @@ import shapely
 import config
 from common import land_regions, write_json
 
-#: ≈10 m: more digits only add bytes.
 COORD_DECIMALS = 4
 
 regions = land_regions()

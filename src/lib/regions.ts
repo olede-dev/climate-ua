@@ -2,17 +2,10 @@ import type { Locale, Messages } from '../i18n'
 import type { BasinProperties, OblastProperties, Station } from '../types'
 import { inRegion } from './narrative'
 
-/** How the panel, the card and the tooltip name a region. */
 export interface RegionLabel {
   name: string
-  /** For sentences: «у Харківській області», «у басейні річки Десна». */
   where: string
-  /** Under the name: the oblasts a basin spans. */
   subtitle: string | null
-  /**
-   * A caveat the card shows under the numbers: the former Kakhovka Reservoir, or a
-   * river whose flow the dams set; null where there is none.
-   */
   note: string | null
 }
 
@@ -25,10 +18,6 @@ export function oblastLabel(oblast: OblastProperties, locale: Locale): RegionLab
   return { name, where: inRegion(name, locale), subtitle: null, note: null }
 }
 
-/**
- * A basin is named after its river; without one, after the oblast that holds most of it.
- * `oblastNames` maps oblast ids to names in the current locale.
- */
 export function basinLabel(
   basin: BasinProperties,
   oblastNames: Record<string, string>,
@@ -55,7 +44,6 @@ export function basinLabel(
   }
 }
 
-/** A river station: «Дніпро — Київ», «на річці Дніпро (Київ)». */
 export function stationLabel(
   station: Station,
   locale: Locale,

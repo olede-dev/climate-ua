@@ -1,21 +1,15 @@
 <script setup lang="ts" generic="T extends string">
 import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 
-/** A header button opening a single-choice menu (`menuitemradio`); theme and language use it. */
 const props = defineProps<{
   buttonClass: string
-  /** id of the menu element, for `aria-controls`. */
   menuId: string
-  /** Accessible name of the menu. */
   menuLabel: string
-  /** The trigger reads `<triggerLabel>: <current option>`. */
   triggerLabel: string
   options: readonly { value: T; label: string }[]
-  /** The trigger shows the icon alone, as in the map's control column. */
   iconOnly?: boolean
 }>()
 const model = defineModel<T>({ required: true })
-/** `iconClass` sizes the icon: larger on the trigger than in the menu. */
 defineSlots<{ icon(props: { value: T; iconClass: string; inMenu: boolean }): unknown }>()
 
 const open = ref(false)
@@ -41,7 +35,6 @@ function choose(value: T) {
   close(true)
 }
 
-/** Arrow keys move between items; Home/End jump to the ends; Escape closes. */
 function onMenuKeydown(event: KeyboardEvent) {
   const list = menuItems()
   const index = list.indexOf(document.activeElement as HTMLButtonElement)

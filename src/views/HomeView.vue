@@ -60,10 +60,8 @@ const { locale, t } = useLocale()
 const ui = useUiStore()
 const basemap = ref<BasemapKind>('openfreemap')
 
-/** The water layer's future view: the observed gap, then its projection by period. */
 const waterFuture = computed(() => ui.layer === 'water' && ui.waterView === 'future')
 const waterUseQuery = useWaterUse(() => ui.layer === 'water')
-// The water layer comes from water-use.json alone.
 const layerQuery = useLayer(() => (ui.layer === 'water' ? null : ui.layer))
 const oblastsQuery = useOblasts()
 const countryBorder = computed(() => {
@@ -92,7 +90,6 @@ const config = computed(() =>
     ? waterUseConfig(waterUseScale(layer.value))
     : layerConfig(ui.layer),
 )
-// Stations are drawn over the oblast outlines.
 const geometryQuery = computed(() =>
   config.value.geometry === 'basins' ? basinsQuery : oblastsQuery,
 )
@@ -121,10 +118,6 @@ const axis = computed<TimeAxis | null>(() =>
       }
     : null,
 )
-/**
- * The step on screen: the stored one fitted to this layer's axis, or its latest observed year.
- * The water projection shows only its periods; a year there opens the period holding it.
- */
 const step = computed<TimeStep | null>(() => {
   if (!axis.value) return null
   const fitted = snapStep(axis.value, ui.time ?? axis.value.to)
@@ -132,24 +125,17 @@ const step = computed<TimeStep | null>(() => {
   const year = ui.time === null ? axis.value.to : isFuture(ui.time) ? periodYear(ui.time) : ui.time
   return periodFor(axis.value.periods, year) ?? fitted
 })
-// A step from another layer or a stale URL is replaced by the one actually shown.
 watch(step, (shown) => {
   if (shown !== null && ui.time !== null && shown !== ui.time) ui.time = shown
 })
-// A region the layer has no data for is dropped once the file is in.
 watch(layer, (file) => {
   if (file && ui.regionId !== null && !(ui.regionId in file.regions)) ui.regionId = null
 })
 
-/** The timeline shows the observed years or the future periods, never both at once. */
 const sliderAxis = computed(() =>
   axis.value && step.value !== null ? shownAxis(axis.value, step.value) : null,
 )
 
-/**
- * A layer picked from the list opens on its history: the projection is something to step into,
- * not a mode carried from one layer to the next. Links and the browser history keep theirs.
- */
 function pickLayer(id: LayerId) {
   ui.playing = false
   ui.layer = id
@@ -157,7 +143,6 @@ function pickLayer(id: LayerId) {
   if (ui.time !== null && isFuture(ui.time)) ui.time = null
 }
 
-/** The side panel's switch between the observed years and the projection periods. */
 function setFuture(on: boolean) {
   ui.playing = false
   ui.time = on ? (layer.value?.futurePeriods[0] ?? null) : null
@@ -168,7 +153,6 @@ const timeModel = computed<TimeStep>({
   set: (value) => (ui.time = value),
 })
 
-/** A region's value at the current step, in the units the map shows. */
 function shownValue(id: string): StepValue | null {
   const series = layer.value?.regions[id]
   if (!series || !layer.value || step.value === null) return null
@@ -178,7 +162,6 @@ function shownValue(id: string): StepValue | null {
 }
 
 const gridQuery = useGrid(() => config.value.gridPath ?? null)
-/** The layer's cells at the current step, for the map raster; null draws the region fill. */
 const mapGrid = computed(() => {
   const file = gridQuery.data.value
   if (!file || file.layer !== ui.layer || step.value === null) return null
@@ -192,7 +175,6 @@ const mapValues = computed<Record<string, number | null>>(() =>
   ),
 )
 
-// The projection is of the total gap only, so the future view names no other sector.
 const copy = computed<LayerCopy>(() => {
   const id = ui.layer
   if (id !== 'water') return t.value.layers[id]
@@ -203,7 +185,6 @@ const copy = computed<LayerCopy>(() => {
 const waterState = computed(() =>
   ui.layer === 'water' ? { view: ui.waterView, sector: ui.waterSector } : null,
 )
-/** The projection on screen, unshifted: the country's value at each bound, for the bound tabs. */
 const projectionRange = computed(() => {
   const at = step.value
   if (at === null || !isFuture(at)) return null
@@ -217,8 +198,6 @@ const projectionRange = computed(() => {
   return { bound: ui.bound, values: { min: value.p10, median: value.median, max: value.p90 } }
 })
 
-/** What the open basin withdrew its water for in the year on screen, in the history views; the
- * caption names withdrawals, so the split is of the demand in both views. */
 const regionSectorShares = computed(() => {
   const file = waterUseQuery.data.value
   const id = ui.regionId
@@ -228,8 +207,6 @@ const regionSectorShares = computed(() => {
   return regionSectors(file, 'demand', id, year)
 })
 
-/** The future view opens on its first period; history returns to the latest observed year. Gap
- * and demand share a timeline, so switching between them keeps the year. */
 function setWaterView(view: WaterView) {
   const crossing = (view === 'future') !== (ui.waterView === 'future')
   ui.waterView = view
@@ -237,7 +214,6 @@ function setWaterView(view: WaterView) {
   ui.playing = false
   ui.time = view === 'future' ? (WATER_PERIODS[0] ?? null) : null
 }
-// The unit comes with the copy: a count of days is a word that agrees with the number.
 const valueFormatter = computed(() =>
   valueFormat(locale.value, copy.value.unit, config.value.decimals),
 )
@@ -255,10 +231,8 @@ const layerChoices = computed(() =>
 )
 const gradient = computed(() => cssGradient(config.value.scale))
 
-/** The legend's ends, with units. */
 const legend = computed(() => {
   const { stops, stepped } = config.value.scale
-  // Whole-number ends read as round marks: «30 днів», not «30,0 дня».
   const end = (value: number) =>
     valueFormatter.value(value, {
       signed: signed.value,
@@ -266,12 +240,10 @@ const legend = computed(() => {
     })
   return {
     min: end(stops[0]![0]),
-    // The top class of a stepped scale is open-ended.
     max: `${stepped ? '≥ ' : ''}${end(stops[stops.length - 1]![0])}`,
   }
 })
 
-/** A projection is on screen: the water scenarios or a future climate period. */
 const inFuture = computed(() => waterFuture.value || (step.value !== null && isFuture(step.value)))
 
 const legendProps = computed(() => ({
@@ -290,7 +262,6 @@ const stepLabel = computed(() => {
   return `${formatPeriod(step.value)} · ${t.value.timeline.forecast} (${scenario})`
 })
 
-/** Names of the regions of the current geometry. */
 const labels = computed<Record<string, RegionLabel>>(() => {
   const oblasts = oblastsQuery.data.value?.features ?? []
   if (config.value.geometry === 'stations') {
@@ -325,7 +296,6 @@ const selected = computed(() =>
   ui.regionId === null ? null : { id: ui.regionId, ...regionLabel(ui.regionId) },
 )
 
-/** The map as a table, by name. */
 const tableRows = computed<RegionRow[]>(() =>
   Object.keys(layer.value?.regions ?? {})
     .map((id) => {
@@ -338,11 +308,8 @@ const tableCaption = computed(
   () => `${copy.value.legendTitle} · ${stepLabel.value}. ${t.value.table.hint}`,
 )
 
-/** Tailwind's `lg`: the map fills the window under floating panels; below it, the panel is a
- * card under the map. */
 const isWide = useMediaQuery('(min-width: 64rem)')
 
-/** The panels around the full-screen map, measured so the map frames Ukraine between them. */
 const panelCard = useTemplateRef<HTMLElement>('panelCard')
 const controlsColumn = useTemplateRef<HTMLElement>('controlsColumn')
 const bottomBar = useTemplateRef<HTMLElement>('bottomBar')
@@ -384,9 +351,7 @@ watchEffect((onCleanup) => {
 })
 onBeforeUnmount(() => insetObserver.disconnect())
 
-/** Wide: the layers are a column beside the map that can be folded away. */
 const LAYERS_KEY = 'climate-ua:layers-collapsed'
-/** Folded unless the reader unfolded it: a layer is picked once, the map needs the room. */
 function readCollapsed(): boolean {
   try {
     return localStorage.getItem(LAYERS_KEY) !== '0'
@@ -404,7 +369,6 @@ watch(layersCollapsed, (collapsed) => {
 })
 const layersHidden = computed(() => isWide.value && layersCollapsed.value)
 
-/** On narrow screens the layers live in a drawer from the right, opened from the header. */
 const layersOpen = ref(false)
 watch(isWide, (wide) => {
   if (wide) layersOpen.value = false
@@ -417,7 +381,6 @@ function onDrawerKey(event: KeyboardEvent) {
   if (event.key === 'Escape') layersOpen.value = false
 }
 
-/** The panel under the map on narrow screens. */
 const sheet = useTemplateRef<InstanceType<typeof SidePanel>>('sheet')
 // A region picked on the map opens its card under it, out of sight on a phone: bring it up. A
 // region from the URL waits, so a shared link still opens on the map.
@@ -473,8 +436,6 @@ const tooltip = computed(() => {
 </script>
 
 <template>
-  <!-- Wide: the map fills the window and every other block floats over it. Narrow: rounded
-       cards on the canvas, separated by one gutter (gap and padding). -->
   <div
     class="flex flex-col bg-canvas"
     :class="[
@@ -504,7 +465,6 @@ const tooltip = computed(() => {
         </svg>
       </button>
     </AppHeader>
-    <!-- The layers drawer on narrow screens. -->
     <Teleport to="body">
       <div v-if="!isWide && layersOpen" class="fixed inset-0 z-40" @keydown="onDrawerKey">
         <div class="absolute inset-0 bg-black/40" aria-hidden="true" @click="layersOpen = false" />
@@ -604,7 +564,6 @@ const tooltip = computed(() => {
             :gradient="gradient"
             :position="tooltip.position"
           />
-          <!-- Narrow: the timeline over the bottom of the map card. -->
           <div
             v-if="!isWide"
             class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3"
@@ -618,16 +577,11 @@ const tooltip = computed(() => {
           </div>
         </ClimateMap>
       </section>
-      <!-- Narrow: the legend in a card right under the map. -->
       <MapLegend
         v-if="!isWide && layer"
         v-bind="legendProps"
         class="rounded-2xl bg-surface px-3 py-2 shadow-card"
       />
-      <!-- Wide: the panel on the left, the layers on the right, the timeline
-           between them at the bottom. -->
-      <!-- Wide: one card down the left with the brand on top, the controls down the right,
-           and the legend and timeline as one island between them. -->
       <div
         v-if="isWide"
         ref="panelCard"
@@ -740,7 +694,6 @@ const tooltip = computed(() => {
         @bound="ui.bound = $event"
       />
     </main>
-    <!-- Wide: the credits in small print in the bottom right corner, as on a map. -->
     <AppFooter
       v-if="isWide"
       :basemap="basemap"

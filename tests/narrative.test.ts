@@ -47,7 +47,6 @@ function input(step: StoryInput['step'], where = 'у Харківській об
   }
 }
 
-/** The sentence with ordinary spaces, as the expectations are typed. */
 const plain = (rich: Rich) =>
   rich
     .map((s) => s.text)

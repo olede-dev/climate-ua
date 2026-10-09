@@ -2,16 +2,9 @@
 import CheckMark from '../ui/CheckMark.vue'
 import IconTile from '../ui/IconTile.vue'
 
-/**
- * One choice among a few, in the side panel: a macOS segmented control (water gap or demand), or
- * with `stacked` a grouped settings list (the scenarios, the projection's bound).
- */
 defineProps<{
-  /** An optional icon: an SVG path on a 16-unit grid. `tone`, in a stacked group, is its tile's
-   * background class; `about` shows under the active option. */
   views: readonly { id: T; label: string; icon?: string; tone?: string; about?: string }[]
   label: string
-  /** Stacks the options in a column, for labels too long to share one row. */
   stacked?: boolean
 }>()
 const model = defineModel<T>({ required: true })
@@ -40,7 +33,6 @@ const model = defineModel<T>({ required: true })
         :tone="view.tone ?? 'bg-gray-500'"
         :grid="16"
       />
-      <!-- The hairline between rows starts at the label, clear of the tile. -->
       <span
         class="flex min-w-0 flex-1 items-start gap-2 py-2 pr-3 group-not-first/row:border-t group-not-first/row:border-line"
       >

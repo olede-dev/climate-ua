@@ -1,7 +1,6 @@
 import { effectScope, nextTick } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-/** The browser surface `useTheme` touches: `<html>` classes, `localStorage` and the media query. */
 function stubBrowser() {
   const classes = new Set<string>()
   const storage = new Map<string, string>()

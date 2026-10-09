@@ -9,7 +9,6 @@ defineProps<{ buttonClass: string; iconOnly?: boolean }>()
 
 const VALUES: readonly ThemePreference[] = ['auto', 'light', 'dark']
 
-/** 24×24 stroke icons: half-filled circle for auto, sun, moon. */
 const ICONS: Record<ThemePreference, string[]> = {
   auto: ['M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18z', 'M12 3v18a9 9 0 0 0 0-18z'],
   light: [

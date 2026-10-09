@@ -12,7 +12,6 @@ import type {
 } from '../types'
 import { colorAt, type ColorScale } from './scale'
 
-/** Grey, so a basin without data does not read as the ramp's dark «little». */
 const WATER_NO_DATA = '#6e6e73'
 
 export const WATER_SECTORS: readonly WaterSector[] = [
@@ -23,10 +22,8 @@ export const WATER_SECTORS: readonly WaterSector[] = [
 ]
 export const WATER_USE_VIEWS: readonly WaterUseView[] = ['gap', 'demand']
 export const WATER_SCENARIOS: readonly WaterScenario[] = ['SSP1-2.6', 'SSP3-7.0', 'SSP5-8.5']
-/** The projection's periods, known before the file loads so a URL can name one. */
 export const WATER_PERIODS: readonly WaterPeriod[] = ['2021-2035', '2036-2050']
 
-/** One view and sector of `water-use.json` as a layer: history only, no projection. */
 export function waterUseLayer(
   file: WaterUseFile,
   view: WaterUseView,
@@ -48,12 +45,6 @@ export function waterUseLayer(
   }
 }
 
-/**
- * The observed total gap with one scenario's projection after it, as a layer like the climate
- * ones: the years 1980–2019, then the period means, with the yearly extremes of the models as
- * `p10`/`p90` so `atBound` and the range read them the same way. Demand and the sectors have no
- * projection.
- */
 export function waterProjectionLayer(file: WaterUseFile, scenario: WaterScenario): LayerFile {
   const observed = waterUseLayer(file, 'gap', 'total')
   const { country, regions } = file.projection.scenarios[scenario]
@@ -86,7 +77,6 @@ export function hasWaterData(series: RegionSeries): boolean {
   )
 }
 
-/** The layer with every basin that has no water data blanked, so it draws and reads as no data. */
 export function blankEmptyBasins(layer: LayerFile): LayerFile {
   const regions = Object.fromEntries(
     Object.entries(layer.regions).map(([id, series]) => [
@@ -99,16 +89,9 @@ export function blankEmptyBasins(layer: LayerFile): LayerFile {
   return { ...layer, regions }
 }
 
-/**
- * The water layer's traffic light (green, yellow, red), starting from a dark green so that
- * «little» sinks into the dark basemap and more water glows brighter and redder. Lightness rises
- * to the yellow, so the order also reads without colour.
- */
 const RAMP = ['#1d3b28', '#2f9e5a', '#f5d63d', '#f58a2c', '#e5383b'] as const
-/** Where the inner stops sit among the basins' positive values, all years together. */
 const QUANTILES = [0.5, 0.75, 0.9, 0.98] as const
 
-/** Rounds up to one significant digit (1, 2 or 5 times a power of ten), so the legend reads. */
 export function niceCeil(value: number): number {
   if (value <= 0) return 0
   const power = 10 ** Math.floor(Math.log10(value))
@@ -116,10 +99,6 @@ export function niceCeil(value: number): number {
   return step * power
 }
 
-/**
- * A scale fixed for the whole timeline, from 0 to nice values at the quantiles of
- * every basin and year. Volumes differ a hundredfold between sectors, so each has its own.
- */
 export function waterUseScale(layer: LayerFile): ColorScale {
   const values = Object.values(layer.regions)
     .flatMap((series) => series.history)
@@ -142,7 +121,6 @@ export function waterUseScale(layer: LayerFile): ColorScale {
   return { stops, noData: WATER_NO_DATA }
 }
 
-/** The copy of one view and sector, in the shape of a layer's, with the sector worded in. */
 export function waterUseCopy(t: Messages, view: WaterUseView, sector: WaterSector): LayerCopy {
   const use = t.waterUse.sectors[sector].use
   const fill = (text: string) => text.replace('{use}', use)
@@ -184,10 +162,6 @@ export function countryColor(series: RegionSeries, value: number): string {
   return max > min ? colorAt(scale, value) : colors[0]!
 }
 
-/**
- * A basin's split of the view's water between the three uses in an observed year, as shares
- * summing to 1; null when any use has no value or all are zero.
- */
 export function regionSectors(
   file: WaterUseFile,
   view: WaterUseView,

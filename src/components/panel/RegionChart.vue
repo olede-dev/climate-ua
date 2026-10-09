@@ -27,14 +27,11 @@ const props = defineProps<{
   file: LayerFile
   series: RegionSeries
   config: LayerConfig
-  /** The timeline's step, marked on the chart. */
   step: TimeStep
   format: ValueFormat
-  /** What the bars measure, for screen readers. */
   title: string
 }>()
 
-/** Text takes the muted grey for glass (main.css): the chart sits on the glass panel over the map. */
 const PALETTES = {
   light: {
     text: '#5c5c61',
@@ -49,10 +46,8 @@ const PALETTES = {
     mark: '#f5f5f7',
   },
 }
-/** Years between labels on the time axis: long records, then short ones (rivers). */
 const YEAR_TICK = 25
 const SHORT_YEAR_TICK = 10
-/** Alpha of the p10–p90 box, as a hex suffix. */
 const RANGE_ALPHA = '4d'
 
 const { isDark } = useTheme()
@@ -61,7 +56,6 @@ const colors = computed(() => (isDark.value ? PALETTES.dark : PALETTES.light))
 const now = new Date().getFullYear()
 
 const anomalyMode = computed(() => props.config.display === 'anomaly')
-/** Bars and boxes are drawn in the map's units: an anomaly layer subtracts the norm. */
 const shift = computed(() => (anomalyMode.value ? props.series.norm : 0))
 
 const bars = computed(() =>
@@ -181,7 +175,6 @@ const annotations = computed(() => {
   return out
 })
 
-/** The y range covers the bars, the model ranges and the norm line. */
 const yBounds = computed(() => {
   const values = [
     props.series.norm - shift.value,
@@ -203,7 +196,6 @@ const options = computed((): ChartOptions<'bar'> => {
         type: 'linear',
         min: props.file.history.from - 1,
         max: Math.max(lastEnd, now) + 1,
-        // Round years only; the axis ends sit half a year past the data.
         afterBuildTicks: (axis) => {
           const every = axis.max - axis.min > 60 ? YEAR_TICK : SHORT_YEAR_TICK
           const first = Math.ceil(axis.min / every) * every

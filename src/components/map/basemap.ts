@@ -15,15 +15,11 @@ import type { Locale } from '../../i18n'
 
 setWorkerUrl(workerUrl)
 
-/** Basemap colours for each page theme; the map follows the page. */
 const PALETTES: Record<
   Theme,
   {
-    /** OpenFreeMap vector style (OpenMapTiles schema): free, no key, any origin. */
     styleUrl: string
-    /** Muted water, so it frames the data layers without competing with them. */
     water: { fill: string; line: string }
-    /** Place labels drawn over the coloured regions: quiet, with a halo of the background. */
     placeLabel: { color: string; halo: string }
     esriCanvas: string
     esriRelief: string
@@ -60,7 +56,6 @@ const ESRI_CANVAS_URL = (style: string) =>
 const ESRI_RELIEF_URL = (style: string) =>
   `https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/${style}/MapServer/tile/{z}/{y}/{x}`
 
-/** Shaded relief over the basemap fills and under its labels. */
 function reliefLayers(theme: Theme): Pick<StyleSpecification, 'sources' | 'layers'> {
   return {
     sources: {
@@ -83,7 +78,6 @@ function reliefLayers(theme: Theme): Pick<StyleSpecification, 'sources' | 'layer
   }
 }
 
-/** Raster style used when the OpenFreeMap style cannot be loaded. */
 function esriStyle(theme: Theme): StyleSpecification {
   const relief = reliefLayers(theme)
   return {
@@ -102,11 +96,6 @@ function esriStyle(theme: Theme): StyleSpecification {
   }
 }
 
-/**
- * Mutes the water, switches labels to the interface language (Latin names as fallback)
- * hides every label inside the `hiddenLabels` countries and slides the relief in under the
- * first label layer.
- */
 function adaptStyle(
   style: StyleSpecification,
   locale: Locale,
@@ -156,10 +145,8 @@ function adaptStyle(
   return { ...style, sources: { ...style.sources, ...relief.sources }, layers }
 }
 
-/** Place labels over satellite imagery: light text on a dark halo, whatever the theme. */
 const IMAGERY_LABEL = { color: '#ffffff', halo: 'rgba(0, 0, 0, 0.75)' }
 
-/** Recolours the place labels for the satellite focus view, or back to the theme's. */
 export function setPlaceLabelsOnImagery(map: MaplibreMap, theme: Theme, onImagery: boolean) {
   const { color, halo } = onImagery ? IMAGERY_LABEL : PALETTES[theme].placeLabel
   for (const layer of map.getStyle().layers) {
@@ -169,7 +156,6 @@ export function setPlaceLabelsOnImagery(map: MaplibreMap, theme: Theme, onImager
   }
 }
 
-/** Label mask, or null (all labels shown) when it cannot be loaded. */
 async function loadHiddenLabels(): Promise<HiddenLabelsFile | null> {
   try {
     const response = await fetch(`${import.meta.env.BASE_URL}${HIDDEN_LABELS_PATH}`)
@@ -181,13 +167,8 @@ async function loadHiddenLabels(): Promise<HiddenLabelsFile | null> {
   }
 }
 
-/** Which basemap is drawn; the footer credits its providers (the map has no attribution). */
 export type BasemapKind = 'openfreemap' | 'esri'
 
-/**
- * OpenFreeMap vector style for a label language and theme, or the Esri raster style of that
- * theme when the vector style fails to load.
- */
 export async function basemapStyle(
   locale: Locale,
   theme: Theme,

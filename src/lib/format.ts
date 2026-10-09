@@ -1,6 +1,5 @@
 import type { Locale } from '../i18n'
 
-/** Regional variants for `Intl`: uk-UA writes a decimal comma. */
 const INTL_LOCALES: Record<Locale, string> = { uk: 'uk-UA', en: 'en-GB' }
 const MINUS = '−'
 const NBSP = ' '
@@ -21,10 +20,6 @@ function numberFormat(locale: Locale, decimals: number, signed: boolean): Intl.N
   return format
 }
 
-/**
- * A number with a typographic minus, e.g. `+1,2` or `−0,4`. A value that rounds to zero is
- * written without a sign, so `−0,0` never shows.
- */
 export function formatNumber(
   value: number,
   locale: Locale,
@@ -36,12 +31,10 @@ export function formatNumber(
     .replace('-', MINUS)
 }
 
-/** A period for display: `2041-2060` → `2041–2060`. */
 export function formatPeriod(period: string): string {
   return period.replace('-', '–')
 }
 
-/** Word forms by plural category; a form left out falls back to `other`. */
 export type PluralForms = Partial<Record<Intl.LDMLPluralRule, string>> & { other: string }
 
 const pluralRules = new Map<string, Intl.PluralRules>()
@@ -64,10 +57,8 @@ export function plural(count: number, locale: Locale, forms: PluralForms, decima
   return forms[rules.select(Math.abs(Number(count.toFixed(decimals))))] ?? forms.other
 }
 
-/** A fixed symbol (`°C`, `%`) or a word that agrees with the number (`дні`, `днів`). */
 export type Unit = string | PluralForms
 
-/** A number with its unit, kept on one line: `+1,2 °C`, `5 днів`. */
 export function formatWithUnit(
   value: number,
   unit: Unit,
@@ -78,10 +69,6 @@ export function formatWithUnit(
   return `${formatNumber(value, locale, options)}${NBSP}${word}`
 }
 
-/**
- * Numbers as a layer writes them: with its unit unless `unit: false`, signed on request, and
- * with the layer's decimals unless `decimals` overrides them (whole-number axis ticks).
- */
 export type ValueFormat = (
   value: number,
   options?: { unit?: boolean; signed?: boolean; decimals?: number },

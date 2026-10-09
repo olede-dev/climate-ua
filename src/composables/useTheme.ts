@@ -1,7 +1,6 @@
 import { computed, effectScope, readonly, ref, watchEffect, type ComputedRef, type Ref } from 'vue'
 
 export type Theme = 'light' | 'dark'
-/** `auto` follows the system `prefers-color-scheme`. */
 export type ThemePreference = 'auto' | Theme
 
 /** Same key and class as the inline script in `index.html`, which applies the theme before paint. */
@@ -9,7 +8,6 @@ const STORAGE_KEY = 'theme'
 const DARK_CLASS = 'dark'
 const THEME_COLORS: Record<Theme, string> = { light: '#f5f5f7', dark: '#121214' }
 
-/** `localStorage`, or `null` where the browser blocks it (private mode, disabled site data). */
 function browserStorage(): Storage | null {
   try {
     return window.localStorage
@@ -18,7 +16,6 @@ function browserStorage(): Storage | null {
   }
 }
 
-/** Only an explicit choice is stored; a missing or unknown value means `auto`. */
 function readPreference(storage: Storage | null): ThemePreference {
   const value = storage?.getItem(STORAGE_KEY)
   return value === 'light' || value === 'dark' ? value : 'auto'
@@ -31,7 +28,6 @@ interface ThemeState {
 
 let state: ThemeState | undefined
 
-/** App-wide singleton: the listener and the `<html>` class live as long as the page. */
 function createThemeState(): ThemeState {
   const storage = browserStorage()
   const preference = ref(readPreference(storage))
@@ -56,7 +52,6 @@ function createThemeState(): ThemeState {
   return { preference, theme }
 }
 
-/** Light or dark colour theme: the system preference (`auto`) until the user picks one. */
 export function useTheme() {
   // A detached scope: created inside a component's setup, the watchers would otherwise stop
   // when that component unmounts, leaving the `<html>` class stale while the state changes.

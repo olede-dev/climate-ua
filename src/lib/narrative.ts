@@ -4,7 +4,6 @@ import { formatPeriod, type ValueFormat } from './format'
 import { valueAt } from './series'
 import { isFuture, type TimeStep } from './time'
 
-/** A run of sentence text; `strong` runs are the numbers the reader came for. */
 export interface Segment {
   text: string
   strong?: boolean
@@ -12,7 +11,6 @@ export interface Segment {
 
 export type Rich = Segment[]
 
-/** Bold text, for a `fill` slot. */
 export function strong(text: string): Rich {
   return [{ text, strong: true }]
 }
@@ -30,7 +28,6 @@ export function fill(template: string, slots: Record<string, string | Rich>): Ri
     else out.push({ ...segment })
   }
   template.split(/(\{\w+\})/).forEach((part, i) => {
-    // Odd parts are the captured `{name}` slots.
     const slot = i % 2 === 1 ? slots[part.slice(1, -1)] : undefined
     if (slot === undefined) push({ text: part })
     else if (typeof slot === 'string') push({ text: slot })
@@ -39,7 +36,6 @@ export function fill(template: string, slots: Record<string, string | Rich>): Ri
   return out
 }
 
-/** Joins sentences with a space. */
 function joinSentences(sentences: Rich[]): Rich {
   return fill(
     sentences.map((_, i) => `{${i}}`).join(' '),
@@ -54,7 +50,6 @@ const LOCATIVE_ENDINGS: [RegExp, string][] = [
   [/^область$/, 'області'],
 ]
 
-/** An oblast's Ukrainian name in the locative: «Харківська область» → «Харківській області». */
 export function locativeUk(name: string): string {
   return name
     .split(' ')
@@ -65,7 +60,6 @@ export function locativeUk(name: string): string {
     .join(' ')
 }
 
-/** «у Харківській області», «в Одеській області»; `in Kharkiv Oblast`. */
 export function inRegion(name: string, locale: Locale): string {
   if (locale === 'en') return `in ${name}`
   // Before a vowel Ukrainian takes «в»: «в Одеській», not «у Одеській».
@@ -73,31 +67,20 @@ export function inRegion(name: string, locale: Locale): string {
   return `${preposition} ${locativeUk(name)}`
 }
 
-/** Per-layer sentences; slots are listed with each template. */
 export interface LayerStoryCopy {
-  /** `{year}`, `{where}`, `{value}`, `{delta}`. */
   observed: string
-  /** `{period}`, `{value}`, `{range}`, `{delta}`. */
   future: string
-  /** `{delta}`: the difference from the norm, unsigned. */
   above: string
   below: string
-  /** The difference rounds to zero. */
   same: string
 }
 
-/** Sentences shared by every layer. */
 export interface StoryCopy {
-  /** `{low}`, `{high}`: the model range after a projected value. */
   range: string
-  /** `{period}`, `{edge}`, `{value}`, `{delta}`: a projection at the low or high end. */
   futureEdge: string
   edges: Record<Exclude<ProjectionBound, 'median'>, string>
-  /** `{year}`. */
   missingYear: string
-  /** `{period}`. */
   missingPeriod: string
-  /** For a layer without projections. */
   noForecast: string
 }
 
@@ -105,19 +88,12 @@ export interface StoryInput {
   file: LayerFile
   series: RegionSeries
   step: TimeStep
-  /** The projection to name while the timeline is on an observed year; null: there is none. */
   headline: FuturePeriod | null
-  /**
-   * The value of the models' range `series` holds (`atBound`): the median is told with its range,
-   * an end of the range is named as one, never as what to expect.
-   */
   bound: ProjectionBound
-  /** «в Україні», «у Харківській області». */
   where: string
   layerCopy: LayerStoryCopy
   copy: StoryCopy
   format: ValueFormat
-  /** Decimals `format` writes; the difference is taken between the numbers as shown. */
   decimals: number
 }
 
@@ -131,7 +107,6 @@ function deltaPhrase(value: number, norm: number, input: StoryInput): Rich {
   })
 }
 
-/** The year the story calls «now»: the year on the timeline, or the last observed one. */
 function observedYear(input: StoryInput): number {
   return isFuture(input.step) ? input.file.history.to : input.step
 }
@@ -176,7 +151,6 @@ function futureSentence(input: StoryInput): Rich {
   })
 }
 
-/** The headline for the whole country: what the observed year was, what the projection is. */
 export function summaryStory(input: StoryInput): Rich {
   return joinSentences([observedSentence(input), futureSentence(input)])
 }

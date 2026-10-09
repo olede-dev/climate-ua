@@ -21,7 +21,6 @@ const props = defineProps<{
 const step = defineModel<TimeStep>({ required: true })
 const playing = defineModel<boolean>('playing', { required: true })
 
-/** Pace of the timelapse: a year flicks by, a period holds. */
 const YEAR_MS = 150
 const PERIOD_MS = 1000
 
@@ -60,7 +59,6 @@ watch(
   playing,
   (on) => {
     if (!on) return clearTimeout(timer)
-    // From the end, start over; otherwise continue from the current step.
     if (nextStep(props.axis, step.value) === null) step.value = steps.value[0]!
     schedule()
   },
@@ -68,7 +66,6 @@ watch(
 )
 onBeforeUnmount(() => clearTimeout(timer))
 
-/** A manual move takes over from playback. */
 function moveTo(target: TimeStep | null) {
   playing.value = false
   if (target !== null) step.value = target
@@ -107,17 +104,14 @@ function onPointerMove(event: PointerEvent) {
   if ((event.currentTarget as HTMLElement).hasPointerCapture(event.pointerId)) pick(event)
 }
 
-/** Where the pointer hovers over the track, 0 to 1; null when it is elsewhere. */
 const hoverAt = ref<number | null>(null)
 const dragging = ref(false)
 const stepName = (target: TimeStep) => (isFuture(target) ? formatPeriod(target) : String(target))
-/** The step under the pointer, named above the track before a click. */
 const preview = computed(() => {
   if (hoverAt.value === null || dragging.value) return null
   const target = stepAtPosition(props.axis, hoverAt.value)
   return { label: stepName(target), at: stepPosition(props.axis, target) }
 })
-/** A tick every decade of the observed years. */
 const decades = computed(() => {
   const out: { year: number; at: number }[] = []
   for (let year = Math.ceil(props.axis.from / 10) * 10; year <= props.axis.to; year += 10) {
@@ -125,12 +119,10 @@ const decades = computed(() => {
   }
   return out
 })
-/** The decades named under the track: every second one on a long axis, so they never crowd. */
 const labelled = computed(() => {
   const every = props.axis.to - props.axis.from > 50 ? 20 : 10
   return decades.value.filter((tick) => tick.year % every === 0)
 })
-/** The future view: only projection periods, no observed years. */
 const periodsOnly = computed(() => props.axis.to < props.axis.from)
 const prev = computed(() => prevStep(props.axis, step.value))
 const next = computed(() => nextStep(props.axis, step.value))
@@ -146,7 +138,6 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 
 <template>
   <div class="glass pointer-events-auto rounded-2xl px-2.5 py-2 shadow-float sm:px-3">
-    <!-- One row: play, the step and its arrows, then the track. -->
     <div class="flex items-center gap-2 sm:gap-3">
       <button
         type="button"
@@ -170,7 +161,6 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
         </svg>
       </button>
 
-      <!-- Projection periods alone: a few named choices, not a track. -->
       <div
         v-if="periodsOnly"
         class="flex min-w-0 flex-1 rounded-[9px] bg-fill p-0.5"
@@ -244,7 +234,6 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
       </div>
 
       <div v-if="!periodsOnly" class="flex min-w-0 flex-1 flex-col sm:pt-3.5">
-        <!-- Observed years as one continuous track, then the future periods as separate steps. -->
         <div
           ref="track"
           class="relative h-6 touch-none rounded-full select-none focus-ring"
@@ -280,14 +269,12 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
               width: `calc(${percent(slot.end - slot.start)} - 4px)`,
             }"
           ></span>
-          <!-- A tick every decade, so a year can be found by eye. -->
           <span
             v-for="tick in decades"
             :key="tick.year"
             class="pointer-events-none absolute top-1/2 h-2.5 w-px -translate-1/2 bg-ink/30"
             :style="{ left: percent(tick.at) }"
           ></span>
-          <!-- The step a click would pick. -->
           <template v-if="preview">
             <span
               class="pointer-events-none absolute top-1/2 size-2.5 -translate-1/2 rounded-full bg-ink/50"
@@ -332,7 +319,6 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
         </div>
       </div>
     </div>
-    <!-- Something read with the timeline, such as the map's legend. -->
     <div v-if="$slots.default" class="mt-1.5 border-t border-ink/10 pt-2">
       <slot />
     </div>
@@ -340,7 +326,6 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 </template>
 
 <style scoped>
-/* Diagonal strokes on the future steps, matching the hatching on the map. */
 .hatch {
   background-image: repeating-linear-gradient(-45deg, currentColor 0 1.5px, transparent 1.5px 5px);
 }

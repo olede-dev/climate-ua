@@ -1,6 +1,5 @@
 import type { Locale } from '../i18n'
 
-/** A Köppen–Geiger class in plain words: its name and what it means for a person. */
 export interface KoppenText {
   name: string
   meaning: string
@@ -109,7 +108,6 @@ const CLASSES: Record<string, Texts> = {
   },
 }
 
-/** By main group, for a class not listed above. */
 const GROUPS: Record<string, Texts> = {
   A: {
     uk: { name: 'тропічний', meaning: 'Спекотно цілий рік.' },
@@ -133,7 +131,6 @@ const GROUPS: Record<string, Texts> = {
   },
 }
 
-/** Plain-language name and meaning of a class such as `Dfb`; null for an unknown code. */
 export function koppenText(code: string, locale: Locale): KoppenText | null {
   return (CLASSES[code] ?? GROUPS[code.charAt(0)])?.[locale] ?? null
 }

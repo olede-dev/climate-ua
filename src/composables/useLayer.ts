@@ -14,7 +14,6 @@ import type {
   WaterUseFile,
 } from '../types'
 
-/** A static JSON file under `public/`, versioned with the site. */
 async function fetchStatic<T>(path: string): Promise<T> {
   const response = await fetch(`${import.meta.env.BASE_URL}${path}`)
   if (!response.ok) throw new Error(`${path}: HTTP ${response.status}`)
@@ -26,11 +25,6 @@ const RIVERS_QUERY = {
   queryFn: () => fetchStatic<RiversFile>(layerConfig('rivers').path),
 }
 
-/**
- * A layer file by id; null loads nothing (the water layer reads `useWaterUse`). `staleTime:
- * Infinity` comes from the client defaults. The rivers layer is built from `rivers.json`, which
- * `useRivers` shares.
- */
 export function useLayer(id: MaybeRefOrGetter<LayerId | null>) {
   const client = useQueryClient()
   const layer = computed(() => toValue(id))
@@ -44,12 +38,10 @@ export function useLayer(id: MaybeRefOrGetter<LayerId | null>) {
   })
 }
 
-/** River stations with their places and coordinates. */
 export function useRivers(enabled: MaybeRefOrGetter<boolean> = true) {
   return useQuery({ ...RIVERS_QUERY, enabled: computed(() => toValue(enabled)) })
 }
 
-/** Water demand and the gap by sector and year, for the water layer's history views. */
 export function useWaterUse(enabled: MaybeRefOrGetter<boolean>) {
   return useQuery({
     queryKey: ['water-use'],
@@ -72,7 +64,6 @@ export function useBasins() {
   })
 }
 
-/** Köppen–Geiger classes by oblast, for the climate analogue. */
 export function useKoppen() {
   return useQuery({
     queryKey: ['koppen'],
@@ -80,7 +71,6 @@ export function useKoppen() {
   })
 }
 
-/** A climate layer's ERA5 cells for the map raster; null loads nothing (no grid for the layer). */
 export function useGrid(path: MaybeRefOrGetter<string | null>) {
   const file = computed(() => toValue(path))
   return useQuery({

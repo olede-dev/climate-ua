@@ -8,10 +8,6 @@ import { colorAt } from '../../lib/scale'
 import type { SummaryRow } from '../../lib/summary'
 import type { LayerFile, RegionSeries } from '../../types'
 
-/**
- * The big number against the norm, drawn instead of told: a track over the region's whole
- * record in the map's colours, a tick at the norm and a dot at the value on screen.
- */
 const props = defineProps<{
   rows: SummaryRow[]
   file: LayerFile
@@ -30,12 +26,10 @@ const shown = computed(
     props.rows.find((row) => row.kind === 'observed'),
 )
 
-/** The observed record's lowest and highest value. */
 const record = computed(() => {
   const values = props.series.history.filter((value): value is number => value !== null)
   return { low: Math.min(...values), high: Math.max(...values) }
 })
-/** The record's span, widened to take the norm and the value on screen (a projection may leave it). */
 const span = computed(() => {
   const values = [record.value.low, record.value.high, norm.value]
   const value = shown.value?.value
@@ -48,7 +42,6 @@ const at = (value: number) =>
   `${((value - span.value.low) / (span.value.high - span.value.low)) * 100}%`
 const toMap = (value: number) => (props.config.display === 'anomaly' ? value - norm.value : value)
 
-/** The map's colours along the track, so the bar reads as a slice of the legend. */
 const gradient = computed(() => {
   const { low, high } = span.value
   const stops = Array.from({ length: 9 }, (_, i) => {
@@ -62,10 +55,6 @@ const when = computed(() => {
   const step = shown.value?.when
   return step == null ? '' : typeof step === 'number' ? String(step) : formatPeriod(step)
 })
-/**
- * The track's ends, named for what they are: the record's lowest and highest year (the coldest
- * and warmest for temperature), or the projection where it reaches past the record.
- */
 const ends = computed(() => {
   const bar = t.value.panel.normBar
   const named =
@@ -82,7 +71,6 @@ const valueColor = computed(() => {
   const mapValue = shown.value?.mapValue
   return mapValue == null ? null : colorAt(props.config.scale, mapValue)
 })
-/** A marker's label, kept inside the bar's ends. */
 const labelAt = (value: number) => {
   const share = (value - span.value.low) / (span.value.high - span.value.low)
   return { left: `${Math.min(85, Math.max(15, share * 100))}%` }

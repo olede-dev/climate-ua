@@ -1,6 +1,4 @@
-/** Ukrainian UI copy; the source of truth for the `Messages` shape every locale fills. */
 export const uk = {
-  /** Value of the `lang` attribute and the BCP 47 tag for `Intl`. */
   htmlLang: 'uk',
   documentTitle: 'Клімат України — минуле і майбутнє',
   documentDescription:
@@ -145,36 +143,27 @@ export const uk = {
     hint: 'Оберіть регіон, щоб відкрити його картку.',
   },
   panel: {
-    /** `{year}`: the end of the last projection period. */
     futureHint: 'Прогноз до {year} року',
     back: 'Україна',
-    /** `{place}`, `{of}`. */
     rank: 'Місце {place} з {of} за величиною',
-    /** The bound tabs of a climate projection. */
     bounds: { min: 'Мін', median: 'Медіана', max: 'Макс' },
-    /** Under the picked bound tab. */
     boundsAbout: {
       min: 'Нижня межа: лише 10 % моделей дають менше.',
       median: 'Середина: половина моделей дає менше, половина — більше.',
       max: 'Верхня межа: лише 10 % моделей дають більше.',
     },
-    /** Over the bound tabs, climate and water alike. */
     boundsTitle: 'Що показати на мапі',
     normBar: {
       usual: 'норма',
-      /** The track's ends: the lowest and highest year on record. */
       low: 'найменше',
       high: 'найбільше',
       lowTemp: 'найхолодніший рік',
       highTemp: 'найтепліший рік',
       noteToggle: 'Що таке норма?',
-      /** `{norm}`, `{record}`. */
       note: 'Норма — середнє за {norm}, за стандартом ВМО. Краї шкали — найменше і найбільше значення за {record} або прогноз, якщо він виходить за них.',
     },
-    /** The big number's caption on a climate layer: `{title}`, `{when}`, `{delta}`. */
     headline: '{title} у {when} — {delta}.',
     normNote: 'Норма — середнє за {period}: {value}.',
-    /** `{delta}`. */
     moreThanUsual: 'на {delta} більше за норму',
     lessThanUsual: 'на {delta} менше за норму',
     close: 'Закрити картку регіону',
@@ -183,30 +172,23 @@ export const uk = {
   story: {
     country: 'в Україні',
     range: ' (80 % моделей — від {low} до {high})',
-    /** A projection at an end of the models' range: `{period}`, `{edge}`, `{value}`, `{delta}`. */
     futureEdge: 'У {period} {edge} — {value}, {delta}.',
     edges: { min: 'нижня межа прогнозу', max: 'верхня межа прогнозу' },
     missingYear: 'За {year} рік даних немає.',
     missingPeriod: 'Прогнозу на {period} немає.',
     noForecast: 'Прогнозу для річок немає.',
-    /** `{n}`: how many stations the country figure averages. */
     stations: 'на {n} річкових станціях у середньому',
   },
   chart: {
     now: 'Зараз',
-    /** `{title}`, `{from}`, `{to}`, `{end}`. */
     aria: '{title}: стовпчики по роках {from}–{to}, далі прогноз періодами до {end}.',
-    /** A layer without projections: `{title}`, `{from}`, `{to}`. */
     ariaHistory: '{title}: стовпчики по роках {from}–{to}.',
   },
   basin: {
-    /** `{river}`. */
     named: 'Басейн річки {river}',
     namedWhere: 'у басейні річки {river}',
-    /** `{where}`: «у Луганській області». */
     unnamed: 'Суббасейн {where}',
     unnamedWhere: 'у цьому суббасейні',
-    /** `{year}`. */
     sectors: 'На що забирали воду у {year} році',
     irrigation: 'Зрошення',
     domestic: 'Побут',
@@ -215,7 +197,6 @@ export const uk = {
       'Каховське водосховище зруйноване в червні 2023 року. Дані (до 2019 року) і прогноз цього не враховують.',
   },
   station: {
-    /** `{river}`, `{place}`. */
     name: '{river} — {place}',
     where: 'на річці {river} ({place})',
     regulated:
@@ -224,7 +205,6 @@ export const uk = {
   koppen: {
     title: 'Тип клімату за Кеппеном',
     now: 'Зараз',
-    /** `{scenario}`. */
     note: 'Тип клімату — за Beck et al. (2023), прогноз за сценарієм {scenario}; клас, що займає найбільшу частину області.',
   },
   waterUse: {
@@ -244,7 +224,6 @@ export const uk = {
         max: 'Найбільший окремий рік періоду серед усіх моделей.',
       },
     },
-    /** After a projected period mean: the single years around it. `{low}`, `{high}`. */
     range: ' (в окремі роки моделі дають від {low} до {high})',
     rangeYears: 'в окремі роки від {low} до {high}',
     scenarios: {
@@ -292,7 +271,6 @@ export const uk = {
         about: 'Охолодження електростанцій, металургія, хімія та гірництво.',
       },
     },
-    /** `{use}`: a sector's `use`. */
     gap: {
       legendTitle: 'Дефіцит води {use}',
       chartTitle: 'Дефіцит води, км³',
@@ -324,7 +302,6 @@ export const uk = {
     norm: 'середнє 1990–2019',
   },
   layers: {
-    /** The rest of the water copy is `waterUse`, per view and sector (`waterUseCopy`). */
     water: { name: 'Вода' },
     temp: {
       name: 'Температура',

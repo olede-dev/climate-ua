@@ -25,7 +25,6 @@ import numpy as np
 import config
 from common import ukraine_subbasins, write_json
 
-#: Per view: the service field prefix, m³ → the unit written, the unit and the decimals kept.
 VIEWS = {
     "demand": ("demand_historical", 1e-9, "km³", 3),
     "gap": ("gap_historical", 1e-9, "km³", 3),
@@ -35,7 +34,6 @@ MIN_SHARE = 0.01
 
 
 def parse(text: str | float | None, years: int) -> np.ndarray:
-    """A `|`-joined series; a basin with none (sea, missing; NaN once read) is zeros."""
     if not isinstance(text, str) or not text:
         return np.zeros(years)
     values = np.array([float(v) for v in text.split("|")])
@@ -45,7 +43,6 @@ def parse(text: str | float | None, years: int) -> np.ndarray:
 
 
 def shares(basins: gpd.GeoDataFrame, source: gpd.GeoDataFrame) -> np.ndarray:
-    """Share of each source basin's area inside each of ours: (ours, source)."""
     ours = basins[["id", "geometry"]].to_crs(config.EQUAL_AREA_CRS)
     theirs = source[["geometry"]].to_crs(config.EQUAL_AREA_CRS).reset_index(names="j")
     area = theirs.geometry.area.values
@@ -68,7 +65,6 @@ def series(values: np.ndarray, years: np.ndarray, scale: float, decimals: int) -
 
 
 def in_years(first: int, years: tuple[int, int]) -> slice:
-    """Positions of `years` (inclusive) in a yearly series that starts in `first`."""
     return slice(years[0] - first, years[1] - first + 1)
 
 
@@ -104,7 +100,6 @@ def main() -> None:
     future_years = config.WWM_FUTURE[1] - config.WWM_FUTURE[0] + 1
 
     def field(name: str, length: int) -> np.ndarray:
-        """(ours, year): the service series summed over our basins by area share."""
         return weights @ np.stack([parse(text, length) for text in source[name]])
 
     views = {}

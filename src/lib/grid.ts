@@ -4,17 +4,14 @@ import { colorAt, type ColorScale } from './scale'
 import { isFuture, type TimeStep } from './time'
 import type { GridFile, ProjectionBound } from '../types'
 
-/** Canvas pixels per grid cell across: enough for a crisp clip along the border at zoom 7. */
 const PIXELS_PER_CELL = 12
 
 const GRID_KEYS = { min: 'p10', median: 'median', max: 'p90' } as const
 
-/** Web Mercator y of a latitude, unscaled. */
 function mercatorY(lat: number): number {
   return Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360))
 }
 
-/** The block's corners for a MapLibre image source: top left, top right, bottom right, bottom left. */
 export function gridCorners(file: GridFile): [number, number][] {
   const east = file.west + file.cols * file.step
   const north = file.south + file.rows * file.step
@@ -26,10 +23,6 @@ export function gridCorners(file: GridFile): [number, number][] {
   ]
 }
 
-/**
- * Each cell's value at a step, as the map shows it: a projection at the chosen bound (p10, median
- * or p90, like `atBound`), and with `anomaly` the difference from the cell's own norm.
- */
 export function gridValues(
   file: GridFile,
   step: TimeStep,
@@ -67,10 +60,6 @@ function colorTable(scale: ColorScale): { lut: Uint8ClampedArray; min: number; m
   return table
 }
 
-/**
- * The blend of four cells by bilinear weights; cells without a value drop out and the rest share
- * their weight. `i…` are cell indexes, `fr` and `fc` the position between them, 0 to 1.
- */
 function blend(
   values: (number | null)[],
   i00: number,
@@ -110,18 +99,12 @@ function blend(
   return weight > 0 ? sum / weight : null
 }
 
-/** The two cells either side of a position along an axis of `n` cells, clamped, and the share. */
 function neighbours(position: number, n: number): [number, number, number] {
   const lower = Math.floor(position)
   const clamp = (i: number) => Math.min(n - 1, Math.max(0, i))
   return [clamp(lower), clamp(lower + 1), position - lower]
 }
 
-/**
- * A value between cell centres, blended from the four nearest cells by distance (bilinear);
- * cells without a value drop out and the rest share their weight. `row` and `col` are in cell
- * units from the centre of the first cell.
- */
 export function sampleGrid(file: GridFile, values: (number | null)[], row: number, col: number) {
   const [r0, r1, fr] = neighbours(row, file.rows)
   const [c0, c1, fc] = neighbours(col, file.cols)
@@ -129,19 +112,12 @@ export function sampleGrid(file: GridFile, values: (number | null)[], row: numbe
   return blend(values, r0 * cols + c0, r0 * cols + c1, r1 * cols + c0, r1 * cols + c1, fr, fc)
 }
 
-/**
- * Where each canvas row and column samples the grid, and the canvas size: fixed for a file, so
- * the timelapse works it out once, not for each of half a million pixels at every step.
- */
 interface Raster {
   width: number
   height: number
-  /** Map position to canvas pixels. */
   x: (lon: number) => number
   y: (lat: number) => number
-  /** Per canvas row: the cell row above and below (times `cols`), and the share between them. */
   rows: { lower: Int32Array; upper: Int32Array; share: Float64Array }
-  /** Per canvas column: the cell column left and right, and the share between them. */
   cols: { lower: Int32Array; upper: Int32Array; share: Float64Array }
 }
 
@@ -186,7 +162,6 @@ function raster(file: GridFile): Raster {
   return result
 }
 
-/** The clip as an opaque shape on its own canvas, drawn once per set of polygons and file. */
 const masks = new WeakMap<
   (Polygon | MultiPolygon)[],
   { file: GridFile; canvas: HTMLCanvasElement }
@@ -272,7 +247,6 @@ export function paintGrid(
     }
   }
 
-  // The field, then everything outside the clip cut away.
   const ctx = canvas.getContext('2d')!
   ctx.putImageData(image, 0, 0)
   ctx.globalCompositeOperation = 'destination-in'

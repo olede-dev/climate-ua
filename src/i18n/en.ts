@@ -146,19 +146,15 @@ export const en: Messages = {
     hint: 'Pick a region to open its card.',
   },
   panel: {
-    /** `{year}`: the end of the last projection period. */
     futureHint: 'Projection to {year}',
     back: 'Ukraine',
     rank: 'Place {place} of {of} by size',
-    /** The bound tabs of a climate projection. */
     bounds: { min: 'Min', median: 'Median', max: 'Max' },
-    /** Under the picked bound tab. */
     boundsAbout: {
       min: 'The low end: only 10% of the models give less.',
       median: 'The middle: half the models give less, half give more.',
       max: 'The high end: only 10% of the models give more.',
     },
-    /** Over the bound tabs, climate and water alike. */
     boundsTitle: 'What the map shows',
     normBar: {
       usual: 'norm',
@@ -171,7 +167,6 @@ export const en: Messages = {
     },
     headline: '{title} in {when}: {delta}.',
     normNote: 'The norm is the {period} average: {value}.',
-    /** `{delta}`. */
     moreThanUsual: '{delta} above the norm',
     lessThanUsual: '{delta} below the norm',
     close: 'Close the region card',
@@ -180,7 +175,6 @@ export const en: Messages = {
   story: {
     country: 'in Ukraine',
     range: ' (80% of models: {low} to {high})',
-    /** A projection at an end of the models' range: `{period}`, `{edge}`, `{value}`, `{delta}`. */
     futureEdge: 'For {period}, {edge} is {value}, {delta}.',
     edges: { min: 'the low end of the projection', max: 'the high end of the projection' },
     missingYear: 'There is no data for {year}.',
@@ -232,7 +226,6 @@ export const en: Messages = {
         max: 'The highest single year of the period across all models.',
       },
     },
-    /** After a projected period mean: the single years around it. `{low}`, `{high}`. */
     range: ' (single years in the models: {low} to {high})',
     rangeYears: 'single years: {low} to {high}',
     scenarios: {
@@ -282,7 +275,6 @@ export const en: Messages = {
         about: 'Cooling power plants, steel, chemicals and mining.',
       },
     },
-    /** `{use}`: a sector's `use`. */
     gap: {
       legendTitle: 'Water gap {use}',
       chartTitle: 'Water gap, km³',
@@ -314,7 +306,6 @@ export const en: Messages = {
     norm: '1990–2019 average',
   },
   layers: {
-    /** The rest of the water copy is `waterUse`, per view and sector (`waterUseCopy`). */
     water: { name: 'Water' },
     temp: {
       name: 'Temperature',

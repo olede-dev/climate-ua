@@ -1,5 +1,3 @@
-"""Downloads, JSON output and the region geometry shared by the build scripts."""
-
 import json
 import urllib.request
 from pathlib import Path
@@ -14,7 +12,6 @@ import config
 
 
 def download(url: str, target: Path) -> Path:
-    """Downloads `url` once; later runs reuse the file under `data/raw`."""
     if not target.exists():
         target.parent.mkdir(parents=True, exist_ok=True)
         print(f"Downloading {url}")
@@ -23,7 +20,6 @@ def download(url: str, target: Path) -> Path:
 
 
 def write_json(path: Path, data: Any) -> int:
-    """Compact UTF-8 JSON; returns its size in bytes."""
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
     path.write_text(text + "\n", encoding="utf-8")
@@ -31,7 +27,6 @@ def write_json(path: Path, data: Any) -> int:
 
 
 def land_regions() -> gpd.GeoDataFrame:
-    """The 25 regions, clipped to land, in full detail: `id`, `uk`, `en`, geometry."""
     adm1 = gpd.read_file(download(config.GEOBOUNDARIES_URL, config.RAW_DIR / "geoboundaries-UKR-ADM1.geojson"))
     land = gpd.read_file(download(config.NATURAL_EARTH_UKR_URL, config.RAW_DIR / "ne_10m_admin_0_countries_ukr.geojson"))
     ukraine = land[land["ADM0_A3"] == "UKR"].geometry.union_all()
@@ -50,7 +45,6 @@ def land_regions() -> gpd.GeoDataFrame:
 
 
 def ukraine_outline():
-    """Ukraine on land, as the union of the regions: basins end where the oblasts do."""
     return land_regions().geometry.union_all()
 
 

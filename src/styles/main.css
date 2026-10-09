@@ -3,14 +3,9 @@
 /* Dark mode follows the `dark` class on <html>, set by useTheme (and index.html before paint). */
 @custom-variant dark (&:where(.dark, .dark *));
 
-/*
- * Design tokens. Components use these names, not raw palette colours, so one place switches the light and dark appearance. Data colours (layer
- * scales, chart series) are separate and stay in their own config.
- */
 :root {
   --ui-canvas: #f5f5f7;
   --ui-surface: #ffffff;
-  /* Inset grouped rows on a surface. */
   --ui-group: #f5f5f7;
   --ui-glass: rgb(255 255 255 / 0.86);
   /* Muted text on glass over the dark map: 4.9:1 at worst (over the darkest map colour). */
@@ -24,7 +19,6 @@
   --ui-accent: #0071e3;
   --ui-accent-hover: #0062c4;
   --ui-accent-ink: #0066cc;
-  /* Marks the projection: the future button and the panel outlines while a future step is shown. */
   --ui-future: #7c3aed;
   /* Warnings: a caveat that changes how the data reads. Ink is 7:1 on the fill. */
   --ui-warn: #f59e0b;
@@ -82,7 +76,6 @@
   --color-warn: var(--ui-warn);
   --color-warn-fill: var(--ui-warn-fill);
   --color-warn-ink: var(--ui-warn-ink);
-  /* A hairline ring plus a soft drop: cards and floating panels. */
   --shadow-card: 0 0 0 0.5px var(--ui-ring), 0 1px 3px var(--ui-shadow-color);
   --shadow-float: 0 0 0 0.5px var(--ui-ring), 0 8px 28px var(--ui-shadow-color);
 }
@@ -181,12 +174,9 @@
   }
 }
 
-/* The map is dark in both themes; its background shows before tiles arrive. */
 .maplibregl-map {
   background: #0e0e10;
 }
-
-/* MapLibre's controls, restyled to match the floating panels. */
 
 .maplibregl-ctrl-group:not(:empty) {
   overflow: hidden;
@@ -210,7 +200,6 @@
   filter: invert(1);
 }
 
-/* While a future step is shown, the accent turns to the projection colour across the interface. */
 .is-future {
   --ui-accent: #7c3aed;
   --ui-accent-hover: #6d28d9;
@@ -222,7 +211,6 @@
   --ui-accent-ink: #a78bfa;
 }
 
-/* The way into the projection: blue (the past's accent) fading into violet (the future's). */
 .future-gradient {
   background-image: linear-gradient(135deg, var(--ui-accent), var(--ui-future));
 }

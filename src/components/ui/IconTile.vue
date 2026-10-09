@@ -1,8 +1,4 @@
 <script setup lang="ts">
-/**
- * A white line glyph on a coloured rounded square, as the rows of the macOS settings lists.
- * `tone` is the tile's background class; `grid` is the path's coordinate grid.
- */
 withDefaults(defineProps<{ path: string; tone: string; grid?: 16 | 24; size?: 'sm' | 'lg' }>(), {
   grid: 24,
   size: 'sm',

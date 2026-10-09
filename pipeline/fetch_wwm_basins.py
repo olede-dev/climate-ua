@@ -11,7 +11,6 @@ import urllib.request
 import config
 from common import ukraine_outline
 
-#: Bounding-box margin, degrees: basins across the border are kept whole.
 MARGIN = 0.5
 
 

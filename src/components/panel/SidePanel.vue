@@ -31,15 +31,10 @@ const props = defineProps<{
   copy: LayerCopy
   step: TimeStep
   format: ValueFormat
-  /** The open region; null shows the summary for all of Ukraine. */
   region: (RegionLabel & { id: string }) | null
-  /** The water layer's view and sector; null on the other layers. */
   water?: { view: WaterView; sector: WaterSector } | null
-  /** The water projection's scenario. */
   scenario?: WaterScenario
-  /** A projection on screen: the bound the map shows and the country's value at each. */
   projectionRange?: { bound: ProjectionBound; values: Record<ProjectionBound, number> } | null
-  /** The open basin's split between the uses in the year on screen. */
   regionSectors?: Sectors | null
 }>()
 const emit = defineEmits<{
@@ -48,13 +43,11 @@ const emit = defineEmits<{
   view: [WaterView]
   scenario: [WaterScenario]
   bound: [ProjectionBound]
-  /** Another layer's switch between its observed years and its projection periods. */
   future: [boolean]
 }>()
 
 const { t } = useLocale()
 
-/** Where the side panel offers the future: the water gap view, or any layer with periods. */
 const futureOn = computed(() =>
   props.water ? props.water.view === 'future' : isFuture(props.step),
 )
@@ -91,7 +84,6 @@ function story(where: string, series: StoryInput['series']): StoryInput {
   }
 }
 
-/** Each view's mark: a crossed-out drop for the gap, a tap for the demand. */
 const VIEW_ICONS: Record<(typeof WATER_USE_VIEWS)[number], string> = {
   gap: 'M8 1.5C5.5 5 4 7.3 4 9.5a4 4 0 0 0 8 0c0-2.2-1.5-4.5-4-8zM2.5 2.5l11 11',
   demand: 'M2 5.5h7a3 3 0 0 1 3 3v1M2 3.5v4M5.5 5.5V3M4 3h3M12 12v2',
@@ -100,8 +92,6 @@ const waterViews = computed(() =>
   WATER_USE_VIEWS.map((id) => ({ id, label: t.value.waterUse.views[id], icon: VIEW_ICONS[id] })),
 )
 
-/** Each scenario's mark: a leaf for the sustainable path, a flag for the national one, a flame
- * for the fossil one; green to red as the warming grows. */
 const SCENARIO_MARKS: Record<WaterScenario, { icon: string; tone: string }> = {
   'SSP1-2.6': {
     icon: 'M3 13c0-6 4-10 10-10 0 6-4 10-10 10zM3 13l5-5',
@@ -122,10 +112,6 @@ const scenarioViews = computed(() =>
   })),
 )
 
-/**
- * An arrow down for the models' low end, a marked centre for the central value, an arrow up for
- * the high end: green, amber and red, as the water scale runs from little to much.
- */
 const BOUND_MARKS: Record<ProjectionBound, { icon: string; tone: string }> = {
   min: { icon: 'M8 2.5v11M3.5 9 8 13.5 12.5 9', tone: 'bg-emerald-500' },
   median: {
@@ -134,7 +120,6 @@ const BOUND_MARKS: Record<ProjectionBound, { icon: string; tone: string }> = {
   },
   max: { icon: 'M8 13.5v-11M3.5 7 8 2.5 12.5 7', tone: 'bg-red-500' },
 }
-/** Мін, the central value and Макс, each with the country's value there, as a list. */
 const boundViews = computed(() => {
   const range = props.projectionRange
   if (!range) return []
@@ -142,7 +127,6 @@ const boundViews = computed(() => {
   return BOUNDS.map((id) => ({
     id,
     label: `${copy.bounds[id]} · ${props.format(range.values[id])}`,
-    // What the picked value is, right under it, instead of a paragraph about all three.
     about: copy.boundsAbout[id],
     ...BOUND_MARKS[id],
   }))
@@ -162,7 +146,6 @@ const sectorItems = computed(() =>
   WATER_SECTORS.map((id) => ({ id, ...t.value.waterUse.sectors[id] })),
 )
 
-/** «в Україні»; for the stations, how many the figure averages. */
 const countryWhere = computed(() =>
   props.file.geometry === 'stations'
     ? t.value.story.stations.replace('{n}', String(Object.keys(props.file.regions).length))
@@ -266,7 +249,6 @@ function onKeydown(event: KeyboardEvent) {
         </section>
       </div>
     </div>
-    <!-- Pinned under the scroll, so the way into the projection, and back, is always in reach. -->
     <div v-if="futureOn" class="shrink-0 px-4 pb-4">
       <button
         type="button"
@@ -289,7 +271,6 @@ function onKeydown(event: KeyboardEvent) {
         class="group flex w-full items-center gap-3 future-gradient rounded-xl px-3 py-3 text-left text-white shadow-card transition-[filter] hover:brightness-110 focus-ring"
         @click="openFuture(true)"
       >
-        <!-- A telescope: looking ahead. -->
         <span
           class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-white"
           aria-hidden="true"

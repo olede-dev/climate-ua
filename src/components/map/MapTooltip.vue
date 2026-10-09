@@ -2,27 +2,20 @@
 import { computed, useTemplateRef } from 'vue'
 
 const props = defineProps<{
-  /** Pointer position in the map container's pixels. */
   x: number
   y: number
   name: string
-  /** Time step, e.g. `1987` or `2041–2060 · прогноз`. */
   when: string
-  /** Headline value; null shows `noData`. */
   value: string | null
   noData: string
-  /** Smaller lines under the value. */
   details: string[]
   gradient: string
-  /** Marker on the mini scale, 0–1; null hides it. */
   position: number | null
 }>()
 
-/** Gap between the pointer and the card. */
 const OFFSET = 14
 const card = useTemplateRef<HTMLDivElement>('card')
 
-// The card opens away from the nearer edges so it stays inside the map.
 const style = computed(() => {
   const parent = card.value?.offsetParent as HTMLElement | null | undefined
   const width = parent?.clientWidth ?? Infinity

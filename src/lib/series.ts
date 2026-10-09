@@ -1,10 +1,8 @@
 import type { FutureValue, LayerFile, RegionSeries, ProjectionBound } from '../types'
 import { isFuture, type TimeStep } from './time'
 
-/** A region's value at one step; future steps carry the model range where the file has it. */
 export type StepValue = FutureValue
 
-/** The value of a series at a step, or null where the file has none. */
 export function valueAt(
   series: RegionSeries,
   history: LayerFile['history'],
@@ -15,7 +13,6 @@ export function valueAt(
   return value === null || value === undefined ? null : { median: value }
 }
 
-/** The same value as a difference from the series' norm. */
 export function anomaly(value: StepValue, norm: number): StepValue {
   return {
     median: value.median - norm,
@@ -24,14 +21,8 @@ export function anomaly(value: StepValue, norm: number): StepValue {
   }
 }
 
-/** The bound tabs, low to high. */
 export const BOUNDS: readonly ProjectionBound[] = ['min', 'median', 'max']
 
-/**
- * The file with each projection's value moved to the models' low (p10) or high (p90) end, so the
- * map, the summary and the ranks show the chosen bound; the median bound and values without a
- * range keep the median.
- */
 export function atBound(file: LayerFile, bound: ProjectionBound): LayerFile {
   if (bound === 'median') return file
   const key = bound === 'min' ? 'p10' : 'p90'

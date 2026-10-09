@@ -19,13 +19,11 @@ function close() {
   dialog.value?.close()
 }
 
-/** Esc and the close button both end here; focus goes back to whatever opened the dialog. */
 function onClose() {
   opener?.focus()
   opener = null
 }
 
-/** A click whose target is the dialog itself landed on the backdrop, outside the content box. */
 function onClick(event: MouseEvent) {
   if (event.target === dialog.value) close()
 }

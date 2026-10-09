@@ -1,5 +1,3 @@
-"""Shared settings of the data pipeline: periods, sources, layers and paths."""
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -8,22 +6,16 @@ PIPELINE_DIR = Path(__file__).parent
 RAW_DIR = PIPELINE_DIR / "data" / "raw"
 PUBLIC_DATA = PIPELINE_DIR.parent / "public" / "data"
 
-# --- Periods ----------------------------------------------------------------------------------
-
 #: WMO climate normal; the reference for every climate layer and for the model deltas.
 NORM = (1991, 2020)
 #: First year shown for the climate layers; ERA5 starts in 1940 but has fewer observations
 #: before the 1950s.
 HISTORY_FROM = 1950
-#: IPCC AR6 periods: near, mid and long term.
 FUTURE_PERIODS = {"2021-2040": (2021, 2040), "2041-2060": (2041, 2060), "2081-2100": (2081, 2100)}
-
-# --- Geometry ---------------------------------------------------------------------------------
 
 #: Atlas request box [N, W, S, E]; ERA5 (0.25°) and CMIP6 (1°) cells inside it cover all of
 #: Ukraine (22.1–40.2°E, 44.4–52.4°N).
 AREA = [53, 22, 44, 41]
-#: Equal-area projection for cell–region overlap areas.
 EQUAL_AREA_CRS = "EPSG:6933"
 
 #: geoBoundaries gbOpen UKR ADM1, pinned release (ODbL 1.0, from OpenStreetMap).
@@ -78,24 +70,18 @@ REGIONS: dict[str, Region] = {
     "UA-77": Region("chernivtsi", "Чернівецька область", "Chernivtsi Oblast"),
 }
 OBLASTS_PATH = PUBLIC_DATA / "oblasts.geojson"
-#: ≈500 m: invisible at country zoom, keeps the file under 300 KB.
 OBLASTS_SIMPLIFY_DEG = 0.005
-
-# --- Climate layers (C3S Atlas, CDS dataset multi-origin-c3s-atlas) ------------------------
 
 ATLAS_DATASET = "multi-origin-c3s-atlas"
 ERA5_PERIOD = "1940-2025"
 CMIP6_RUNS = {"historical": "1850-2014", "ssp2_4_5": "2015-2100"}
-#: Shown next to the timeline; the CMIP6 experiment above.
 CLIMATE_SCENARIO = "SSP2-4.5"
 
 
 @dataclass(frozen=True)
 class ClimateLayer:
     id: str
-    #: Atlas request variable.
     variable: str
-    #: Variable name inside the NetCDF files.
     nc_name: str
     unit: str
     #: How twelve monthly values make a year: day-weighted mean, sum or count of months with
@@ -107,7 +93,6 @@ class ClimateLayer:
     #: How a model's change joins the observed norm: added as it is, or scaled by how the
     #: observed norm compares with the model's own (`scaled_delta`).
     delta: Literal["add", "scale"] = "add"
-    #: Also write the ERA5 grid cell by cell, `public/data/grids/<id>.json`, for the map raster.
     grid: bool = False
 
 
@@ -156,21 +141,16 @@ CLIMATE_LAYERS = {
     ),
 }
 
-#: Decimals of a grid cell value: the raster is coloured, not read digit by digit.
 GRID_DECIMALS = 1
 
 #: Days added to both norms before scaling a delta: where a model or the observations have
 #: almost no such days, the ratio is unstable, and the change falls back to being added.
 SCALE_PSEUDO_DAYS = 1.0
 
-#: SPEI-6 below this marks a dry month (moderate drought and worse).
 DRY_SPEI = -1.0
 
 ATLAS_SOURCE = "Copernicus Interactive Climate Atlas (C3S): ERA5, CMIP6"
 
-# --- Water layer ------------------------------------------------------------------------------
-
-#: World Water Map downloads (Utrecht University, CC BY 4.0).
 WWM_DIR = RAW_DIR / "wwm"
 WATER_USE_PATH = PUBLIC_DATA / "water-use.json"
 #: The World Water Map's own basin service (HydroBASINS level 7, ArcGIS, open, no key): the
@@ -181,9 +161,7 @@ WWM_BASINS_URL = (
     "https://services3.arcgis.com/AdYB7LvDmN7hzWUb/arcgis/rest/services/hydrobasins_lvl7_publish/FeatureServer/0/query"
 )
 WWM_BASINS_PATH = WWM_DIR / "hydrobasins_lvl7.geojson"
-#: Service sector suffix per site sector, for `demand_historical_*` and `gap_historical_*`.
 WWM_SECTOR_FIELDS = {"total": "total", "irrigation": "irrigation", "domestic": "domestic", "industrial": "industrial"}
-#: Projection of the total water gap, yearly from WWM_FUTURE[0]: mean, min and max of the models.
 WWM_FUTURE = (2020, 2050)
 #: The projection as period means: a modelled year is one possible year, not a forecast of it.
 #: Fifteen years each, as long as the service's record allows (the climate layers take twenty).
@@ -195,17 +173,12 @@ WATER_OBSERVED_BASE = (2010, 2019)
 WWM_SCENARIOS = {"SSP1-2.6": "A_126", "SSP3-7.0": "A_370", "SSP5-8.5": "A_585"}
 
 WATER_HISTORY = (1980, 2019)
-#: The last 30 years of the Utrecht record.
 WATER_NORM = (1990, 2019)
-#: A basin with less of Ukraine than this joins its neighbour.
 BASIN_MIN_KM2 = 200
-#: ≈800 m; keeps the 265 subbasins under 700 KB.
 BASINS_SIMPLIFY_DEG = 0.008
 BASINS_PATH = PUBLIC_DATA / "basins.geojson"
-#: An oblast is listed for a basin when it holds at least this share of the basin's area in Ukraine.
 BASIN_OBLAST_MIN_SHARE = 0.05
 
-#: Natural Earth rivers for basin names.
 NATURAL_EARTH_RIVERS_URLS = [
     "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_rivers_lake_centerlines.geojson",
     "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/v5.1.2/geojson/ne_10m_rivers_europe.geojson",
@@ -218,7 +191,6 @@ NATURAL_EARTH_LAKES_URL = (
 )
 KAKHOVKA_NAME = "Kakhovka Reservoir"
 
-#: A basin is named after the river with the longest course through it, if at least this long.
 BASIN_RIVER_MIN_KM = 10
 #: Natural Earth name → (Ukrainian, English) for every river that names a basin. Natural Earth
 #: has no Ukrainian name for some of them and Russian or Romanian spellings for others.
@@ -254,26 +226,19 @@ RIVER_NAMES = {
 
 WWM_SOURCE = "Utrecht University, World Water Map (PCR-GLOBWB 2)"
 
-# --- Climate analogue -------------------------------------------------------------------------
-
-#: Beck et al. (2023), Köppen–Geiger maps at 1 km, 1901–2099 (figshare article 21789074, v2).
 KOPPEN_URL = "https://ndownloader.figshare.com/files/61012822"
 KOPPEN_DIR = RAW_DIR / "koppen"
-#: Period → GeoTIFF inside the archive; the future follows SSP2-4.5 like the climate layers.
 KOPPEN_FILES = {
     "1991-2020": "1991_2020/koppen_geiger_0p00833333.tif",
     "2041-2070": "2041_2070/ssp245/koppen_geiger_0p00833333.tif",
     "2071-2099": "2071_2099/ssp245/koppen_geiger_0p00833333.tif",
 }
-#: Raster code → class, as in the archive's legend.txt (0 is the sea).
 KOPPEN_CLASSES = [
     "Af", "Am", "Aw", "BWh", "BWk", "BSh", "BSk", "Csa", "Csb", "Csc", "Cwa", "Cwb", "Cwc",
     "Cfa", "Cfb", "Cfc", "Dsa", "Dsb", "Dsc", "Dsd", "Dwa", "Dwb", "Dwc", "Dwd", "Dfa", "Dfb",
     "Dfc", "Dfd", "ET", "EF",
 ]
 KOPPEN_PATH = PUBLIC_DATA / "koppen.json"
-
-# --- Rivers -----------------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class RiverStation:
@@ -284,7 +249,6 @@ class RiverStation:
     place_en: str
     #: GloFAS cell (lat, lon) whose mean discharge matches the gauged river, not the town centre.
     cell: tuple[float, float]
-    #: Where the map draws the station: on the OpenStreetMap river line next to the cell.
     marker: tuple[float, float]
     #: Dams upstream set the flow here (a reservoir cascade): low-flow days follow the power
     #: plants more than the weather, and GloFAS models their operation only roughly.
@@ -309,7 +273,6 @@ FLOOD_API_URL = "https://flood-api.open-meteo.com/v1/flood"
 RIVERS_YEARS = (1997, 2025)
 #: Day-of-year norm: 1997–2020, the WMO normal 1991–2020 shortened to the reanalysis start.
 RIVERS_NORM = (1997, 2020)
-#: Values from d−3…d+3 feed the norm for day d.
 RIVERS_NORM_HALF_WINDOW = 3
 RIVERS_DIR = RAW_DIR / "rivers"
 RIVERS_SOURCE = "GloFAS v4 reanalysis via Open-Meteo"

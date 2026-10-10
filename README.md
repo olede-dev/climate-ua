@@ -1,5 +1,7 @@
 # Climate of Ukraine — Past and Future
 
+[![CI](https://github.com/olede-dev/climate-ua/actions/workflows/ci.yml/badge.svg)](https://github.com/olede-dev/climate-ua/actions/workflows/ci.yml) [![Deploy](https://github.com/olede-dev/climate-ua/actions/workflows/deploy.yml/badge.svg)](https://github.com/olede-dev/climate-ua/actions/workflows/deploy.yml) [![CodeQL](https://github.com/olede-dev/climate-ua/actions/workflows/codeql.yml/badge.svg)](https://github.com/olede-dev/climate-ua/actions/workflows/codeql.yml) [![License](https://img.shields.io/github/license/olede-dev/climate-ua)](LICENSE)
+
 An interactive map of changes in Ukraine's climate and water resources: observations since 1950 and projections to the end of the 21st century based on climate and hydrological models.
 
 **Live demo:** https://olede-dev.github.io/climate-ua/

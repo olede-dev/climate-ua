@@ -34,7 +34,7 @@ REFERENCE_POINTS = {
 # eventual analysis zones and include dry land/possibly neighbouring water.
 DOWNLOAD_ENVELOPES = {
     "kakhovka": (33.52, 46.81, 35.35, 47.87),
-    "kremenchuk": (31.86, 48.95, 33.23, 49.63),
+    "kremenchuk": (31.35, 48.9, 33.3, 49.85),
     "svitiaz": (23.75, 51.44, 23.92, 51.54),
 }
 

@@ -182,7 +182,10 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
   },
 }
 
-export const LAYER_IDS = Object.keys(LAYERS) as LayerId[]
+// Surface-water records use their own categorical contract, not LayerFile region series.
+export const LAYER_IDS = Object.keys(LAYERS).flatMap((id) =>
+  id === 'water' ? [id, 'waterbodies'] : [id],
+) as LayerId[]
 
 export const DEFAULT_LAYER: LayerId = 'water'
 

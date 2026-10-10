@@ -4,7 +4,7 @@ import { uk, type Messages } from './uk'
 
 export type { Messages }
 
-export type LayerCopy = Messages['layers'][Exclude<LayerId, 'water'>]
+export type LayerCopy = Messages['layers'][Exclude<LayerId, 'water' | 'waterbodies'>]
 
 export type Locale = 'uk' | 'en'
 

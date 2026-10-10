@@ -80,3 +80,109 @@ export function compareSurfaceWaterClasses(
   }
   return { category, transition }
 }
+
+import type { SurfaceWaterFrame, SurfaceWaterGrid } from '../types'
+
+export type SurfaceWaterBounds = [number, number, number, number]
+
+export function surfaceWaterExtent(
+  grid: Pick<SurfaceWaterGrid, 'width' | 'height' | 'transform'>,
+): SurfaceWaterBounds {
+  const [dx, , west, , dy, north] = grid.transform
+  return [west, north + grid.height * dy, west + grid.width * dx, north]
+}
+
+export function intersectsSurfaceWater(a: SurfaceWaterBounds, b: SurfaceWaterBounds): boolean {
+  return a[0] < b[2] && a[2] > b[0] && a[1] < b[3] && a[3] > b[1]
+}
+
+/** Reject misregistered pairs instead of showing false changes at seams. */
+export function validateSurfaceWaterFrame(
+  frame: SurfaceWaterFrame,
+  grid: SurfaceWaterGrid,
+  version: string,
+  year: number,
+): void {
+  if (
+    frame.version !== version ||
+    frame.year !== year ||
+    frame.width !== grid.width ||
+    frame.height !== grid.height ||
+    frame.transform.length !== 6 ||
+    frame.transform.some((v, i) => !Number.isFinite(v) || v !== grid.transform[i]) ||
+    frame.transform[0] <= 0 ||
+    frame.transform[4] >= 0 ||
+    frame.transform[1] !== 0 ||
+    frame.transform[3] !== 0
+  ) {
+    throw new Error('Misaligned surface-water frame')
+  }
+  const seen = new Set<string>()
+  for (const tile of frame.tiles) {
+    const key = `${tile.x},${tile.y}`
+    if (
+      seen.has(key) ||
+      ![tile.x, tile.y, tile.width, tile.height].every(Number.isSafeInteger) ||
+      tile.x < 0 ||
+      tile.y < 0 ||
+      tile.x % 512 !== 0 ||
+      tile.y % 512 !== 0 ||
+      tile.width !== Math.min(512, frame.width - tile.x) ||
+      tile.height !== Math.min(512, frame.height - tile.y) ||
+      tile.width < 1 ||
+      tile.height < 1
+    )
+      throw new Error('Invalid surface-water tile layout')
+    seen.add(key)
+  }
+}
+
+export const SURFACE_WATER_COLORS = {
+  permanent: '#1453be',
+  seasonal: '#2ab0cd',
+  dry: '#b8a989',
+  insufficient: '#737d87',
+  persistent: '#1453be',
+  gained: '#1ba05b',
+  lost: '#e66825',
+  uncomparable: '#737d87',
+  permanentToSeasonal: '#c05cbd',
+  seasonalToPermanent: '#eed353',
+}
+
+/** No interpolation of class codes. Transitions optionally overlay persistent water. */
+export function surfaceWaterPixelColor(
+  before: SurfaceWaterClass,
+  after: SurfaceWaterClass | null,
+  transitions: boolean,
+): string | null {
+  if (after === null) {
+    if (before === 15) return null
+    return SURFACE_WATER_COLORS[
+      before === 0 ? 'insufficient' : before === 1 ? 'dry' : before === 2 ? 'seasonal' : 'permanent'
+    ]
+  }
+  const { category, transition } = compareSurfaceWaterClasses(before, after)
+  if (category === 'outside') return null
+  return SURFACE_WATER_COLORS[transitions && transition ? transition : category]
+}
+
+export function validateSurfaceWaterPair(
+  before: SurfaceWaterFrame,
+  after: SurfaceWaterFrame,
+): void {
+  const windows = new Map(before.tiles.map((tile) => [`${tile.x},${tile.y}`, tile]))
+  if (
+    before.tiles.length !== after.tiles.length ||
+    before.width !== after.width ||
+    before.height !== after.height ||
+    before.version !== after.version ||
+    before.transform.some((value, i) => value !== after.transform[i])
+  )
+    throw new Error('Misaligned surface-water pair')
+  for (const tile of after.tiles) {
+    const match = windows.get(`${tile.x},${tile.y}`)
+    if (!match || match.width !== tile.width || match.height !== tile.height)
+      throw new Error('Mismatched surface-water pair mask')
+  }
+}

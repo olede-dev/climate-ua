@@ -5,6 +5,8 @@ import { DEFAULT_URL_STATE, parseUrlState, toUrlQuery, type UrlState } from '../
 describe('parseUrlState', () => {
   it('reads every shared field', () => {
     expect(parseUrlState({ layer: 'temp', t: '2041-2060', region: 'kharkiv' })).toEqual({
+      surfaceWater: { ...DEFAULT_URL_STATE.surfaceWater },
+      surfaceWaterTransitions: false,
       layer: 'temp',
       time: '2041-2060',
       region: 'kharkiv',
@@ -48,6 +50,8 @@ describe('toUrlQuery', () => {
 
   it('round-trips a non-default state', () => {
     const state: UrlState = {
+      surfaceWater: { ...DEFAULT_URL_STATE.surfaceWater },
+      surfaceWaterTransitions: false,
       layer: 'temp',
       time: '2081-2100',
       region: 'crimea',
@@ -181,4 +185,83 @@ describe('rivers-ua links', () => {
       rl: 'trend',
     })
   })
+})
+
+describe('surface-water links', () => {
+  it.each([
+    [2024, 1984],
+    [2000, 2000],
+  ])('round-trips directed endpoints %i → %i and stable selection', (before, after) => {
+    const state = {
+      ...DEFAULT_URL_STATE,
+      layer: 'waterbodies' as const,
+      surfaceWater: {
+        mode: 'comparison' as const,
+        year: 2010,
+        before,
+        after,
+        waterbody: 'kakhovka',
+      },
+    }
+    const query = toUrlQuery(state)
+    expect(query).toEqual({
+      layer: 'waterbodies',
+      swm: 'comparison',
+      swy: '2010',
+      swb: String(before),
+      swa: String(after),
+      wb: 'kakhovka',
+    })
+    expect(parseUrlState(query)).toEqual(state)
+  })
+  it('omits waterbody-only fields from existing layers and omits climate fields from waterbody links', () => {
+    const state = {
+      ...DEFAULT_URL_STATE,
+      time: 2000,
+      region: 'crimea',
+      surfaceWater: {
+        mode: 'annual' as const,
+        year: 2024,
+        before: 1984,
+        after: 2024,
+        waterbody: 'svitiaz',
+      },
+    }
+    expect(toUrlQuery(state)).toEqual({ t: '2000', region: 'crimea' })
+    expect(toUrlQuery({ ...state, layer: 'waterbodies' })).toEqual({
+      layer: 'waterbodies',
+      swm: 'annual',
+      swy: '2024',
+      swb: '1984',
+      swa: '2024',
+      wb: 'svitiaz',
+    })
+    expect(parseUrlState({ swm: 'comparison', swy: '2024', wb: 'svitiaz' }).surfaceWater).toEqual(
+      DEFAULT_URL_STATE.surfaceWater,
+    )
+  })
+  it('rejects malformed values and preserves unsupported years for manifest normalization', () => {
+    expect(
+      parseUrlState({
+        layer: 'waterbodies',
+        swm: 'future',
+        swy: '1e3',
+        swb: '2050',
+        swa: ['2024', '1984'],
+        wb: '../x',
+      }).surfaceWater,
+    ).toEqual({ mode: 'annual', year: 0, before: 2050, after: 2024, waterbody: null })
+  })
+})
+
+it('shares the category-transition overlay only with the surface-water layer', () => {
+  const state = {
+    ...DEFAULT_URL_STATE,
+    layer: 'waterbodies' as const,
+    surfaceWaterTransitions: true,
+  }
+  const query = toUrlQuery(state)
+  expect(query.swt).toBe('1')
+  expect(parseUrlState(query).surfaceWaterTransitions).toBe(true)
+  expect(toUrlQuery({ ...state, layer: 'water' }).swt).toBeUndefined()
 })

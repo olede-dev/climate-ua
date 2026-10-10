@@ -7,6 +7,7 @@ import type {
   WaterScenario,
   WaterSector,
   WaterView,
+  SurfaceWaterState,
 } from '../types'
 import { RIVER_VIEWS, type RiverView } from './river/marks'
 import { BOUNDS } from './series'
@@ -36,6 +37,8 @@ export interface UrlState {
   riverView: RiverView
   basin: BasinFilter
   riverSpan: RiverSpan
+  surfaceWater: SurfaceWaterState
+  surfaceWaterTransitions: boolean
 }
 
 export const DEFAULT_URL_STATE: Readonly<UrlState> = {
@@ -49,12 +52,18 @@ export const DEFAULT_URL_STATE: Readonly<UrlState> = {
   riverView: 'state',
   basin: 'all',
   riverSpan: DEFAULT_RIVER_SPAN,
+  surfaceWater: { mode: 'annual', year: 0, before: 0, after: 0, waterbody: null },
+  surfaceWaterTransitions: false,
 }
 
 export type QueryInput = Record<string, string | null | (string | null)[] | undefined>
 
 function first(value: QueryInput[string]): string | null {
   return (Array.isArray(value) ? value[0] : value) ?? null
+}
+
+function urlYear(value: string | null): number {
+  return value !== null && /^\d{4}$/.test(value) ? Number(value) : 0
 }
 
 export function parseUrlState(query: QueryInput): UrlState {
@@ -82,6 +91,18 @@ export function parseUrlState(query: QueryInput): UrlState {
   const periods = layer === 'water' ? WATER_PERIODS : layerConfig(layer).futurePeriods
   return {
     layer,
+    surfaceWaterTransitions: layer === 'waterbodies' && first(query.swt) === '1',
+    surfaceWater:
+      layer === 'waterbodies'
+        ? {
+            mode: first(query.swm) === 'comparison' ? 'comparison' : 'annual',
+            year: urlYear(first(query.swy)),
+            before: urlYear(first(query.swb)),
+            after: urlYear(first(query.swa)),
+            waterbody:
+              first(query.wb) !== null && SLUG.test(first(query.wb)!) ? first(query.wb) : null,
+          }
+        : { ...DEFAULT_URL_STATE.surfaceWater },
     time: rawTime === null ? null : parseStep(rawTime, periods),
     region: region !== null && SLUG.test(region) ? region : null,
     waterView,
@@ -105,6 +126,16 @@ export function parseUrlState(query: QueryInput): UrlState {
 export function toUrlQuery(state: UrlState): Record<string, string> {
   const query: Record<string, string> = {}
   if (state.layer !== DEFAULT_URL_STATE.layer) query.layer = state.layer
+  if (state.layer === 'waterbodies') {
+    const s = state.surfaceWater
+    query.swm = s.mode
+    if (state.surfaceWaterTransitions) query.swt = '1'
+    if (s.year) query.swy = String(s.year)
+    if (s.before) query.swb = String(s.before)
+    if (s.after) query.swa = String(s.after)
+    if (s.waterbody !== null) query.wb = s.waterbody
+    return query
+  }
   if (state.time !== null) query.t = String(state.time)
   if (state.region !== null) query.region = state.region
   if (state.waterView !== DEFAULT_URL_STATE.waterView) query.view = state.waterView

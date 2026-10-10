@@ -153,7 +153,7 @@ export type ClimatePeriod = '2021-2040' | '2041-2060' | '2081-2100'
 export type WaterPeriod = '2021-2035' | '2036-2050'
 export type FuturePeriod = ClimatePeriod | WaterPeriod
 
-export type LayerId = 'water' | 'temp' | 'heat' | 'frost' | 'drought' | 'rivers'
+export type LayerId = 'water' | 'temp' | 'heat' | 'frost' | 'drought' | 'rivers' | 'waterbodies'
 
 export interface FutureValue {
   median: number

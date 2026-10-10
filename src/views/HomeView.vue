@@ -85,12 +85,16 @@ const StationCard = defineAsyncComponent({
     h(LoadingSkeleton, { label: t.value.river.details.loading, class: 'h-96' }),
   delay: 100,
 })
+const SurfaceWaterView = defineAsyncComponent(
+  () => import('../components/map/SurfaceWaterView.vue'),
+)
 const ui = useUiStore()
+const isSurfaceWater = computed(() => ui.layer === 'waterbodies')
 const basemap = ref<BasemapKind>('openfreemap')
 
 const waterFuture = computed(() => ui.layer === 'water' && ui.waterView === 'future')
 const waterUseQuery = useWaterUse(() => ui.layer === 'water')
-const layerQuery = useLayer(() => (ui.layer === 'water' ? null : ui.layer))
+const layerQuery = useLayer(() => (ui.layer === 'water' || isSurfaceWater.value ? null : ui.layer))
 const oblastsQuery = useOblasts()
 const countryBorder = computed(() => {
   const oblasts = oblastsQuery.data.value
@@ -99,6 +103,7 @@ const countryBorder = computed(() => {
 // Basin names list their oblasts, so the oblasts load for every layer.
 const basinsQuery = useBasins()
 const layer = computed<LayerFile | undefined>(() => {
+  if (isSurfaceWater.value) return undefined
   if (ui.layer !== 'water') {
     const file = layerQuery.data.value
     return file && atBound(file, ui.bound)
@@ -296,6 +301,7 @@ const mapValues = computed<Record<string, number | null>>(() =>
 
 const copy = computed<LayerCopy>(() => {
   const id = ui.layer
+  if (id === 'waterbodies') return t.value.layers.rivers
   if (id !== 'water') return t.value.layers[id]
   return ui.waterView === 'future'
     ? waterUseCopy(t.value, 'gap', 'total')
@@ -343,9 +349,13 @@ const format = (value: number, withSign = signed.value) =>
 const layerChoices = computed(() =>
   LAYER_IDS.map((id) => ({
     id,
-    name: t.value.layers[id].name,
+    name: id === 'waterbodies' ? t.value.surfaceWater.name : t.value.layers[id].name,
     description:
-      id === 'water' ? t.value.waterUse.layerDescription : t.value.layers[id].legendTitle,
+      id === 'waterbodies'
+        ? t.value.surfaceWater.description
+        : id === 'water'
+          ? t.value.waterUse.layerDescription
+          : t.value.layers[id].legendTitle,
   })),
 )
 const gradient = computed(() => cssGradient(config.value.scale))
@@ -707,7 +717,7 @@ const tooltip = computed(() => {
         :aria-label="t.home.map"
       >
         <RegionTable
-          v-if="!isRivers"
+          v-if="!isRivers && !isSurfaceWater"
           :rows="tableRows"
           :caption="tableCaption"
           :region-column="t.table[config.geometry]"
@@ -716,7 +726,15 @@ const tooltip = computed(() => {
           :selected-id="ui.regionId"
           @select="ui.regionId = $event"
         />
+        <SurfaceWaterView
+          v-if="isSurfaceWater"
+          :wide="isWide"
+          :insets="insets"
+          :country-border="countryBorder"
+          @basemap="basemap = $event"
+        />
         <ClimateMap
+          v-else
           :regions="regionsFile"
           :rivers="riverMap"
           :values="mapValues"
@@ -785,7 +803,7 @@ const tooltip = computed(() => {
         />
       </MapLegend>
       <div
-        v-if="isWide"
+        v-if="isWide && !isSurfaceWater"
         ref="panelCard"
         class="glass pointer-events-auto relative z-10 flex w-[22rem] shrink-0 flex-col overflow-hidden rounded-2xl shadow-float"
       >
@@ -942,7 +960,7 @@ const tooltip = computed(() => {
         </aside>
       </div>
       <SidePanel
-        v-if="!isWide && panel"
+        v-if="!isWide && panel && !isSurfaceWater"
         ref="sheet"
         class="scroll-mt-20 rounded-2xl bg-surface shadow-card"
         v-bind="panel"

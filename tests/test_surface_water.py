@@ -22,9 +22,139 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "pipeline"))
 from surface_water import (annual_areas, compare_areas, geographic_intersection_areas,
                            intersection_areas, raster_areas)
 from build_surface_water_prototype import build
+from prepare_surface_water_national import plan, prepare, sha256, VERSION
+from audit_surface_water_national import audit as audit_national
+from fetch_surface_water_national import mask_country
+from package_surface_water_sources import package
 
 
 class SurfaceWaterTests(unittest.TestCase):
+    def test_source_archive_is_deterministic_and_refuses_changed_country_rasters(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            boundary = root / 'boundary.geojson'
+            boundary.write_text(json.dumps({'type': 'FeatureCollection', 'features': []}))
+            boundary_sha = sha256(boundary)
+            entries, jobs = [], []
+            (root / 'receipts').mkdir()
+            for year in range(1984, 2025):
+                filename = f'e30-n49-yearly-{year}.tif'
+                self.write_raster(root / filename, [2], Affine(1, 0, 30, 0, -1, 50), nodata=0)
+                entry = {'id': f'e30-n49-{year}', 'year': year, 'file': filename,
+                         'bytes': (root / filename).stat().st_size,
+                         'sha256': sha256(root / filename), 'nationalClipBoundarySha256': boundary_sha,
+                         'downloadUrl': 'https://earthengine.googleapis.com/temporary-fixture'}
+                entries.append(entry)
+                jobs.append({'id': entry['id']})
+                (root / 'receipts' / (entry['id'] + '.json')).write_text(json.dumps({
+                    **entry, 'boundarySha256': boundary_sha}))
+            requests = root / 'requests.json'
+            requests.write_text(json.dumps({'jobs': jobs, 'years': list(range(1984, 2025)),
+                'chunks': [{'id': 'e30-n49'}], 'attribution': 'Numerical fixture'}))
+            (root / 'inputs.json').write_text(json.dumps({'complete': True, 'missing': [],
+                'files': entries, 'sourceVersion': VERSION, 'boundarySha256': boundary_sha,
+                'requestsSha256': sha256(requests)}))
+            archive = root / 'sources.tar.gz'
+            with redirect_stdout(io.StringIO()):
+                package(root, boundary, archive)
+                original = archive.read_bytes()
+                package(root, boundary, archive)
+            self.assertEqual(archive.read_bytes(), original)
+            (root / entries[0]['file']).write_bytes(b'corruption')
+            with self.assertRaisesRegex(ValueError, 'changed since audit'):
+                package(root, boundary, archive)
+            self.assertEqual(archive.read_bytes(), original)
+
+    def test_national_download_discards_foreign_classes_without_resampling_ukraine(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source, target = root / 'source.tif', root / 'masked.tif'
+            transform = Affine(0.25, 0, 30, 0, -1, 50)
+            self.write_raster(source, [3, 2, 1, 3], transform, nodata=0)
+            properties = {'nativeTransform': json.dumps(list(transform)[:6]),
+                          'downloadEnvelope': json.dumps([30, 49, 31, 50])}
+            country = box(30.25, 49, 30.75, 50)
+            counts = mask_country(source, target, properties, country)
+            self.assertEqual(counts.tolist(), [2, 1, 1, 0])
+            with rasterio.open(target) as result:
+                self.assertEqual(result.read(1).tolist(), [[0, 2, 1, 0]])
+                self.assertEqual(result.transform, transform)
+                self.assertEqual(result.nodata, 0)
+
+    def test_national_plan_covers_all_years_and_crimea_deterministically(self):
+        boundary = Path(__file__).resolve().parents[1] / 'public/data/oblasts.geojson'
+        result = plan(boundary)
+        self.assertEqual(result, plan(boundary))
+        self.assertEqual(result['years'], tuple(range(1984, 2025)))
+        self.assertEqual(len(result['jobs']), 41 * len(result['chunks']))
+        self.assertEqual(len({j['id'] for j in result['jobs']}), len(result['jobs']))
+        self.assertIn('e34-n44', {c['id'] for c in result['chunks']})
+        self.assertEqual(next(j['collection'] for j in result['jobs'] if j['year'] == 2015),
+                         'JRC/GSW1_4/YearlyHistory')
+        self.assertTrue(next(j['collection'] for j in result['jobs'] if j['year'] == 2016)
+                        .endswith('YearlyHistory_2016_2021'))
+
+    def test_national_audit_reports_missing_and_preserves_output_on_corruption(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            chunk = {'id': 'e30-n49', 'downloadEnvelope': [30, 49, 31, 50]}
+            from prepare_surface_water_national import collection
+            jobs = [{'id': f'e30-n49-{year}', 'chunkId': chunk['id'], 'year': year,
+                     'file': f'e30-n49-yearly-{year}.tif', 'collection': collection(year),
+                     'downloadEnvelope': chunk['downloadEnvelope']} for year in range(1984, 2025)]
+            requests = root / 'requests.json'
+            requests.write_text(json.dumps({'schemaVersion': 1, 'sourceVersion': VERSION,
+                'boundarySha256': 'fixture', 'attribution': 'Numerical fixture',
+                'chunks': [chunk], 'jobs': jobs}))
+            job = jobs[0]
+            raster = root / job['file']
+            transform = Affine(0.5, 0, 30, 0, -1, 50)
+            self.write_raster(raster, [2, 3], transform, nodata=0)
+            props = {**job, 'nativeTransform': json.dumps(list(transform)[:6]),
+                     'downloadEnvelope': json.dumps(chunk['downloadEnvelope']),
+                     'crs': 'EPSG:4326', 'band': 'waterClass', 'missingClass': 0,
+                     'imageId': 'fixture'}
+            provenance = root / 'provenance-fixture.geojson'
+            provenance.write_text(json.dumps({'type': 'FeatureCollection',
+                'features': [{'type': 'Feature', 'geometry': None, 'properties': props}]}))
+            output = root / 'inputs.json'
+            with redirect_stdout(io.StringIO()):
+                result = audit_national(root, requests, output)
+            self.assertFalse(result['complete'])
+            self.assertEqual(len(result['missing']), 40)
+            self.assertEqual(result['files'][0]['values'], [0, 0, 1, 1])
+            original = output.read_bytes()
+            self.write_raster(raster, [2, 9], transform, nodata=0)
+            with self.assertRaisesRegex(ValueError, 'Undocumented annual class'):
+                audit_national(root, requests, output)
+            self.assertEqual(output.read_bytes(), original)
+            self.write_raster(raster, [2, 3], Affine(0.5, 0, 30.25, 0, -1, 50), nodata=0)
+            with self.assertRaisesRegex(ValueError, 'native grid'):
+                audit_national(root, requests, output)
+            self.assertEqual(output.read_bytes(), original)
+
+    def test_national_resume_rechecks_completed_files_before_skipping(self):
+        boundary = Path(__file__).resolve().parents[1] / 'public/data/oblasts.geojson'
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            result = plan(boundary)
+            job = next(j for j in result['jobs'] if j['year'] == 2024)
+            source = root / job['file']
+            source.write_bytes(b'fixture')
+            status = root / 'inputs.json'
+            status.write_text(json.dumps({'sourceVersion': VERSION,
+                'boundarySha256': result['boundarySha256'],
+                'files': [{**job, 'sha256': sha256(source)}]}))
+            with redirect_stdout(io.StringIO()):
+                prepare(boundary, root, year=2024, limit=2, audit=status)
+            script = (root / 'exports-2024-0.js').read_text()
+            self.assertNotIn(job['file'], script)
+            self.assertIn('crsTransform: item.projection.transform', script)
+            source.write_bytes(b'corrupt')
+            with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                prepare(boundary, root, year=2024, limit=2, audit=status)
+            self.assertEqual((root / 'exports-2024-0.js').read_text(), script)
+
     def test_diagnostic_build_is_deterministic_and_does_not_replace_output_after_source_corruption(self):
         transform = Affine(0.00025, 0, 30, 0, -0.00025, 50)
         with tempfile.TemporaryDirectory() as directory:
@@ -76,10 +206,10 @@ class SurfaceWaterTests(unittest.TestCase):
                 self.assertLess(float(weights.sum()), 300)  # Not a nominal 450 m² half pixel.
 
     @staticmethod
-    def write_raster(path, data, transform, mask=None):
+    def write_raster(path, data, transform, mask=None, nodata=None):
         values = np.array([data], dtype=np.uint8)
         with rasterio.open(path, "w", driver="GTiff", width=values.shape[1], height=1,
-                           count=1, dtype="uint8", crs="EPSG:4326", transform=transform) as target:
+                           count=1, dtype="uint8", crs="EPSG:4326", transform=transform, nodata=nodata) as target:
             target.write(values, 1)
             if mask is not None:
                 target.write_mask(np.array([mask], dtype=np.uint8))

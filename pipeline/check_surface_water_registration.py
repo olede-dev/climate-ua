@@ -5,6 +5,7 @@ scenario, not an error bar: JRC reports spatially varying offsets above one cell
 """
 import argparse
 import json
+from contextlib import ExitStack
 from pathlib import Path
 
 import numpy as np
@@ -23,7 +24,9 @@ def check(inputs, zones, output):
     for feature in registry['features']:
         p = feature['properties']
         body = {'id': p['id'], 'pairs': []}
-        with rasterio.open(zones.parent / p['maskFile']) as mask:
+        with ExitStack() as stack:
+            mask = stack.enter_context(rasterio.open(zones.parent / p['maskFile']))
+            weight_source = stack.enter_context(rasterio.open(zones.parent/p['weightsFile'])) if 'weightsFile' in p else None
             for a, b in [(2021, 2022), (2022, 2024)]:
                 scenarios = []
                 with rasterio.open(inputs / f"{p['id']}-yearly-{a}.tif") as before, rasterio.open(inputs / f"{p['id']}-yearly-{b}.tif") as after:
@@ -48,6 +51,8 @@ def check(inputs, zones, output):
                                 x0, _ = GEOGRAPHIC_TO_AREA.transform(t.c, 0)
                                 x1, _ = GEOGRAPHIC_TO_AREA.transform(t.c+t.a, 0)
                                 weights = np.broadcast_to((ys[:-1]-ys[1:])[:, None]*(x1-x0), inside.shape)[inside]
+                                if weight_source is not None:
+                                    weights = weight_source.read(1, window=w)[inside]
                                 totals += np.bincount(x*4+y, weights=weights, minlength=16)
                             scenarios.append({'dx': dx, 'dy': dy, **compare_areas(np.repeat(np.arange(4), 4), np.tile(np.arange(4), 4), totals)})
                 body['pairs'].append({'beforeYear': a, 'afterYear': b, 'scenarios': scenarios})

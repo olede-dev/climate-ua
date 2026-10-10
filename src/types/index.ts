@@ -208,6 +208,156 @@ export interface GridFile {
 }
 
 export type WaterScenario = 'SSP1-2.6' | 'SSP3-7.0' | 'SSP5-8.5'
+/** Native JRC classes; 15 is outside the rendering zone, not an observation gap. */
+export type SurfaceWaterClass = 0 | 1 | 2 | 3 | 15
+export type SurfaceWaterMode = 'annual' | 'comparison'
+export interface SurfaceWaterState {
+  mode: SurfaceWaterMode
+  year: number
+  before: number
+  after: number
+  waterbody: string | null
+}
+export type SurfaceWaterComparisonClass =
+  'outside' | 'uncomparable' | 'dry' | 'persistent' | 'gained' | 'lost'
+export type SurfaceWaterTransition = 'permanentToSeasonal' | 'seasonalToPermanent' | null
+/** URLs are relative to one immutable same-origin version directory. */
+export interface SurfaceWaterAsset {
+  url: string
+  sha256: string
+  bytes: number
+}
+export interface SurfaceWaterPointer extends SurfaceWaterAsset {
+  schemaVersion: 1
+  version: string
+}
+export interface SurfaceWaterAreas {
+  permanentM2: number
+  seasonalM2: number
+  unionM2: number
+}
+export interface SurfaceWaterQuality {
+  zoneM2: number
+  validM2: number
+  coverage: number
+  spatialStatus: 'suppressed' | 'partial' | 'complete'
+  temporalCompleteness: 'unknown'
+}
+export interface SurfaceWaterAnnual extends SurfaceWaterQuality {
+  year: number
+  areas: SurfaceWaterAreas | null
+}
+export interface SurfaceWaterPair extends SurfaceWaterQuality {
+  beforeYear: number
+  afterYear: number
+  comparison: {
+    before: SurfaceWaterAreas
+    after: SurfaceWaterAreas
+    gainedM2: number
+    lostM2: number
+    persistentM2: number
+    permanentToSeasonalM2: number
+    seasonalToPermanentM2: number
+    deltaM2: number
+    deltaPercent: number | null
+  } | null
+}
+export interface SurfaceWaterSeries {
+  schemaVersion: 1
+  version: string
+  zoneVersion: string
+  unit: 'm2'
+  areaCRS: 'EPSG:6933'
+  id: string
+  annual: SurfaceWaterAnnual[]
+  pairs: SurfaceWaterPair[]
+}
+export interface SurfaceWaterTile extends SurfaceWaterAsset {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+export interface SurfaceWaterFrame {
+  version: string
+  year: number
+  width: number
+  height: number
+  transform: [number, number, number, number, number, number]
+  tiles: SurfaceWaterTile[]
+}
+export interface SurfaceWaterGrid {
+  width: number
+  height: number
+  transform: SurfaceWaterFrame['transform']
+  frames: (SurfaceWaterAsset & { year: number })[]
+}
+export interface SurfaceWaterCatalogueEntry {
+  id: string
+  nameUk: string
+  nameEn: string
+  type: 'lake' | 'reservoir'
+  zoneM2: number
+  bounds: [number, number, number, number]
+  inclusionReason: string
+  series: SurfaceWaterAsset
+  review: { status: 'accepted'; extentReview: string; inclusionReason: string; limitations: string }
+}
+export interface SurfaceWaterManifest {
+  schemaVersion: 1
+  version: string
+  processingVersion: string
+  sourceVersion: string
+  zoneVersion: string
+  years: number[]
+  unit: 'm2'
+  areaCRS: 'EPSG:6933'
+  rasterCRS: 'EPSG:4326'
+  areaMethod: string
+  encoding: 'packed4-gzip'
+  tileSize: 512
+  classes: Record<SurfaceWaterClass, string>
+  quality: {
+    suppressedBelow: number
+    completeAt: number
+    temporalCompleteness: 'unknown'
+    missing: string
+    pairMask: string
+  }
+  identity: Record<string, string>
+  sources: { year: number; collection: string; band: 'waterClass' }[]
+  attribution: string
+  registrationRisk: string
+  chunks: (SurfaceWaterGrid & { id: string })[]
+  overview: SurfaceWaterGrid & { factor: number; method: string; limitation: string }
+  catalogue: SurfaceWaterCatalogueEntry[]
+  analysisZones: SurfaceWaterAsset
+  zoneReview: SurfaceWaterAsset
+  registrationSensitivity: SurfaceWaterAsset
+}
+export interface SurfaceWaterCatalogueFile extends Pick<
+  SurfaceWaterManifest,
+  | 'schemaVersion'
+  | 'version'
+  | 'processingVersion'
+  | 'zoneVersion'
+  | 'sourceVersion'
+  | 'years'
+  | 'unit'
+  | 'areaCRS'
+  | 'areaMethod'
+  | 'attribution'
+  | 'quality'
+  | 'sources'
+  | 'registrationRisk'
+> {
+  manifest: SurfaceWaterAsset
+  nativeChunkCount: number
+  catalogue: (SurfaceWaterCatalogueEntry & {
+    annualReference: SurfaceWaterAnnual[]
+    pairReference: SurfaceWaterPair
+  })[]
+}
 export type ProjectionBound = 'min' | 'median' | 'max'
 export type WaterView = 'gap' | 'demand' | 'future'
 export type WaterUseView = Exclude<WaterView, 'future'>

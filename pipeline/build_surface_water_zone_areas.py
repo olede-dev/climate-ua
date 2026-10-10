@@ -10,6 +10,7 @@ import hashlib
 import json
 from pathlib import Path
 import time
+from contextlib import ExitStack
 
 import numpy as np
 import rasterio
@@ -27,6 +28,9 @@ def build(inputs, zones, output):
               'attribution': registry['attribution'], 'unit': 'm2', 'areaCRS': 'EPSG:6933',
               'method': 'Exact whole-cell intersections of grid-aligned historical zone; no class resampling',
               'zoneVersion': registry['zoneVersion'], 'zoneStatus': registry['status'], 'bodies': []}
+    if any('weightsFile' in f['properties'] for f in registry['features']):
+        result['purpose'] = 'Fixed full-history catalogue-zone annual and common-mask pair areas'
+        result['method'] = 'Exact native-cell intersections in EPSG:6933, including fractional country edges; no class resampling'
     times = []
     for feature in registry['features']:
         props = feature['properties']
@@ -43,7 +47,17 @@ def build(inputs, zones, output):
             raise ValueError('Zone mask checksum changed')
         arrays = {}
         start = time.perf_counter()
-        with rasterio.open(mask_path) as mask:
+        with ExitStack() as stack:
+            mask = stack.enter_context(rasterio.open(mask_path))
+            weights_source = None
+            if 'weightsFile' in props:
+                weights_path = zones.parent / props['weightsFile']
+                if hashlib.sha256(weights_path.read_bytes()).hexdigest() != props['weightsSha256']:
+                    raise ValueError('Zone intersection weights checksum changed')
+                weights_source = stack.enter_context(rasterio.open(weights_path))
+                if (weights_source.crs != mask.crs or weights_source.shape != mask.shape or
+                        weights_source.transform != mask.transform):
+                    raise ValueError('Zone weights grid differs from fixed zone')
             for entry in entries:
                 path = inputs / entry['file']
                 if hashlib.sha256(path.read_bytes()).hexdigest() != entry['sha256']:
@@ -53,6 +67,7 @@ def build(inputs, zones, output):
                         not np.allclose(list(r.transform),list(mask.transform),rtol=0,atol=1e-10)):
                         raise ValueError('Annual source grid differs from fixed zone')
                 arrays[entry['year']] = path
+            readers = {year: stack.enter_context(rasterio.open(path)) for year, path in arrays.items()}
             annual = {y:np.zeros(4) for y in arrays}
             pairs = {p:np.zeros(16) for p in combinations(arrays,2)}
             # One bounded strip of cells at a time. Every pair reuses the same
@@ -68,10 +83,13 @@ def build(inputs, zones, output):
                 x0, _ = GEOGRAPHIC_TO_AREA.transform(t.c,0)
                 x1, _ = GEOGRAPHIC_TO_AREA.transform(t.c+t.a,0)
                 weights = np.broadcast_to((ys[:-1]-ys[1:])[:,None]*(x1-x0),inside.shape)[inside]
+                if weights_source is not None:
+                    weights = weights_source.read(1, window=w)[inside]
+                    if not np.isfinite(weights).all() or (weights < 0).any():
+                        raise ValueError('Invalid exact zone intersection weights')
                 classes = {}
                 for year, path in arrays.items():
-                    with rasterio.open(path) as r:
-                        data = r.read(1,window=w,masked=True).filled(0)[inside]
+                    data = readers[year].read(1,window=w,masked=True).filled(0)[inside]
                     if not np.isin(data,[0,1,2,3]).all():
                         raise ValueError('Undocumented class inside historical zone')
                     classes[year] = data.astype(np.int64)

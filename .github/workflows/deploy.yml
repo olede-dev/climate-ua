@@ -29,6 +29,18 @@ jobs:
       - run: npm run build:river-snapshot
         continue-on-error: true
       - run: npm run build
+      # Heavy data is generated offline. Configure both pins only after release approval.
+      - name: Stage verified surface-water release
+        env:
+          WATER_ARCHIVE_URL: ${{ vars.SURFACE_WATER_ARCHIVE_URL }}
+          WATER_ARCHIVE_SHA256: ${{ vars.SURFACE_WATER_ARCHIVE_SHA256 }}
+        run: |
+          if [ -n "$WATER_ARCHIVE_URL" ] || [ -n "$WATER_ARCHIVE_SHA256" ]; then
+            test -n "$WATER_ARCHIVE_URL"
+            test -n "$WATER_ARCHIVE_SHA256"
+            curl --fail --location --retry 3 "$WATER_ARCHIVE_URL" --output "$RUNNER_TEMP/surface-water.tar.gz"
+            python3 scripts/stage-surface-water.py --archive "$RUNNER_TEMP/surface-water.tar.gz" --sha256 "$WATER_ARCHIVE_SHA256" --site dist
+          fi
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="uk">
+<meta charset="utf-8">
+<title>Surface water release verification</title>
+<style>body{font:16px system-ui;margin:20px}button,select{font:inherit;padding:6px;margin:5px}canvas{width:100%;max-width:1120px;background:#f4f4f4;border:1px solid #ccc}pre{white-space:pre-wrap}</style>
+<h1>Перевірка статичних даних водойм</h1>
+<p>До активації жодні файли водойм не завантажуються. Огляд показує вибрані вихідні пікселі; числові площі використовують лише повну роздільність.</p>
+<button id="activate">Активувати огляд</button>
+<select id="body" aria-label="Водойма"><option value="overview">Уся Україна</option></select>
+<select id="before" aria-label="Початковий рік"></select>
+<select id="after" aria-label="Кінцевий рік"></select>
+<button id="draw">Порівняти</button><button id="annual">Річна карта</button>
+<canvas id="map" width="1120" height="700"></canvas>
+<pre id="status">Не активовано</pre><pre id="measurements"></pre>
+<script type="module">
+const el = id => document.getElementById(id), canvas = el('map'), ctx = canvas.getContext('2d');
+let manifest, root, generation = 0, cacheBytes = 0, heapPeak = 0;
+const cache = new Map(), measurements = [];
+for (let y = 1984; y <= 2024; y++) for (const id of ['before','after']) el(id).add(new Option(y,y));
+el('before').value = '2021'; el('after').value = '2024';
+const annualColors = [[175,184,191],[230,224,207],[42,176,205],[20,83,190]];
+const pairColors = [[175,184,191],[230,224,207],[27,160,91],[230,104,37],[20,83,190]];
+function sampleHeap() { if (performance.memory) heapPeak = Math.max(heapPeak, performance.memory.usedJSHeapSize); }
+function safeUrl(relative) {
+  const url = new URL(relative, root);
+  if (url.origin !== location.origin || !url.href.startsWith(root.href)) throw Error('Unsafe asset URL');
+  return url;
+}
+async function get(ref, json = true, count) {
+  const response = await fetch(safeUrl(ref.url));
+  if (!response.ok) throw Error(`Asset HTTP ${response.status}`);
+  const bytes = new Uint8Array(await response.arrayBuffer());
+  count.bytes += bytes.length;
+  if (bytes.length !== ref.bytes) throw Error('Asset byte count mismatch');
+  const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
+  if (digest !== ref.sha256) throw Error('Asset checksum mismatch');
+  return json ? JSON.parse(new TextDecoder().decode(bytes)) : bytes;
+}
+async function pixels(tile, count) {
+  if (cache.has(tile.sha256)) {
+    const value = cache.get(tile.sha256); cache.delete(tile.sha256); cache.set(tile.sha256,value); return value;
+  }
+  const bytes = await get(tile,false,count);
+  const packed = new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());
+  const n = tile.width*tile.height;
+  if (packed.length !== Math.ceil(n/2) || (n%2 && packed.at(-1)>>4 !== 15)) throw Error('Invalid tile length/padding');
+  const values = new Uint8Array(n);
+  for (let i = 0; i < n; i++) {
+    const code = packed[i>>1] >> ((i%2)*4) & 15;
+    if (![0,1,2,3,15].includes(code)) throw Error('Invalid class');
+    values[i] = code;
+  }
+  while (cacheBytes+values.length > 16*1048576 && cache.size) {
+    const key = cache.keys().next().value; cacheBytes -= cache.get(key).length; cache.delete(key);
+  }
+  cache.set(tile.sha256,values); cacheBytes += values.length; sampleHeap(); return values;
+}
+function extent(grid) { const t=grid.transform; return [t[2],t[5]+grid.height*t[4],t[2]+grid.width*t[0],t[5]]; }
+function intersects(a,b) { return a[0]<b[2] && a[2]>b[0] && a[1]<b[3] && a[3]>b[1]; }
+async function draw(pair, cold=false) {
+  const token=++generation, started=performance.now(), count={bytes:0};
+  sampleHeap(); heapPeak=performance.memory?.usedJSHeapSize??0;
+  el('status').textContent='Завантаження…';
+  const before=Number(el('before').value), after=Number(el('after').value), body=el('body').value;
+  const grids=[];
+  let bounds;
+  if (body === 'overview') {
+    bounds=extent(manifest.overview);
+    const a=await get(manifest.overview.frames.find(f=>f.year===before),true,count);
+    const b=pair?await get(manifest.overview.frames.find(f=>f.year===after),true,count):a;
+    grids.push([a,b]);
+  } else {
+    const item=manifest.catalogue.find(b=>b.id===body), [w,s,e,n]=item.bounds;
+    const cell=manifest.chunks[0].transform[0];
+    bounds=[(w+e)/2-660*cell,(s+n)/2-410*cell,(w+e)/2+660*cell,(s+n)/2+410*cell];
+    const chunks=manifest.chunks.filter(c=>intersects(extent(c),bounds));
+    for (const c of chunks) {
+      const a=await get(c.frames.find(f=>f.year===before),true,count);
+      const b=pair?await get(c.frames.find(f=>f.year===after),true,count):a;
+      if (a.version!==manifest.version || b.version!==manifest.version) throw Error('Mixed version');
+      grids.push([a,b]);
+    }
+    const series=await get(item.series,true,count);
+    if (series.version!==manifest.version) throw Error('Mixed series version');
+  }
+  ctx.clearRect(0,0,canvas.width,canvas.height); ctx.imageSmoothingEnabled=false;
+  let tiles=0;
+  for (const [a,b] of grids) {
+    const other=new Map(b.tiles.map(t=>[`${t.x},${t.y}`,t]));
+    for (const tile of a.tiles) {
+      const t=a.transform, w=t[2]+tile.x*t[0], n=t[5]+tile.y*t[4], e=w+tile.width*t[0], s=n+tile.height*t[4];
+      if (!intersects([w,s,e,n],bounds)) continue;
+      const match=other.get(`${tile.x},${tile.y}`);
+      if (pair && (!match || tile.width!==match.width || tile.height!==match.height)) throw Error('Pair grid differs');
+      const [av,bv] = pair ? await Promise.all([pixels(tile,count),pixels(match,count)])
+                          : await pixels(tile,count).then(v=>[v,v]);
+      const image=new ImageData(tile.width,tile.height);
+      for (let i=0;i<av.length;i++) {
+        const x=av[i],y=bv[i]; if (x===15 || (pair && y===15)) continue;
+        const code=pair?(x===0||y===0?0:x===1?(y===1?1:2):y===1?3:4):x;
+        image.data.set((pair?pairColors:annualColors)[code],i*4); image.data[i*4+3]=255;
+      }
+      const c=document.createElement('canvas'); c.width=tile.width;c.height=tile.height;c.getContext('2d').putImageData(image,0,0);
+      if (generation!==token) return;
+      ctx.drawImage(c,(w-bounds[0])/(bounds[2]-bounds[0])*1120,(bounds[3]-n)/(bounds[3]-bounds[1])*700,
+                    (e-w)/(bounds[2]-bounds[0])*1120,(n-s)/(bounds[3]-bounds[1])*700);
+      c.width=c.height=1; tiles+=pair?2:1; sampleHeap();
+    }
+  }
+  const metric={view:body,pair,before,after,cold,encodedBytes:count.bytes,tiles,seconds:(performance.now()-started)/1000,
+    jsHeapPeakBytes:heapPeak||null,cacheBytes,viewport:[1120,700],nativeExtentCells:body==='overview'?null:[1320,820],
+    userAgent:navigator.userAgent,totalBrowserMemory:'unavailable in this browser'};
+  measurements.push(metric);el('measurements').textContent=JSON.stringify(measurements,null,2);
+  el('status').textContent='Перевірено: контрольні суми, класи та спільна маска. '+JSON.stringify(metric);
+}
+el('activate').onclick=async()=>{
+  if (manifest) return;
+  const t=performance.now();
+  const pointer=await(await fetch('current.json')).json();root=new URL('.',location.href);
+  const count={bytes:0};manifest=await get(pointer,true,count);root=new URL(`versions/${pointer.version}/`,root);
+  if (manifest.version!==pointer.version) throw Error('Mixed manifest version');
+  for (const body of manifest.catalogue) el('body').add(new Option(body.nameUk,body.id));
+  const requestedBody = new URL(location.href).searchParams.get('body');
+  if (requestedBody && manifest.catalogue.some(b=>b.id===requestedBody)) el('body').value=requestedBody;
+  await draw(false,true);
+  measurements.at(-1).seconds=(performance.now()-t)/1000;measurements.at(-1).encodedBytes+=count.bytes;
+  el('measurements').textContent=JSON.stringify(measurements,null,2);
+};
+el('draw').onclick=()=>draw(true);el('annual').onclick=()=>draw(false);
+</script>
+</html>

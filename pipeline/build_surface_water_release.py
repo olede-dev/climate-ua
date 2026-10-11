@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 
 from shapely import STRtree, distance, points
-from shapely.geometry import mapping, shape
+from shapely.geometry import MultiPolygon, Polygon, mapping, shape
 from shapely.ops import transform as project, unary_union
 
 from build_surface_water_national import compact_json
@@ -255,11 +255,33 @@ def build(native, overview, zones, areas, review, output, local=None):
         manifest['catalogue'].append({**{k: p[k] for k in ('id', 'nameUk', 'nameEn', 'type', 'zoneM2', 'inclusionReason')},
                                       'bounds': list(shape(f['geometry']).bounds), 'series': reference(root, path),
                                       'review': reviewed['bodies'][p['id']]})
+    # The comparison list needs two union areas per year pair, not each body's full series.
+    def usable(row):
+        return row['coverage'] >= .8 and row['spatialStatus'] != 'suppressed'
+    summary = {'schemaVersion': 1, 'version': version, 'years': list(YEARS), 'bodies': []}
+    for f in registry['features']:
+        body = bodies[f['properties']['id']]
+        annual = {row['year']: round(row['areas']['unionM2']) if usable(row) and row['areas'] else None
+                  for row in body['annual']}
+        pairs = {(row['beforeYear'], row['afterYear']): row for row in body['pairs']}
+        def figures(before, after):
+            row = pairs[(before, after)]
+            c = row['comparison']
+            return [round(c['before']['unionM2']), round(c['after']['unionM2'])] if usable(row) and c else None
+        summary['bodies'].append({'id': f['properties']['id'], 'annual': [annual[y] for y in YEARS],
+                                  'pairs': [figures(a, b) for a, b in combinations(YEARS, 2)]})
+    compact_json(root/'comparison.json', summary)
+    manifest['comparison'] = reference(root, root/'comparison.json')
     if local:
         # Browser outlines are simplified for hit-testing and labels only; areas use native zones.
+        # Holes are dropped: the fill is invisible and islands need no separate hit area.
+        def shell(geometry):
+            if geometry.geom_type == 'Polygon':
+                return Polygon(geometry.exterior)
+            return MultiPolygon([Polygon(part.exterior) for part in geometry.geoms])
         outlines = {'type': 'FeatureCollection', 'features': [
             {'type': 'Feature', 'properties': {'id': b['entry']['id']},
-             'geometry': json.loads(json.dumps(mapping(shape(b['feature']['geometry']).simplify(.0003)),
+             'geometry': json.loads(json.dumps(mapping(shell(shape(b['feature']['geometry'])).simplify(.0005)),
                                                default=float), parse_float=lambda v: round(float(v), 4))}
             for b in local_bodies]}
         compact_json(root/'local/outlines.geojson', outlines)

@@ -27,6 +27,7 @@ def package(inputs, archive):
         return inputs/relative
     for record in [manifest['analysisZones'], manifest['zoneReview'], manifest['registrationSensitivity'],
                    *(b['series'] for b in manifest['catalogue']),
+                   *([manifest['comparison']] if 'comparison' in manifest else []),
                    *([manifest['local']['outlines'], *(b['series'] for b in manifest['local']['bodies'])]
                      if 'local' in manifest else [])]:
         validate_ref(record)

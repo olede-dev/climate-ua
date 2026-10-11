@@ -22,7 +22,7 @@ import {
   useOblasts,
   useSurfaceWaterManifest,
   useSurfaceWaterOutlines,
-  useSurfaceWaterSeriesList,
+  useSurfaceWaterComparison,
 } from '../../composables/useLayer'
 import {
   useSurfaceWaterTiles,
@@ -40,7 +40,7 @@ import {
   surfaceWaterExtent,
   type SurfaceWaterBounds,
 } from '../../lib/surfaceWater'
-import { selectWaterbodyYear, waterbodyChange } from '../../lib/waterbodyCard'
+import { selectWaterbodyYear, summaryChange } from '../../lib/waterbodyCard'
 import { LABEL_MIN_KM2, localLabelPoints, localWaterbodies } from '../../lib/localWaterbodies'
 import WaterTabs from './WaterTabs.vue'
 import TimeSlider from './TimeSlider.vue'
@@ -82,7 +82,11 @@ const oblasts = useOblasts()
 const loader = useSurfaceWaterTiles()
 const manifest = computed(() => query.data.value?.manifest)
 const locals = computed(() => (manifest.value ? localWaterbodies(manifest.value) : []))
-const outlines = useSurfaceWaterOutlines(() => query.data.value)
+// Local outlines (~0.6 MB) only matter once single waterbodies are a few pixels wide;
+// labels come from the manifest, so the overview never waits for them.
+const OUTLINE_ZOOM = 8
+const outlinesWanted = ref(false)
+const outlines = useSurfaceWaterOutlines(() => query.data.value, outlinesWanted)
 const container = useTemplateRef<HTMLDivElement>('container')
 const fallbackCanvas = useTemplateRef<HTMLCanvasElement>('fallbackCanvas')
 const fallback = ref(false)
@@ -116,21 +120,22 @@ const selected = computed<SurfaceWaterBodyEntry | undefined>(() => {
     locals.value.find((body) => body.id === id)
   )
 })
-const listSeries = useSurfaceWaterSeriesList(
+const summary = useSurfaceWaterComparison(
   () => query.data.value,
   () => ui.surfaceWater.mode === 'comparison' && !selected.value,
 )
-// Settled series only: a body still loading has no key, a failed one shows a dash.
+// While the summary loads no body has a key; a failed or missing summary shows dashes.
 const listComparison = computed(() => {
-  const catalogue = manifest.value?.catalogue
-  if (ui.surfaceWater.mode !== 'comparison' || !catalogue) return undefined
+  const value = manifest.value
+  if (ui.surfaceWater.mode !== 'comparison' || !value) return undefined
   const { before, after } = ui.surfaceWater
-  const figures: Record<string, ReturnType<typeof waterbodyChange>> = {}
-  catalogue.forEach((body, index) => {
-    const result = listSeries.value[index]
-    if (result?.isSuccess) figures[body.id] = waterbodyChange(result.data, before, after)
-    else if (result?.isError) figures[body.id] = null
-  })
+  const figures: Record<string, ReturnType<typeof summaryChange>> = {}
+  const loaded = summary.data.value
+  if (loaded || summary.isError.value || !value.comparison)
+    for (const body of value.catalogue) {
+      const row = loaded?.bodies.find((item) => item.id === body.id)
+      figures[body.id] = row ? summaryChange(row, value.years, before, after) : null
+    }
   return { before, after, figures }
 })
 const legend = computed(() => {
@@ -294,10 +299,43 @@ function labelFont() {
   }
   return null
 }
+function syncLocalLabels() {
+  if (!map || !styleReady || !locals.value.length || map.getSource(LOCAL_LABELS)) return
+  const font = labelFont()
+  if (!font) return
+  const dark = theme.value === 'dark'
+  addSource(map, LOCAL_LABELS, {
+    type: 'geojson',
+    data: localLabelPoints(locals.value, locale.value, copy.value),
+  })
+  addLayer(
+    map,
+    {
+      id: LOCAL_LABELS,
+      type: 'symbol',
+      source: LOCAL_LABELS,
+      filter: ['>=', ['get', 'km2'], LABEL_MIN_KM2 as unknown as ExpressionSpecification],
+      layout: {
+        'text-field': ['get', 'label'],
+        'text-font': font,
+        'text-size': ['interpolate', ['linear'], ['zoom'], 6, 10.5, 10, 12.5],
+        'text-max-width': 8,
+        'symbol-sort-key': ['-', ['get', 'km2']],
+        'text-padding': 4,
+      },
+      paint: {
+        'text-color': dark ? '#9fc3ff' : '#1453be',
+        'text-halo-color': dark ? 'rgba(10, 10, 12, 0.85)' : 'rgba(255, 255, 255, 0.9)',
+        'text-halo-width': 1.4,
+      },
+    },
+    map.getLayer('surface-water-selection') ? 'surface-water-selection' : undefined,
+  )
+}
 function syncLocal() {
   const data = outlines.data.value
   if (!map || !styleReady || !data || map.getSource(LOCAL)) return
-  const before = map.getLayer('surface-water-selection') ? 'surface-water-selection' : undefined
+  const before = [LOCAL_LABELS, 'surface-water-selection'].find((id) => map!.getLayer(id))
   const dark = theme.value === 'dark'
   addSource(map, LOCAL, { type: 'geojson', data, promoteId: 'id' })
   // Hit-testing only: the raster already shows the water; the line marks hover and selection.
@@ -332,36 +370,6 @@ function syncLocal() {
     },
     before,
   )
-  const font = labelFont()
-  if (font) {
-    addSource(map, LOCAL_LABELS, {
-      type: 'geojson',
-      data: localLabelPoints(locals.value, locale.value, copy.value),
-    })
-    addLayer(
-      map,
-      {
-        id: LOCAL_LABELS,
-        type: 'symbol',
-        source: LOCAL_LABELS,
-        filter: ['>=', ['get', 'km2'], LABEL_MIN_KM2 as unknown as ExpressionSpecification],
-        layout: {
-          'text-field': ['get', 'label'],
-          'text-font': font,
-          'text-size': ['interpolate', ['linear'], ['zoom'], 6, 10.5, 10, 12.5],
-          'text-max-width': 8,
-          'symbol-sort-key': ['-', ['get', 'km2']],
-          'text-padding': 4,
-        },
-        paint: {
-          'text-color': dark ? '#9fc3ff' : '#1453be',
-          'text-halo-color': dark ? 'rgba(10, 10, 12, 0.85)' : 'rgba(255, 255, 255, 0.9)',
-          'text-halo-width': 1.4,
-        },
-      },
-      before,
-    )
-  }
   hovered = null
   markLocalSelection(null, ui.surfaceWater.waterbody)
 }
@@ -372,10 +380,13 @@ function markLocalSelection(previous: string | null | undefined, next: string | 
     map.setFeatureState({ source: LOCAL, id: next }, { selected: true })
 }
 function hoverLocal(id: string | null) {
-  if (!map?.getSource(LOCAL) || id === hovered) return
-  if (hovered) map.setFeatureState({ source: LOCAL, id: hovered }, { hover: false })
+  if (!map || id === hovered) return
+  // Labels are clickable before the outlines load; only the outline highlight waits for them.
+  if (map.getSource(LOCAL)) {
+    if (hovered) map.setFeatureState({ source: LOCAL, id: hovered }, { hover: false })
+    if (id) map.setFeatureState({ source: LOCAL, id }, { hover: true })
+  }
   hovered = id
-  if (id) map.setFeatureState({ source: LOCAL, id }, { hover: true })
   map.getCanvas().style.cursor = id ? 'pointer' : ''
 }
 function pickLocal(event: MapLayerMouseEvent) {
@@ -655,12 +666,16 @@ async function startMap() {
       applyLabelFilters(map!, labelFilters, () => !destroyed && own === styleGeneration)
       syncBorder()
       syncOblasts()
-      syncLocal()
       syncSelection()
+      syncLocalLabels()
+      syncLocal()
       void render()
     })
     map.on('sourcedata', reveal)
-    map.on('moveend', () => void render())
+    map.on('moveend', () => {
+      if (map && map.getZoom() >= OUTLINE_ZOOM) outlinesWanted.value = true
+      void render()
+    })
     map.on('click', 'surface-water-selection', (event) => {
       const id = event.features?.[0]?.properties.id
       if (typeof id === 'string') ui.surfaceWater = { ...ui.surfaceWater, waterbody: id }
@@ -716,6 +731,7 @@ watch(selected, (next, previous) => {
   frameSelection()
 })
 watch(() => outlines.data.value, syncLocal)
+watch(locals, syncLocalLabels)
 watch([locale, theme], () => {
   if (map) void applyStyle()
 })

@@ -1,4 +1,4 @@
-import { useQueries, useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 
 import { layerConfig } from '../config/layers'
@@ -8,6 +8,7 @@ import { surfaceWaterAssetUrl } from '../lib/surfaceWaterAssets'
 import type {
   SurfaceWaterAsset,
   SurfaceWaterCatalogueFile,
+  SurfaceWaterComparisonSummary,
   SurfaceWaterManifest,
   SurfaceWaterPointer,
 } from '../types'
@@ -264,9 +265,10 @@ export function useSurfaceWaterSeries(
   return useQuery(computed(() => seriesQuery(toValue(release), toValue(body))))
 }
 
-/** Local outlines for hit-testing; loaded once the map shows a release that has them. */
+/** Local outlines for hit-testing; idle until enabled (the map is zoomed in far enough). */
 export function useSurfaceWaterOutlines(
   release: MaybeRefOrGetter<SurfaceWaterRelease | null | undefined>,
+  enabled: MaybeRefOrGetter<boolean>,
 ) {
   return useQuery(
     computed(() => {
@@ -280,23 +282,46 @@ export function useSurfaceWaterOutlines(
             asset!,
             signal,
           ),
-        enabled: !!asset,
+        enabled: !!asset && toValue(enabled),
         retry: false,
       }
     }),
   )
 }
 
-/** Every body's series for the comparison list; shares the card's cache, idle until enabled. */
-export function useSurfaceWaterSeriesList(
+/** Compact pair areas for the comparison list; idle until enabled. */
+export function useSurfaceWaterComparison(
   release: MaybeRefOrGetter<SurfaceWaterRelease | null | undefined>,
   enabled: MaybeRefOrGetter<boolean>,
 ) {
-  return useQueries({
-    queries: computed(() => {
+  return useQuery(
+    computed(() => {
       const value = toValue(release)
-      if (!value || !toValue(enabled)) return []
-      return value.manifest.catalogue.map((entry) => seriesQuery(value, entry))
+      const asset = value?.manifest.comparison
+      return {
+        queryKey: ['surface-water-comparison', value?.manifest.version],
+        queryFn: async ({ signal }: { signal: AbortSignal }) => {
+          const summary = await fetchSurfaceWaterAsset<SurfaceWaterComparisonSummary>(
+            new URL(value!.root),
+            asset!,
+            signal,
+          )
+          const years = value!.manifest.years
+          const pairs = (years.length * (years.length - 1)) / 2
+          if (
+            summary.schemaVersion !== 1 ||
+            summary.version !== value!.manifest.version ||
+            summary.years.join() !== years.join() ||
+            summary.bodies.some(
+              (body) => body.annual.length !== years.length || body.pairs.length !== pairs,
+            )
+          )
+            throw new Error('Invalid surface-water comparison summary')
+          return summary
+        },
+        enabled: !!asset && toValue(enabled),
+        retry: false,
+      }
     }),
-  })
+  )
 }

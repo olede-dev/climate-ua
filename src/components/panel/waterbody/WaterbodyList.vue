@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useLocale } from '../../../composables/useLocale'
-import { CHANGE_TONE_CLASSES, changeTone, type waterbodyChange } from '../../../lib/waterbodyCard'
+import { CHANGE_TONE_CLASSES, changeTone, type summaryChange } from '../../../lib/waterbodyCard'
 import type { SurfaceWaterCatalogueEntry } from '../../../types'
 
 // Figures are passed only in comparison mode; the annual view keeps a plain list of links.
@@ -11,7 +11,7 @@ const props = defineProps<{
   comparison?: {
     before: number
     after: number
-    figures: Record<string, ReturnType<typeof waterbodyChange> | undefined>
+    figures: Record<string, ReturnType<typeof summaryChange> | undefined>
   }
 }>()
 const emit = defineEmits<{ select: [id: string] }>()

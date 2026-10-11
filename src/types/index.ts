@@ -362,12 +362,25 @@ export interface SurfaceWaterManifest {
   analysisZones: SurfaceWaterAsset
   zoneReview: SurfaceWaterAsset
   registrationSensitivity: SurfaceWaterAsset
+  /** Union areas per year pair for the comparison list; older releases lack it. */
+  comparison?: SurfaceWaterAsset
   local?: {
     zoneVersion: string
     status: string
     outlines: SurfaceWaterAsset
     bodies: SurfaceWaterLocalEntry[]
   }
+}
+/** Rounded union areas (m²): `annual` per year, `pairs` per ordered year pair (before < after). */
+export interface SurfaceWaterComparisonSummary {
+  schemaVersion: 1
+  version: string
+  years: number[]
+  bodies: {
+    id: string
+    annual: (number | null)[]
+    pairs: ([number, number] | null)[]
+  }[]
 }
 export interface SurfaceWaterCatalogueFile extends Pick<
   SurfaceWaterManifest,

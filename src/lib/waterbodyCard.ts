@@ -1,4 +1,6 @@
-import type { SurfaceWaterAnnual, SurfaceWaterPair, SurfaceWaterState } from '../types'
+import type {
+  SurfaceWaterAnnual,
+  SurfaceWaterComparisonSummary, SurfaceWaterPair, SurfaceWaterState } from '../types'
 import { normalizeSurfaceWaterState } from './surfaceWater'
 
 export function annualWaterArea(row: SurfaceWaterAnnual | undefined) {
@@ -95,6 +97,31 @@ export function waterbodyChange(
   return delta && pair?.comparison
     ? { m2: pair.comparison.after.unionM2, percent: delta.percent }
     : null
+}
+
+/** `waterbodyChange` from the compact summary: same rules, without each body's full series. */
+export function summaryChange(
+  body: SurfaceWaterComparisonSummary['bodies'][number],
+  years: readonly number[],
+  beforeYear: number,
+  afterYear: number,
+) {
+  const a = years.indexOf(beforeYear)
+  const b = years.indexOf(afterYear)
+  if (a < 0 || b < 0) return null
+  let areas: readonly [number, number] | null
+  if (a === b) {
+    const m2 = body.annual[a]
+    areas = m2 == null ? null : [m2, m2]
+  } else {
+    const [i, j] = a < b ? [a, b] : [b, a]
+    // Pairs are ordered (0,1), (0,2) … (1,2) …: offset of row i plus column j.
+    const stored = body.pairs[(i * (2 * years.length - i - 1)) / 2 + (j - i - 1)] ?? null
+    areas = stored && (a < b ? stored : [stored[1], stored[0]])
+  }
+  if (!areas) return null
+  const [before, after] = areas
+  return { m2: after, percent: before > 0 ? ((after - before) / before) * 100 : null }
 }
 
 export type ChangeTone = 'critical' | 'decline' | 'stable' | 'growth'

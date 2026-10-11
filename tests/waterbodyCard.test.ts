@@ -6,6 +6,7 @@ import {
   waterbodyDelta,
   waterbodyPair,
   waterbodyChange,
+  summaryChange,
 } from '../src/lib/waterbodyCard'
 import type {
   SurfaceWaterAnnual,
@@ -123,5 +124,51 @@ describe('changeTone', () => {
     expect(changeTone(-2)).toBe('stable')
     expect(changeTone(4.9)).toBe('stable')
     expect(changeTone(12)).toBe('growth')
+  })
+})
+
+describe('summaryChange', () => {
+  const years = [2000, 2001, 2002, 2003]
+  // Distinct union per year; pair (2001, 2003) is suppressed, year 2002 has no usable area.
+  const union = (year: number) => 100 + (year - 2000) * 10
+  const rows = years.flatMap((a, i) => years.slice(i + 1).map((b) => [a, b] as const))
+  const series = {
+    annual: years.map((year) =>
+      year === 2002
+        ? { ...quality, year, coverage: 0.5, areas: null }
+        : { ...quality, year, areas: { ...areas, unionM2: union(year) } },
+    ),
+    pairs: rows.map(([before, after]) => ({
+      ...pair,
+      beforeYear: before,
+      afterYear: after,
+      spatialStatus: before === 2001 && after === 2003 ? ('suppressed' as const) : 'complete',
+      comparison: {
+        ...pair.comparison!,
+        before: { ...areas, unionM2: union(before) },
+        after: { ...areas, unionM2: union(after) },
+      },
+    })),
+  } as unknown as SurfaceWaterSeries
+  const body = {
+    id: 'x',
+    annual: series.annual.map((row) => row.areas?.unionM2 ?? null),
+    pairs: series.pairs.map((row) =>
+      row.spatialStatus === 'suppressed'
+        ? null
+        : ([row.comparison!.before.unionM2, row.comparison!.after.unionM2] as [number, number]),
+    ),
+  }
+
+  it('matches the full-series figures for every year pair and direction', () => {
+    for (const before of years)
+      for (const after of years)
+        expect(summaryChange(body, years, before, after)).toEqual(
+          waterbodyChange(series, before, after),
+        )
+  })
+
+  it('returns null for years outside the release', () => {
+    expect(summaryChange(body, years, 1999, 2000)).toBeNull()
   })
 })

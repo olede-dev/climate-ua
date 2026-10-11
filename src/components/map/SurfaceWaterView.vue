@@ -3,6 +3,7 @@ import type { MultiLineString } from 'geojson'
 import type { GeoJSONSource, Map as MaplibreMap, PaddingOptions } from 'maplibre-gl'
 import {
   computed,
+  defineAsyncComponent,
   nextTick,
   onBeforeUnmount,
   onMounted,
@@ -30,6 +31,8 @@ import {
   surfaceWaterExtent,
   type SurfaceWaterBounds,
 } from '../../lib/surfaceWater'
+import { selectWaterbodyYear } from '../../lib/waterbodyCard'
+import LoadingSkeleton from '../ui/LoadingSkeleton.vue'
 import { paintSurfaceWaterTile, surfaceWaterCorners } from '../../lib/surfaceWaterCanvas'
 import type { SurfaceWaterState } from '../../types'
 import { basemapStyle, applyLabelFilters, type LabelFilter, type BasemapKind } from './basemap'
@@ -41,6 +44,17 @@ const props = defineProps<{
   countryBorder: MultiLineString | null
 }>()
 const emit = defineEmits<{ basemap: [kind: BasemapKind] }>()
+const WaterbodyCard = defineAsyncComponent(() => import('../panel/waterbody/WaterbodyCard.vue'))
+const bodyPicker = useTemplateRef<HTMLSelectElement>('bodyPicker')
+async function closeBody() {
+  ui.surfaceWater = { ...ui.surfaceWater, waterbody: null }
+  await nextTick()
+  bodyPicker.value?.focus()
+}
+function selectChartYear(year: number) {
+  if (manifest.value)
+    ui.surfaceWater = selectWaterbodyYear(ui.surfaceWater, year, manifest.value.years)
+}
 const ui = useUiStore()
 const { locale, t } = useLocale()
 const { theme } = useTheme()
@@ -53,6 +67,7 @@ const fallbackCanvas = useTemplateRef<HTMLCanvasElement>('fallbackCanvas')
 const fallback = ref(false)
 const pending = ref(true)
 const failed = ref(false)
+const unknownBody = ref(false)
 const transitions = computed({
   get: () => ui.surfaceWaterTransitions,
   set: (value: boolean) => {
@@ -112,7 +127,10 @@ let readyState: typeof shown.value = null
 watch(
   state,
   (value) => {
-    if (value && JSON.stringify(value) !== JSON.stringify(ui.surfaceWater)) ui.surfaceWater = value
+    if (value && JSON.stringify(value) !== JSON.stringify(ui.surfaceWater)) {
+      if (ui.surfaceWater.waterbody && !value.waterbody) unknownBody.value = true
+      ui.surfaceWater = value
+    }
   },
   { immediate: true },
 )
@@ -121,6 +139,7 @@ function setYear(key: 'year' | 'before' | 'after', event: Event) {
   ui.surfaceWater = { ...ui.surfaceWater, [key]: Number((event.target as HTMLSelectElement).value) }
 }
 function pickBody(event: Event) {
+  unknownBody.value = false
   ui.surfaceWater = {
     ...ui.surfaceWater,
     waterbody: (event.target as HTMLSelectElement).value || null,
@@ -479,13 +498,13 @@ onBeforeUnmount(() => {
     <div
       ref="container"
       class="min-h-0 w-full flex-1"
-      :class="wide ? 'h-full' : 'relative'"
+      :class="wide ? 'h-full' : 'relative min-h-[50dvh]'"
       :aria-label="copy.name"
     />
     <div
       v-if="fallback"
-      class="pointer-events-none absolute inset-0 flex items-center justify-center"
-      :class="wide ? 'pl-[24rem] pr-20' : 'pb-64'"
+      class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center"
+      :class="wide ? 'bottom-0 pl-[24rem] pr-20' : 'h-[50dvh]'"
     >
       <canvas
         ref="fallbackCanvas"
@@ -496,9 +515,7 @@ onBeforeUnmount(() => {
     </div>
     <section
       class="glass pointer-events-auto z-10 overflow-y-auto rounded-2xl p-3 text-ink shadow-float"
-      :class="
-        wide ? 'absolute top-3 bottom-10 left-3 w-[22rem]' : 'relative max-h-[55%] shrink-0 text-xs'
-      "
+      :class="wide ? 'absolute top-3 bottom-10 left-3 w-[22rem]' : 'relative shrink-0 text-sm'"
       :aria-label="copy.name"
     >
       <AppHeader v-if="wide" inline class="mb-4"
@@ -542,6 +559,7 @@ onBeforeUnmount(() => {
         <label class="col-span-2 grid gap-1 text-sm"
           >{{ copy.waterbody }}
           <select
+            ref="bodyPicker"
             :value="ui.surfaceWater.waterbody ?? ''"
             :aria-label="copy.waterbody"
             :disabled="!manifest"
@@ -550,7 +568,7 @@ onBeforeUnmount(() => {
           >
             <option value="">{{ copy.country }}</option>
             <option v-for="body in manifest?.catalogue" :key="body.id" :value="body.id">
-              {{ locale === 'uk' ? body.nameUk : body.nameEn }}
+              {{ (locale === 'uk' ? body.nameUk : body.nameEn) || copy.unnamed }}
             </option>
           </select>
         </label>
@@ -579,11 +597,39 @@ onBeforeUnmount(() => {
           {{ shown.native ? copy.native : fallback ? copy.staticOverview : copy.overview }}
         </p>
       </div>
-      <p v-if="selected" class="mt-2 text-sm">
-        {{ copy.selection }}: {{ locale === 'uk' ? selected.nameUk : selected.nameEn }}
-      </p>
-      <p class="mt-3 text-xs text-ink-muted" :class="wide ? '' : 'hidden'">{{ copy.note }}</p>
-      <p v-if="manifest" class="mt-2 text-[10px] text-ink-muted">{{ manifest.attribution }}</p>
+      <p v-if="unknownBody" role="status" class="mt-2 text-sm">{{ copy.unknownBody }}</p>
+      <Suspense v-if="selected && query.data.value && state">
+        <WaterbodyCard
+          :key="`${manifest?.version}:${selected.id}`"
+          :body="selected"
+          :release="query.data.value"
+          :state="state"
+          @close="closeBody"
+          @select="selectChartYear"
+        />
+        <template #fallback><LoadingSkeleton :label="copy.detailsLoading" class="h-48" /></template>
+      </Suspense>
+      <details v-if="manifest" class="mt-3 text-xs text-ink-muted">
+        <summary class="cursor-pointer rounded focus-ring">{{ copy.methodology }}</summary>
+        <p class="mt-2">{{ copy.note }}</p>
+        <p class="mt-2">{{ copy.methodHelp }}</p>
+        <p class="mt-2">{{ copy.qualityHelp }}</p>
+        <p class="mt-2">{{ copy.registrationHelp }}</p>
+        <p class="mt-2">{{ copy.supportedYears }}: {{ manifest.years.join(', ') }}</p>
+        <p class="mt-2">
+          {{ [...new Set(manifest.sources.map((source) => source.collection))].join('; ') }}
+        </p>
+        <p class="mt-2 break-all">
+          {{ copy.source }}: {{ manifest.sourceVersion }} · {{ manifest.version }} ·
+          {{ manifest.zoneVersion }}
+        </p>
+        <p class="mt-2">{{ manifest.attribution }}</p>
+        <a
+          class="mt-2 inline-block underline focus-ring"
+          href="https://global-surface-water.appspot.com/"
+          >JRC Global Surface Water</a
+        >
+      </details>
       <div v-if="fallback" class="mt-2">
         <p class="text-xs">{{ copy.fallback }}</p>
         <button class="mt-1 rounded-lg bg-fill p-2 text-sm focus-ring" @click="startMap">

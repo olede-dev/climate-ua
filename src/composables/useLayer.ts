@@ -204,3 +204,37 @@ export function useSurfaceWaterManifest() {
     retry: false,
   })
 }
+
+/** Details share the selected immutable release; no request before a card opens. */
+export function useSurfaceWaterSeries(
+  release: MaybeRefOrGetter<{ manifest: SurfaceWaterManifest; root: string }>,
+  body: MaybeRefOrGetter<import('../types').SurfaceWaterCatalogueEntry>,
+) {
+  return useQuery({
+    queryKey: computed(() => [
+      'surface-water-series',
+      toValue(release).manifest.version,
+      toValue(body).id,
+    ]),
+    queryFn: async ({ signal }) => {
+      const { manifest, root } = toValue(release)
+      const entry = toValue(body)
+      const series = await fetchSurfaceWaterAsset<import('../types').SurfaceWaterSeries>(
+        new URL(root),
+        entry.series,
+        signal,
+      )
+      if (
+        series.schemaVersion !== 1 ||
+        series.version !== manifest.version ||
+        series.zoneVersion !== manifest.zoneVersion ||
+        series.id !== entry.id ||
+        series.unit !== 'm2' ||
+        series.areaCRS !== 'EPSG:6933'
+      )
+        throw new Error('Invalid surface-water series')
+      return series
+    },
+    retry: false,
+  })
+}

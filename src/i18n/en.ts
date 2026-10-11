@@ -555,6 +555,40 @@ export const en: Messages = {
     },
   },
   surfaceWater: {
+    total: 'Observed annual water',
+    km2: 'km²',
+    history: 'Annual area history',
+    detailsLoading: 'Loading waterbody details…',
+    close: 'Close details',
+    unnamed: 'Unnamed waterbody',
+    lake: 'Lake',
+    reservoir: 'Reservoir',
+    location: 'Location (latitude, longitude)',
+    coverage: 'Spatial coverage',
+    complete: 'Spatial gate passed',
+    partial: 'Partial spatial coverage',
+    suppressed: 'Insufficient spatial coverage',
+    qualityHelp:
+      'Below 80% coverage, areas are hidden; 80–95% is partial; at least 95% passes the spatial gate. Temporal completeness remains unknown, even at 100% spatial coverage.',
+    noArea: 'Area unavailable',
+    commonMask: 'Comparison on the common observation mask',
+    delta: 'Area change',
+    noComparison: 'Comparison unavailable for these years.',
+    zeroBaseline: 'Percentage unavailable for a zero baseline.',
+    chartHelp:
+      'Triangles indicate partial observations. Gaps mean missing or suppressed observations, never zero. Pick a year to change the annual map or the comparison end year.',
+    methodology: 'Sources and methodology',
+    supportedYears: 'Supported years',
+    source: 'Source and release',
+    methodHelp:
+      'JRC Global Surface Water YearlyHistory, Landsat at approximately 30 m resolution. Permanent and seasonal water are detections during a year, not a dated shoreline, depth or volume. Areas use native-cell intersections with fixed historical zones in EPSG:6933. Each annual total uses its own valid mask; comparison totals use the intersection of both masks. Missing observations are not dry land. These data do not establish causes of change.',
+    registrationHelp:
+      'Landsat collection registration differences may dominate small changes between releases. One-cell sensitivity scenarios are not accuracy bounds.',
+    kakhovka:
+      'The Kakhovka dam was destroyed on 6 June 2023 during Russia’s war against Ukraine. Annual seasonal water in 2023 includes detections before the breach and is not a post-breach shoreline. The loss must not be attributed solely to climate.',
+    kakhovkaSource: 'UNEP assessment',
+    unknownBody: 'Selected waterbody is unavailable.',
+
     name: 'Waterbodies',
     description: 'Annual surface water and area changes',
     annual: 'Annual map',

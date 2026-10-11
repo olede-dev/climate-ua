@@ -712,7 +712,9 @@ const tooltip = computed(() => {
         :class="
           isWide
             ? 'pointer-events-auto fixed inset-0 z-0'
-            : 'relative h-[62dvh] shrink-0 overflow-hidden rounded-2xl shadow-card'
+            : isSurfaceWater
+              ? 'relative shrink-0 rounded-2xl shadow-card'
+              : 'relative h-[62dvh] shrink-0 overflow-hidden rounded-2xl shadow-card'
         "
         :aria-label="t.home.map"
       >

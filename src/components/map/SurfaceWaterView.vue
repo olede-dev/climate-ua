@@ -128,6 +128,9 @@ const waiting = new PendingSourceBatch()
 let rendered: { canvas: HTMLCanvasElement; bounds: SurfaceWaterBounds }[] = []
 let resize: ResizeObserver | undefined
 let readyState: typeof shown.value = null
+// Installed layers' content key: an unchanged view (e.g. overview while panning) is not repainted.
+let installedKey = ''
+let pendingKey = ''
 
 watch(
   state,
@@ -244,6 +247,7 @@ function reveal() {
   if (!ready.length) return
   const previous = installed
   installed = ready
+  installedKey = pendingKey
   for (const id of ready) map.setPaintProperty(id, 'raster-opacity', 0.95, NO_VALIDATE)
   clearLayers(previous)
   shown.value = readyState
@@ -359,6 +363,17 @@ async function render() {
       shown.value = readyState
       pending.value = false
     } else {
+      const key = JSON.stringify([
+        readyState.state,
+        readyState.transitions,
+        result.tiles.map((tile) => [tile.tile.sha256, tile.bounds]),
+      ])
+      if (key === installedKey) {
+        shown.value = readyState
+        pending.value = false
+        return
+      }
+      pendingKey = key
       rendered = result.tiles.map((tile) => ({
         canvas: paintSurfaceWaterTile(tile, transitions.value),
         bounds: tile.bounds,
@@ -395,6 +410,7 @@ async function applyStyle() {
     const result = await basemapStyle(locale.value, theme.value)
     if (!map || destroyed || own !== styleGeneration) return
     installed = []
+    installedKey = ''
     waiting.take()
     rendered = []
     labelFilters = result.labelFilters

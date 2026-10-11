@@ -30,29 +30,29 @@ export function paintSurfaceWaterTile(
   canvas.width = tile.width
   canvas.height = tile.height
   const image = new ImageData(tile.width, tile.height)
-  const colors = new Map<number, [number, number, number, number]>()
+  // Packed RGBA lookup by before * 16 + after; written as one 32-bit store per pixel.
+  const colors = new Uint32Array(256)
+  const rgba = new Uint8Array(colors.buffer)
   for (const a of [0, 1, 2, 3, 15] as SurfaceWaterClass[]) {
     for (const b of [0, 1, 2, 3, 15] as SurfaceWaterClass[]) {
       const color = surfaceWaterPixelColor(a, after ? b : null, transitions)
-      colors.set(
-        a * 16 + b,
-        color
-          ? [
-              parseInt(color.slice(1, 3), 16),
-              parseInt(color.slice(3, 5), 16),
-              parseInt(color.slice(5, 7), 16),
-              255,
-            ]
-          : [0, 0, 0, 0],
-      )
+      if (!color) continue
+      const i = (a * 16 + b) * 4
+      rgba[i] = parseInt(color.slice(1, 3), 16)
+      rgba[i + 1] = parseInt(color.slice(3, 5), 16)
+      rgba[i + 2] = parseInt(color.slice(5, 7), 16)
+      rgba[i + 3] = 255
     }
   }
+  const out = new Uint32Array(image.data.buffer)
   for (let y = 0; y < tile.height; y++) {
-    const row = surfaceWaterNativeRow(bounds, tile.height, y)
-    for (let x = 0; x < tile.width; x++) {
-      const index = row * tile.width + x
-      const color = colors.get(before[index]! * 16 + (after?.[index] ?? 0))!
-      image.data.set(color, (y * tile.width + x) * 4)
+    const row = surfaceWaterNativeRow(bounds, tile.height, y) * tile.width
+    const target = y * tile.width
+    if (after) {
+      for (let x = 0; x < tile.width; x++)
+        out[target + x] = colors[before[row + x]! * 16 + after[row + x]!]!
+    } else {
+      for (let x = 0; x < tile.width; x++) out[target + x] = colors[before[row + x]! * 16]!
     }
   }
   canvas.getContext('2d')!.putImageData(image, 0, 0)

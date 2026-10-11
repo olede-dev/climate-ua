@@ -9,11 +9,13 @@ import {
   type SurfaceWaterBounds,
 } from '../lib/surfaceWater'
 import type {
+  SurfaceWaterChunk,
   SurfaceWaterFrame,
   SurfaceWaterGrid,
   SurfaceWaterManifest,
   SurfaceWaterState,
   SurfaceWaterTile,
+  SurfaceWaterTimeline,
 } from '../types'
 
 const CACHE_LIMIT = 16 * 1024 * 1024
@@ -75,6 +77,24 @@ export function useSurfaceWaterTiles() {
     validateSurfaceWaterFrame(data, grid, version, year)
     return data
   }
+  async function timeline(
+    root: URL,
+    chunk: SurfaceWaterChunk,
+    version: string,
+    signal: AbortSignal,
+  ): Promise<SurfaceWaterGrid> {
+    if (chunk.frames) return { ...chunk, frames: chunk.frames }
+    if (!chunk.timeline) throw new Error('Missing surface-water timeline')
+    const key = ['surface-water-timeline', version, chunk.timeline.sha256]
+    const cached = client.getQueryData<SurfaceWaterTimeline>(key)
+    const data =
+      cached ?? (await fetchSurfaceWaterAsset<SurfaceWaterTimeline>(root, chunk.timeline, signal))
+    if (!cached) client.setQueryData(key, data)
+    signal.throwIfAborted()
+    if (data.version !== version || data.id !== chunk.id || !Array.isArray(data.frames))
+      throw new Error('Incoherent surface-water timeline')
+    return { ...chunk, frames: data.frames }
+  }
   async function load(
     manifest: SurfaceWaterManifest,
     root: URL,
@@ -129,7 +149,17 @@ export function useSurfaceWaterTiles() {
       intersectsSurfaceWater(surfaceWaterExtent(grid), viewport),
     )
     if (nativeGrids.length > 4) native = false
-    let tasks = await plan(native ? nativeGrids : [manifest.overview])
+    const timelines = native
+      ? await Promise.all(
+          nativeGrids.map((chunk) => timeline(root, chunk, manifest.version, signal)),
+        )
+      : []
+    // Timelines are small indexes, counted like frame indexes against the delivery budget.
+    for (const chunk of native ? nativeGrids : []) {
+      frameBytes += chunk.timeline?.bytes ?? 0
+      encodedBytes += chunk.timeline?.bytes ?? 0
+    }
+    let tasks = await plan(native ? timelines : [manifest.overview])
     if (
       native &&
       (!tasks ||
@@ -144,14 +174,22 @@ export function useSurfaceWaterTiles() {
     }
     if (!tasks || encodedBytes > SURFACE_WATER_VIEWPORT_LIMIT)
       throw new Error('Surface-water viewport exceeds delivery budget')
-    const tiles: SurfaceWaterRenderTile[] = []
-    // Sequential bounded decoding avoids a burst of decompression buffers on mobile.
-    for (const task of tasks) {
-      signal.throwIfAborted()
-      const before = await pixels(root, task.tile, signal)
-      const after = task.other ? await pixels(root, task.other, signal) : null
-      tiles.push({ bounds: task.bounds, tile: task.tile, before, after })
+    const tiles: SurfaceWaterRenderTile[] = new Array(tasks.length)
+    // A small worker pool bounds concurrent decompression buffers on mobile.
+    let next = 0
+    async function worker() {
+      while (next < tasks!.length) {
+        const i = next++
+        const task = tasks![i]!
+        signal.throwIfAborted()
+        const [before, after] = await Promise.all([
+          pixels(root, task.tile, signal),
+          task.other ? pixels(root, task.other, signal) : null,
+        ])
+        tiles[i] = { bounds: task.bounds, tile: task.tile, before, after }
+      }
     }
+    await Promise.all(Array.from({ length: Math.min(4, tasks.length) }, worker))
     signal.throwIfAborted()
     return { tiles, native, encodedBytes, cacheBytes }
   }

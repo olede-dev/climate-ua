@@ -104,8 +104,8 @@ For local development, keep surface-water archives in `pipeline/data/raw/surface
 
 ```sh
 python3 scripts/stage-surface-water.py \
-  --archive pipeline/data/raw/surface-water/archives/climate-ua-surface-water-release-1984-2024.tar.gz \
-  --sha256 84abd29c932b6cb3d495d9258429d578f4ca11d625b7e2a4e52b60c275a8e443 \
+  --archive pipeline/data/raw/surface-water/archives/climate-ua-surface-water-release-4cc773b3c6b997fa9c45.tar.gz \
+  --sha256 7a7b24c59bad7d65f6fce28a412513654096b6f3b0181310d87924c55aaa5639 \
   --site public
 ```
 

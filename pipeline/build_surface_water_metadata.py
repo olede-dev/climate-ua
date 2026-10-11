@@ -38,8 +38,9 @@ def build(inputs, output):
         raise ValueError('Analysis zones changed')
     zones = {f['properties']['id']: f['geometry']
              for f in json.loads(zones_path.read_text())['features']}
-    result = {k: manifest[k] for k in ('schemaVersion', 'version', 'processingVersion', 'zoneVersion',
-              'sourceVersion', 'years', 'unit', 'areaCRS', 'areaMethod', 'attribution', 'quality', 'sources', 'registrationRisk')}
+    # The marker catalogue keeps its own schema while the manifest layout evolves.
+    result = {'schemaVersion': 1, **{k: manifest[k] for k in ('version', 'processingVersion', 'zoneVersion',
+              'sourceVersion', 'years', 'unit', 'areaCRS', 'areaMethod', 'attribution', 'quality', 'sources', 'registrationRisk')}}
     result['manifest'] = {k: pointer[k] for k in ('sha256', 'bytes')}
     result['manifest']['url'] = 'surface-water/'+pointer['url']
     result['nativeChunkCount'] = len(manifest['chunks'])

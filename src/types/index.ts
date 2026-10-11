@@ -292,6 +292,17 @@ export interface SurfaceWaterGrid {
   transform: SurfaceWaterFrame['transform']
   frames: (SurfaceWaterAsset & { year: number })[]
 }
+/** A native chunk; schema 2 moves its year list into a separately fetched timeline. */
+export type SurfaceWaterChunk = Omit<SurfaceWaterGrid, 'frames'> & {
+  id: string
+  frames?: SurfaceWaterGrid['frames']
+  timeline?: SurfaceWaterAsset
+}
+export interface SurfaceWaterTimeline {
+  version: string
+  id: string
+  frames: SurfaceWaterGrid['frames']
+}
 export interface SurfaceWaterCatalogueEntry {
   id: string
   nameUk: string
@@ -304,7 +315,7 @@ export interface SurfaceWaterCatalogueEntry {
   review: { status: 'accepted'; extentReview: string; inclusionReason: string; limitations: string }
 }
 export interface SurfaceWaterManifest {
-  schemaVersion: 1
+  schemaVersion: 1 | 2
   version: string
   processingVersion: string
   sourceVersion: string
@@ -328,7 +339,7 @@ export interface SurfaceWaterManifest {
   sources: { year: number; collection: string; band: 'waterClass' }[]
   attribution: string
   registrationRisk: string
-  chunks: (SurfaceWaterGrid & { id: string })[]
+  chunks: SurfaceWaterChunk[]
   overview: SurfaceWaterGrid & { factor: number; method: string; limitation: string }
   catalogue: SurfaceWaterCatalogueEntry[]
   analysisZones: SurfaceWaterAsset

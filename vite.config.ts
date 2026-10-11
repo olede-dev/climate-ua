@@ -3,6 +3,8 @@ import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig, type PreviewServer, type ViteDevServer } from 'vite'
 
+const TILE_CACHE = 'private, max-age=31536000, immutable'
+
 function serveSurfaceWaterBytes(server: ViteDevServer | PreviewServer) {
   server.middlewares.use((request, response, next) => {
     const path = request.url?.split('?')[0]
@@ -12,11 +14,12 @@ function serveSurfaceWaterBytes(server: ViteDevServer | PreviewServer) {
       // reuse that decoded browser cache entry even after fixing the response headers.
       delete request.headers['if-none-match']
       delete request.headers['if-modified-since']
-      response.setHeader('Cache-Control', 'no-store')
+      // Tile paths carry their SHA-256, so a fresh response never changes and can be cached.
+      response.setHeader('Cache-Control', TILE_CACHE)
       const setHeader = response.setHeader
       response.setHeader = function (name, value) {
         if (name.toLowerCase() === 'content-encoding') return this
-        if (name.toLowerCase() === 'cache-control') return setHeader.call(this, name, 'no-store')
+        if (name.toLowerCase() === 'cache-control') return setHeader.call(this, name, TILE_CACHE)
         return setHeader.call(this, name, value)
       }
     }

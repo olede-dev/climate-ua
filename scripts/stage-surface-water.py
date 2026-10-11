@@ -81,7 +81,7 @@ def stage(archive, checksum, site):
         if (pointer['version'] != version or manifest['version'] != version or
                 pointer['url'] != f'versions/{version}/manifest.json' or
                 pointer['sha256'] != digest(manifest_path) or pointer['bytes'] != manifest_path.stat().st_size or
-                manifest['schemaVersion'] != 1 or manifest['years'] != list(range(1984, 2025))):
+                manifest['schemaVersion'] not in (1, 2) or manifest['years'] != list(range(1984, 2025))):
             raise ValueError('Incoherent release pointer/manifest')
         feature_root = manifest_path.parent
         def ref(record):
@@ -94,7 +94,16 @@ def stage(archive, checksum, site):
         for record in [manifest['analysisZones'], manifest['zoneReview'], manifest['registrationSensitivity'],
                        *(b['series'] for b in manifest['catalogue'])]:
             ref(record)
+        def frames(grid):
+            # Schema 2 moves each chunk's year list into its own timeline.
+            if manifest['schemaVersion'] == 1:
+                return grid['frames']
+            timeline = json.loads(ref(grid['timeline']).read_text())
+            if timeline['version'] != version or timeline['id'] != grid['id']:
+                raise ValueError('Incoherent timeline version')
+            return timeline['frames']
         for grid in [*manifest['chunks'], manifest['overview']]:
+            grid = {**grid, 'frames': grid['frames'] if 'id' not in grid else frames(grid)}
             if [f['year'] for f in grid['frames']] != list(range(1984, 2025)):
                 raise ValueError('Incomplete render timeline')
             for frame in grid['frames']:

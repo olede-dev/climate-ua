@@ -28,7 +28,15 @@ def package(inputs, archive):
     for record in [manifest['analysisZones'], manifest['zoneReview'], manifest['registrationSensitivity'],
                    *(b['series'] for b in manifest['catalogue'])]:
         validate_ref(record)
+    def frames(grid):
+        if 'timeline' not in grid:
+            return grid['frames']
+        timeline = json.loads(validate_ref(grid['timeline']).read_text())
+        if timeline['version'] != pointer['version'] or timeline['id'] != grid['id']:
+            raise ValueError('Mixed release timeline version')
+        return timeline['frames']
     for grid in [*manifest['chunks'], manifest['overview']]:
+        grid = {**grid, 'frames': frames(grid)}
         if [f['year'] for f in grid['frames']] != list(range(1984, 2025)):
             raise ValueError('Incomplete release render timeline')
         for record in grid['frames']:

@@ -39,7 +39,7 @@ test.each(['development', 'preview'] as const)(
         },
       })
       expect(second.status).toBe(200)
-      expect(second.headers.get('cache-control')).toBe('no-store')
+      expect(second.headers.get('cache-control')).toBe('private, max-age=31536000, immutable')
       expect(second.headers.get('content-encoding')).toBeNull()
       expect(Buffer.from(await second.arrayBuffer())).toEqual(encoded)
     } finally {

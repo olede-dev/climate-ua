@@ -1,7 +1,8 @@
 """Validate and assemble one immutable local release; never publish it.
 
 Only reviewed, complete zones enter the catalogue. The browser frame contract
-splits native indexes by year so a viewport never downloads 41 years of tiles.
+splits native indexes by year so a viewport never downloads 41 years of tiles,
+and keeps each chunk's year list in its own timeline outside the manifest.
 Large assets remain ignored; the committed pointer alone selects a version.
 """
 import argparse
@@ -151,7 +152,7 @@ def build(native, overview, zones, areas, review, output):
         # twice during linking; packaging verifies every referenced file again
         # and refuses mutations before replacing the accepted archive.
         return {'url': str(target.relative_to(root)), 'sha256': checksum, 'bytes': target.stat().st_size}
-    manifest = {'schemaVersion': 1, 'version': version, 'processingVersion': PROCESSING_VERSION,
+    manifest = {'schemaVersion': 2, 'version': version, 'processingVersion': PROCESSING_VERSION,
                 'zoneVersion': registry['zoneVersion'], 'sourceVersion': native_manifest['sourceVersion'],
                 'years': list(YEARS), 'unit': 'm2', 'areaCRS': 'EPSG:6933', 'rasterCRS': 'EPSG:4326',
                 'areaMethod': numeric['method'], 'encoding': 'packed4-gzip', 'tileSize': 512,
@@ -179,6 +180,10 @@ def build(native, overview, zones, areas, review, output):
             compact_json(path, {'version': version, 'year': frame['year'],
                                **{k: item[k] for k in ('width', 'height', 'transform')}, 'tiles': tiles})
             item['frames'].append({'year': frame['year'], **reference(root, path)})
+        # The manifest keeps chunk extents only; a viewport fetches the timelines it intersects.
+        path = root/'native/frames'/chunk['id']/'index.json'
+        compact_json(path, {'version': version, 'id': chunk['id'], 'frames': item.pop('frames')})
+        item['timeline'] = reference(root, path)
         manifest['chunks'].append(item)
     manifest['overview']['frames'] = []
     for ref in overview_manifest['frames']:

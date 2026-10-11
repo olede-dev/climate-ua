@@ -193,7 +193,7 @@ export function useSurfaceWaterManifest() {
         throw new Error('Invalid surface-water pointer')
       const manifest = await fetchSurfaceWaterAsset<SurfaceWaterManifest>(root, pointer, signal)
       if (
-        manifest.schemaVersion !== 1 ||
+        (manifest.schemaVersion !== 1 && manifest.schemaVersion !== 2) ||
         manifest.version !== pointer.version ||
         manifest.encoding !== 'packed4-gzip' ||
         manifest.rasterCRS !== 'EPSG:4326' ||

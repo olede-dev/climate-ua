@@ -100,6 +100,17 @@ Raw downloads are stored in `pipeline/data/raw/` and are not committed.
 
 National annual surface-water data covers Ukraine, including Crimea, for 1984–2024, with an initial eleven-waterbody catalogue. Generation, historical-zone review, checksummed release packaging, same-origin deployment staging and rollback are documented in [the generation runbook](docs/surface-water-generation.md). Heavy assets stay outside Git; ordinary CI checks the small generated reference catalogue.
 
+For local development, keep surface-water archives in `pipeline/data/raw/surface-water/archives/` and stage the verified release into `public/` once before starting Vite:
+
+```sh
+python3 scripts/stage-surface-water.py \
+  --archive pipeline/data/raw/surface-water/archives/climate-ua-surface-water-release-1984-2024.tar.gz \
+  --sha256 84abd29c932b6cb3d495d9258429d578f4ca11d625b7e2a4e52b60c275a8e443 \
+  --site public
+```
+
+The digest pins the release documented in the runbook. The staging script verifies all assets and preserves an existing installation. Both the archives and staged `public/data/surface-water/` directory are ignored by Git. Vite serves the packed gzip tiles as application bytes in development and preview so the browser can verify their compressed checksums.
+
 ## Data sources
 
 - **Water resources:** PCR-GLOBWB 2 model, Utrecht University (Sutanudjaja et al., 2018), as published in [World Water Map](https://worldwatermap.nationalgeographic.org/) (National Geographic Society); HydroBASINS level 7 sub-basins. Data: [doi:10.24416/UU01-0Q6SU6](https://doi.org/10.24416/UU01-0Q6SU6), CC BY 4.0.

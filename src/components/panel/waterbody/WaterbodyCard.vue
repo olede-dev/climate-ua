@@ -37,22 +37,32 @@ const name = computed(
 )
 </script>
 <template>
-  <article
-    class="mt-4 border-t border-ink/10 pt-3 text-sm"
-    :aria-label="name"
-    :aria-busy="query.isPending.value"
-  >
-    <div class="flex items-start justify-between gap-2">
-      <h2 ref="heading" tabindex="-1" class="text-base font-semibold focus-ring">{{ name }}</h2>
-      <button type="button" class="rounded-lg bg-fill p-2 focus-ring" @click="emit('close')">
-        {{ copy.close }}
-      </button>
-    </div>
-    <p class="text-ink-muted">{{ copy[body.type] }}</p>
-    <p class="mt-1 text-xs">
-      {{ copy.location }}: {{ number((body.bounds[1] + body.bounds[3]) / 2) }},
-      {{ number((body.bounds[0] + body.bounds[2]) / 2) }}
-    </p>
+  <article class="text-[13px] text-ink" :aria-label="name" :aria-busy="query.isPending.value">
+    <button
+      type="button"
+      class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-fill-strong focus-ring"
+      @click="emit('close')"
+    >
+      <svg
+        viewBox="0 0 16 16"
+        class="size-4"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        aria-hidden="true"
+      >
+        <path d="M10 3.5 5.5 8l4.5 4.5" />
+      </svg>
+      {{ t.panel.back }}
+    </button>
+    <h2
+      ref="heading"
+      tabindex="-1"
+      class="text-[22px] leading-tight font-bold tracking-tight focus-visible:outline-none"
+    >
+      {{ name }}
+    </h2>
+    <p class="mt-1 text-xs text-ink-muted">{{ copy[body.type] }}</p>
     <p v-if="query.isPending.value" role="status" class="mt-3">{{ copy.detailsLoading }}</p>
     <p v-else-if="query.isError.value" role="alert" class="mt-3">
       {{ copy.error }}
@@ -62,7 +72,7 @@ const name = computed(
     </p>
     <template v-else-if="query.data.value">
       <h3 class="mt-3 font-semibold">{{ copy.total }} · {{ year }}</h3>
-      <dl v-if="areas" class="mt-2 grid grid-cols-2 gap-2">
+      <dl v-if="areas" class="mt-2 grid grid-cols-2 gap-2 rounded-xl bg-group p-3 tabular-nums">
         <dt>{{ copy.total }}</dt>
         <dd>{{ area(areas.unionM2) }}</dd>
         <dt>{{ copy.permanent }}</dt>
@@ -91,7 +101,6 @@ const name = computed(
           {{ copy[pair.spatialStatus] }} · {{ copy.coverage }}: {{ number(pair.coverage * 100) }}%
         </p>
       </section>
-      <p class="mt-2 text-xs text-ink-muted">{{ copy.qualityHelp }}</p>
       <h3 class="mt-3 font-semibold">{{ copy.history }}</h3>
       <WaterbodyChart
         :annual="query.data.value.annual"
@@ -99,21 +108,10 @@ const name = computed(
         :selected="year"
         @select="emit('select', $event)"
       />
-      <p class="mt-2 text-xs text-ink-muted">{{ copy.chartHelp }}</p>
-      <label class="mt-2 grid gap-1"
-        >{{ copy.year }}
-        <select
-          :value="year"
-          class="rounded-lg bg-surface p-2 focus-ring"
-          @change="emit('select', Number(($event.target as HTMLSelectElement).value))"
-        >
-          <option v-for="supported in release.manifest.years" :key="supported" :value="supported">
-            {{ supported }}
-          </option>
-        </select>
-      </label>
       <details class="mt-2">
         <summary class="cursor-pointer rounded focus-ring">{{ copy.history }}</summary>
+        <p class="mt-2 text-xs text-ink-muted">{{ copy.qualityHelp }}</p>
+        <p class="mt-2 text-xs text-ink-muted">{{ copy.chartHelp }}</p>
         <ul class="mt-2 space-y-1">
           <li v-for="row in query.data.value.annual" :key="row.year">
             {{ row.year }}:

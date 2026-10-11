@@ -5,7 +5,12 @@ import { layerConfig } from '../config/layers'
 import { rememberUrl } from '../lib/fileUrls'
 import { firstPaint } from '../lib/firstPaint'
 import { surfaceWaterAssetUrl } from '../lib/surfaceWaterAssets'
-import type { SurfaceWaterAsset, SurfaceWaterManifest, SurfaceWaterPointer } from '../types'
+import type {
+  SurfaceWaterAsset,
+  SurfaceWaterCatalogueFile,
+  SurfaceWaterManifest,
+  SurfaceWaterPointer,
+} from '../types'
 import { riversLayer } from '../lib/rivers'
 import type {
   BasinsFile,
@@ -199,7 +204,20 @@ export function useSurfaceWaterManifest() {
         new Set(manifest.catalogue.map((body) => body.id)).size !== manifest.catalogue.length
       )
         throw new Error('Invalid surface-water manifest')
-      return { manifest, root: new URL(`versions/${pointer.version}/`, root).href }
+      const catalogue = await fetchStatic<SurfaceWaterCatalogueFile>(
+        'data/surface-water-catalogue.json',
+      )
+      if (catalogue.version !== manifest.version || catalogue.zoneVersion !== manifest.zoneVersion)
+        throw new Error('Surface-water marker catalogue does not match selected release')
+      const markers = Object.fromEntries(
+        catalogue.catalogue.map((body) => [body.id, body.markerCoordinates]),
+      )
+      for (const body of manifest.catalogue) {
+        const point = markers[body.id]
+        if (!point || point.length !== 2 || !point.every(Number.isFinite))
+          throw new Error('Missing surface-water marker coordinates')
+      }
+      return { manifest, markers, root: new URL(`versions/${pointer.version}/`, root).href }
     },
     retry: false,
   })

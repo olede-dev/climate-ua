@@ -11,6 +11,17 @@ from urllib.error import HTTPError
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'pipeline'))
 from fetch_surface_water_catalogue import boundary, download, download_ways, ENDPOINTS, SourceUnavailable
 from prepare_surface_water_national import write_json
+from build_surface_water_metadata import marker_coordinates
+from shapely.geometry import Polygon, MultiPolygon, Point, mapping
+
+
+class CatalogueMarkerTests(unittest.TestCase):
+    def test_marker_is_inside_main_water_polygon_even_when_bounds_center_is_dry(self):
+        main = Polygon([(30, 48), (34, 48), (34, 50), (30, 50)],
+                       holes=[[(31, 48.5), (33, 48.5), (33, 49.5), (31, 49.5)]])
+        geometry = MultiPolygon([main, Polygon([(35, 48), (35.1, 48), (35.1, 48.1), (35, 48.1)])])
+        self.assertFalse(geometry.contains(geometry.envelope.centroid))
+        self.assertTrue(main.contains(Point(marker_coordinates(mapping(geometry)))))
 
 
 class CatalogueIdentityTests(unittest.TestCase):

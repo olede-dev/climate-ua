@@ -24,6 +24,7 @@ import { useLocale } from '../../composables/useLocale'
 import { useTheme } from '../../composables/useTheme'
 import { useUiStore } from '../../stores/ui'
 import { firstPaint } from '../../lib/firstPaint'
+import { PendingSourceBatch } from '../../lib/pendingSourceBatch'
 import { softwareWebgl } from '../../lib/webgl'
 import {
   normalizeSurfaceWaterState,
@@ -32,6 +33,10 @@ import {
   type SurfaceWaterBounds,
 } from '../../lib/surfaceWater'
 import { selectWaterbodyYear } from '../../lib/waterbodyCard'
+import WaterTabs from './WaterTabs.vue'
+import TimeSlider from './TimeSlider.vue'
+import SelectMenu from '../ui/SelectMenu.vue'
+import type { TimeStep } from '../../lib/time'
 import LoadingSkeleton from '../ui/LoadingSkeleton.vue'
 import { paintSurfaceWaterTile, surfaceWaterCorners } from '../../lib/surfaceWaterCanvas'
 import type { SurfaceWaterState } from '../../types'
@@ -45,7 +50,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ basemap: [kind: BasemapKind] }>()
 const WaterbodyCard = defineAsyncComponent(() => import('../panel/waterbody/WaterbodyCard.vue'))
-const bodyPicker = useTemplateRef<HTMLSelectElement>('bodyPicker')
+const bodyPicker = useTemplateRef<HTMLHeadingElement>('bodyPicker')
 async function closeBody() {
   ui.surfaceWater = { ...ui.surfaceWater, waterbody: null }
   await nextTick()
@@ -119,7 +124,7 @@ let labelFilters: LabelFilter[] = []
 let request: AbortController | undefined
 let generation = 0
 let installed: string[] = []
-let waiting: string[] = []
+const waiting = new PendingSourceBatch()
 let rendered: { canvas: HTMLCanvasElement; bounds: SurfaceWaterBounds }[] = []
 let resize: ResizeObserver | undefined
 let readyState: typeof shown.value = null
@@ -135,16 +140,54 @@ watch(
   { immediate: true },
 )
 
-function setYear(key: 'year' | 'before' | 'after', event: Event) {
-  ui.surfaceWater = { ...ui.surfaceWater, [key]: Number((event.target as HTMLSelectElement).value) }
+const MODE_ICONS: Record<SurfaceWaterState['mode'], string> = {
+  annual: 'M1.5 3.5 5.5 2l5 2 4-1.5v10l-4 1.5-5-2-4 1.5zM5.5 2v10M10.5 4v10',
+  comparison: 'M2 5h12M10.5 1.5 14 5l-3.5 3.5M14 11H2M5.5 7.5 2 11l3.5 3.5',
 }
-function pickBody(event: Event) {
-  unknownBody.value = false
-  ui.surfaceWater = {
-    ...ui.surfaceWater,
-    waterbody: (event.target as HTMLSelectElement).value || null,
-  }
-}
+const modes = computed(() =>
+  (['annual', 'comparison'] as const).map((id) => ({
+    id,
+    label: copy.value[id],
+    icon: MODE_ICONS[id],
+  })),
+)
+const mode = computed({
+  get: () => ui.surfaceWater.mode,
+  set: (mode: SurfaceWaterState['mode']) => {
+    ui.surfaceWater = { ...ui.surfaceWater, mode }
+  },
+})
+const bodyOptions = computed(
+  () =>
+    manifest.value?.catalogue.map((body) => ({
+      value: body.id,
+      label: (locale.value === 'uk' ? body.nameUk : body.nameEn) || copy.value.unnamed,
+    })) ?? [],
+)
+const bodyModel = computed({
+  get: () => ui.surfaceWater.waterbody ?? '',
+  set: (waterbody: string) => {
+    unknownBody.value = false
+    ui.surfaceWater = { ...ui.surfaceWater, waterbody: waterbody || null }
+  },
+})
+const yearOptions = computed(
+  () => manifest.value?.years.map((value) => ({ value, label: String(value) })) ?? [],
+)
+const axis = computed(() => {
+  const years = manifest.value?.years
+  return years?.length ? { from: Math.min(...years), to: Math.max(...years), periods: [] } : null
+})
+const timelineYear = computed<TimeStep>({
+  get: () => (ui.surfaceWater.mode === 'annual' ? ui.surfaceWater.year : ui.surfaceWater.after),
+  set: (value) => {
+    if (typeof value === 'number') selectChartYear(value)
+  },
+})
+const playing = ref(false)
+watch(mode, () => {
+  playing.value = false
+})
 function clearLayers(ids: string[]) {
   if (!map) return
   for (const id of ids) {
@@ -174,7 +217,7 @@ function syncSelection() {
       properties: { id: body.id, selected: body.id === ui.surfaceWater.waterbody },
       geometry: {
         type: 'Point' as const,
-        coordinates: [(body.bounds[0] + body.bounds[2]) / 2, (body.bounds[1] + body.bounds[3]) / 2],
+        coordinates: query.data.value!.markers[body.id]!,
       },
     })),
   }
@@ -196,19 +239,19 @@ function syncSelection() {
   }
 }
 function reveal() {
-  if (!map || !styleReady || !waiting.length || !waiting.every((id) => map!.isSourceLoaded(id)))
-    return
-  for (const id of waiting) map.setPaintProperty(id, 'raster-opacity', 0.95, NO_VALIDATE)
-  clearLayers(installed)
-  installed = waiting
-  waiting = []
+  if (!map || !styleReady) return
+  const ready = waiting.takeReady((id) => !!map!.getSource(id) && map!.isSourceLoaded(id))
+  if (!ready.length) return
+  const previous = installed
+  installed = ready
+  for (const id of ready) map.setPaintProperty(id, 'raster-opacity', 0.95, NO_VALIDATE)
+  clearLayers(previous)
   shown.value = readyState
   pending.value = false
 }
 function install() {
   if (!map || !styleReady || !rendered.length) return
-  clearLayers(waiting)
-  waiting = []
+  clearLayers(waiting.take())
   const token = ++generation
   for (const [i, tile] of rendered.entries()) {
     const id = `surface-water-${token}-${i}`
@@ -236,7 +279,7 @@ function install() {
           ? 'surface-water-country'
           : 'surface-water-selection'),
     )
-    waiting.push(id)
+    waiting.add(id)
   }
   reveal()
   map.triggerRepaint()
@@ -285,8 +328,7 @@ function drawFallback(tiles: SurfaceWaterRenderTile[]) {
 }
 async function render() {
   request?.abort()
-  clearLayers(waiting)
-  waiting = []
+  clearLayers(waiting.take())
   const data = query.data.value
   const current = state.value
   if (!data || !current || (!fallback.value && (!map || !styleReady))) return
@@ -346,13 +388,14 @@ async function applyStyle() {
   if (!map) return
   const own = ++styleGeneration
   styleReady = false
+  map.getCanvas().style.cursor = ''
   request?.abort()
   pending.value = true
   try {
     const result = await basemapStyle(locale.value, theme.value)
     if (!map || destroyed || own !== styleGeneration) return
     installed = []
-    waiting = []
+    waiting.take()
     rendered = []
     labelFilters = result.labelFilters
     map.setStyle(result.style, { diff: false })
@@ -364,7 +407,7 @@ async function applyStyle() {
     }
   }
 }
-function frameSelection() {
+function frameSelection(animate = true) {
   if (!map) {
     void render()
     return
@@ -382,10 +425,10 @@ function frameSelection() {
         ],
     {
       padding: props.wide
-        ? { top: 100, left: 390, right: props.insets.right || 80, bottom: 50 }
-        : 35,
+        ? { top: 100, left: 390, right: props.insets.right || 80, bottom: 160 }
+        : { top: 45, left: 35, right: 35, bottom: 150 },
       maxZoom: body ? 12 : 6,
-      duration: 0,
+      duration: animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 900 : 0,
     },
   )
 }
@@ -433,9 +476,15 @@ async function startMap() {
       const id = event.features?.[0]?.properties.id
       if (typeof id === 'string') ui.surfaceWater = { ...ui.surfaceWater, waterbody: id }
     })
+    map.on('mouseenter', 'surface-water-selection', () => {
+      if (map) map.getCanvas().style.cursor = 'pointer'
+    })
+    map.on('mouseleave', 'surface-water-selection', () => {
+      if (map) map.getCanvas().style.cursor = ''
+    })
     resize = new ResizeObserver(() => map?.resize())
     resize.observe(container.value)
-    frameSelection()
+    frameSelection(false)
     await applyStyle()
   } catch {
     map?.remove()
@@ -471,7 +520,10 @@ watch(selected, () => {
 watch([locale, theme], () => {
   if (map) void applyStyle()
 })
-watch(() => props.wide, frameSelection)
+watch(
+  () => props.wide,
+  () => frameSelection(false),
+)
 watch(() => props.countryBorder, syncBorder)
 onMounted(async () => {
   await firstPaint()
@@ -485,6 +537,8 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   destroyed = true
+  styleReady = false
+  waiting.take()
   request?.abort()
   resize?.disconnect()
   map?.remove()
@@ -500,7 +554,24 @@ onBeforeUnmount(() => {
       class="min-h-0 w-full flex-1"
       :class="wide ? 'h-full' : 'relative min-h-[50dvh]'"
       :aria-label="copy.name"
+      :aria-busy="pending && !query.isError.value && !failed"
     />
+    <div
+      v-if="pending && !query.isError.value && !failed"
+      role="status"
+      class="map-loading pointer-events-none absolute top-3 z-10 flex justify-center"
+      :class="wide ? 'right-20 left-[24rem]' : 'inset-x-3'"
+    >
+      <div
+        class="glass flex items-center gap-2 rounded-full px-3 py-2 text-xs text-ink shadow-float"
+      >
+        <span
+          class="map-loading-spinner size-4 shrink-0 rounded-full border-2 border-fill border-t-accent"
+          aria-hidden="true"
+        />
+        <span>{{ copy.loading }}</span>
+      </div>
+    </div>
     <div
       v-if="fallback"
       class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center"
@@ -514,89 +585,65 @@ onBeforeUnmount(() => {
       />
     </div>
     <section
-      class="glass pointer-events-auto z-10 overflow-y-auto rounded-2xl p-3 text-ink shadow-float"
-      :class="wide ? 'absolute top-3 bottom-10 left-3 w-[22rem]' : 'relative shrink-0 text-sm'"
+      class="glass pointer-events-auto z-10 overflow-y-auto rounded-2xl p-4 text-ink shadow-float"
+      :class="
+        wide ? 'absolute top-3 bottom-10 left-3 w-[22rem]' : 'relative order-2 shrink-0 text-sm'
+      "
       :aria-label="copy.name"
+      @keydown.esc="selected && closeBody()"
     >
       <AppHeader v-if="wide" inline class="mb-4"
         ><LanguageMenu button-class="size-9 rounded-full focus-ring" icon-only /><ThemeMenu
           button-class="size-9 rounded-full focus-ring"
           icon-only
       /></AppHeader>
-      <h1 class="text-base font-semibold">{{ copy.name }}</h1>
-      <div class="mt-2 grid grid-cols-2 gap-2">
-        <button
-          v-for="mode in ['annual', 'comparison'] as const"
-          :key="mode"
-          type="button"
-          class="rounded-lg p-2 focus-ring"
-          :class="ui.surfaceWater.mode === mode ? 'bg-accent text-white' : 'bg-fill'"
-          :aria-pressed="ui.surfaceWater.mode === mode"
-          @click="ui.surfaceWater = { ...ui.surfaceWater, mode }"
+      <div v-if="!selected" class="space-y-3">
+        <h1
+          ref="bodyPicker"
+          tabindex="-1"
+          class="text-[22px] font-bold tracking-tight focus-visible:outline-none"
         >
-          {{ copy[mode] }}
-        </button>
+          {{ copy.name }}
+        </h1>
+        <WaterTabs v-model="mode" :views="modes" :label="copy.name" />
+        <SelectMenu
+          v-model="bodyModel"
+          :options="[{ value: '', label: copy.country }, ...bodyOptions]"
+          :label="copy.waterbody"
+          :disabled="!manifest"
+        />
       </div>
-      <div class="mt-2 grid grid-cols-2 gap-2">
-        <label
-          v-for="key in ui.surfaceWater.mode === 'annual'
-            ? (['year'] as const)
-            : (['before', 'after'] as const)"
-          :key="key"
-          class="grid gap-1 text-sm"
-        >
-          {{ copy[key] }}
-          <select
-            :value="ui.surfaceWater[key]"
-            :aria-label="copy[key]"
-            :disabled="!manifest?.years.length"
-            class="rounded-lg bg-surface p-2 text-ink focus-ring"
-            @change="setYear(key, $event)"
-          >
-            <option v-for="year in manifest?.years" :key="year" :value="year">{{ year }}</option>
-          </select>
-        </label>
-        <label class="col-span-2 grid gap-1 text-sm"
-          >{{ copy.waterbody }}
-          <select
-            ref="bodyPicker"
-            :value="ui.surfaceWater.waterbody ?? ''"
-            :aria-label="copy.waterbody"
-            :disabled="!manifest"
-            class="rounded-lg bg-surface p-2 text-ink focus-ring"
-            @change="pickBody"
-          >
-            <option value="">{{ copy.country }}</option>
-            <option v-for="body in manifest?.catalogue" :key="body.id" :value="body.id">
-              {{ (locale === 'uk' ? body.nameUk : body.nameEn) || copy.unnamed }}
-            </option>
-          </select>
-        </label>
+      <div v-if="ui.surfaceWater.mode === 'comparison'" class="mt-3 flex items-start gap-2">
+        <SelectMenu
+          v-model="ui.surfaceWater.before"
+          :options="yearOptions"
+          :label="copy.before"
+          class="min-w-0 flex-1"
+        />
+        <span class="pt-2 text-xs text-ink-muted" aria-hidden="true">→</span>
+        <SelectMenu
+          v-model="ui.surfaceWater.after"
+          :options="yearOptions"
+          :label="copy.after"
+          class="min-w-0 flex-1"
+        />
       </div>
       <label
-        v-if="ui.surfaceWater.mode === 'comparison'"
-        class="mt-2 flex items-center gap-2 text-sm"
-        ><input v-model="transitions" type="checkbox" class="focus-ring" />{{
-          copy.transitions
-        }}</label
+        v-if="ui.surfaceWater.mode === 'comparison' && !selected"
+        class="mt-3 flex cursor-pointer items-center gap-2.5 rounded-xl bg-group px-3 py-2 text-[13px]"
       >
+        <input
+          v-model="transitions"
+          type="checkbox"
+          class="size-4 shrink-0 appearance-none rounded-[5px] border border-ink-muted bg-surface checked:border-accent checked:bg-accent focus-ring"
+        />
+        <span>{{ copy.transitions }}</span>
+      </label>
       <p v-if="query.isError.value || failed" role="alert" class="mt-3 text-sm">
         {{ copy.error }}
         <button class="rounded-lg bg-fill p-2 focus-ring" @click="retry">{{ copy.retry }}</button>
       </p>
       <p v-else-if="manifest && !state" role="status">{{ copy.empty }}</p>
-      <p v-else-if="pending" role="status" class="mt-2 text-sm">{{ copy.loading }}</p>
-      <div v-else-if="shown" class="mt-3" aria-live="polite">
-        <p class="font-semibold">{{ shownYears }}</p>
-        <ul class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
-          <li v-for="item in legend" :key="item.label" class="flex items-center gap-1.5">
-            <span class="size-3 rounded-sm" :style="{ background: item.color }" />{{ item.label }}
-          </li>
-        </ul>
-        <p class="mt-2 text-xs text-ink-muted">
-          {{ shown.native ? copy.native : fallback ? copy.staticOverview : copy.overview }}
-        </p>
-      </div>
       <p v-if="unknownBody" role="status" class="mt-2 text-sm">{{ copy.unknownBody }}</p>
       <Suspense v-if="selected && query.data.value && state">
         <WaterbodyCard
@@ -609,20 +656,9 @@ onBeforeUnmount(() => {
         />
         <template #fallback><LoadingSkeleton :label="copy.detailsLoading" class="h-48" /></template>
       </Suspense>
-      <details v-if="manifest" class="mt-3 text-xs text-ink-muted">
+      <details v-if="manifest && !selected" class="mt-4 text-xs text-ink-muted">
         <summary class="cursor-pointer rounded focus-ring">{{ copy.methodology }}</summary>
         <p class="mt-2">{{ copy.note }}</p>
-        <p class="mt-2">{{ copy.methodHelp }}</p>
-        <p class="mt-2">{{ copy.qualityHelp }}</p>
-        <p class="mt-2">{{ copy.registrationHelp }}</p>
-        <p class="mt-2">{{ copy.supportedYears }}: {{ manifest.years.join(', ') }}</p>
-        <p class="mt-2">
-          {{ [...new Set(manifest.sources.map((source) => source.collection))].join('; ') }}
-        </p>
-        <p class="mt-2 break-all">
-          {{ copy.source }}: {{ manifest.sourceVersion }} · {{ manifest.version }} ·
-          {{ manifest.zoneVersion }}
-        </p>
         <p class="mt-2">{{ manifest.attribution }}</p>
         <a
           class="mt-2 inline-block underline focus-ring"
@@ -637,5 +673,64 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </section>
+    <div
+      v-if="axis"
+      class="pointer-events-none z-10"
+      :class="
+        wide
+          ? 'absolute right-20 bottom-10 left-[24rem] flex justify-center'
+          : 'order-1 shrink-0 px-3 py-2'
+      "
+    >
+      <TimeSlider
+        v-model="timelineYear"
+        v-model:playing="playing"
+        :axis="axis"
+        :allow-playback="false"
+        class="w-full max-w-xl"
+      >
+        <figure class="text-[11px] leading-tight text-ink">
+          <figcaption class="sr-only">{{ copy.name }} {{ shownYears }}</figcaption>
+          <ul class="flex flex-wrap gap-x-3 gap-y-1.5">
+            <li v-for="item in legend" :key="item.label" class="flex items-center gap-1.5">
+              <span class="size-2.5 rounded-full" :style="{ background: item.color }" />{{
+                item.label
+              }}
+            </li>
+          </ul>
+        </figure>
+      </TimeSlider>
+    </div>
   </div>
 </template>
+
+<style scoped>
+.map-loading {
+  opacity: 0;
+  animation: map-loading-in 200ms ease-out 300ms forwards;
+}
+.map-loading-spinner {
+  animation: map-loading-turn 1s linear infinite;
+}
+@keyframes map-loading-in {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes map-loading-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-loading {
+    animation: map-loading-in 0s 300ms forwards;
+  }
+  .map-loading-spinner {
+    animation: none;
+  }
+}
+input:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3.5 8 3 3 6-6' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+</style>

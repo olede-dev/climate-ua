@@ -54,6 +54,14 @@ describe('Generated national surface-water catalogue', () => {
     }
   })
 
+  it('places the Dnipro marker on the reservoir reach rather than inland near Solone', () => {
+    const point = data.catalogue.find((body) => body.id === 'dnipro')!.markerCoordinates
+    expect(point[0]).toBeGreaterThan(35.15)
+    expect(point[0]).toBeLessThan(35.25)
+    expect(point[1]).toBeGreaterThan(48.15)
+    expect(point[1]).toBeLessThan(48.25)
+  })
+
   it('keeps real missing years null and verifies common-mask partitions and transitions', () => {
     for (const body of data.catalogue) {
       expect(body.annualReference.map((a) => a.year)).toEqual([1984, 1992, 2021, 2024])

@@ -354,6 +354,7 @@ export interface SurfaceWaterCatalogueFile extends Pick<
   manifest: SurfaceWaterAsset
   nativeChunkCount: number
   catalogue: (SurfaceWaterCatalogueEntry & {
+    markerCoordinates: [number, number]
     annualReference: SurfaceWaterAnnual[]
     pairReference: SurfaceWaterPair
   })[]

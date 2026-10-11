@@ -15,9 +15,13 @@ import {
   type TimeStep,
 } from '../../lib/time'
 
-const props = defineProps<{
-  axis: TimeAxis
-}>()
+const props = withDefaults(
+  defineProps<{
+    axis: TimeAxis
+    allowPlayback?: boolean
+  }>(),
+  { allowPlayback: true },
+)
 const step = defineModel<TimeStep>({ required: true })
 const playing = defineModel<boolean>('playing', { required: true })
 
@@ -56,8 +60,13 @@ function schedule() {
 }
 
 watch(
-  playing,
-  (on) => {
+  [playing, () => props.allowPlayback],
+  ([on, allowed]) => {
+    if (!allowed) {
+      clearTimeout(timer)
+      playing.value = false
+      return
+    }
     if (!on) return clearTimeout(timer)
     if (nextStep(props.axis, step.value) === null) step.value = steps.value[0]!
     schedule()
@@ -140,6 +149,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
   <div class="glass pointer-events-auto rounded-2xl px-2.5 py-2 shadow-float sm:px-3">
     <div class="flex items-center gap-2 sm:gap-3">
       <button
+        v-if="allowPlayback"
         type="button"
         class="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover focus-ring"
         :aria-label="playing ? t.timeline.pause : t.timeline.play"

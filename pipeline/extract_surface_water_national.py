@@ -14,7 +14,6 @@ from shapely.geometry import box
 
 from build_surface_water_national import owned_window
 from prepare_surface_water_national import YEARS, VERSION, collection, sha256, write_json
-from surface_water_never import CORRECTION, dry_never_water, ever_water
 
 
 def extract(inputs, zones, output):
@@ -33,9 +32,6 @@ def extract(inputs, zones, output):
                 entry['collection'] != collection(entry['year']) or
                 entry['nationalClipBoundarySha256'] != audit['boundarySha256']):
             raise ValueError('Unexpected exact annual provenance')
-    history = {}
-    for entry in sorted(audit['files'], key=lambda e: e['year']):
-        history.setdefault(entry['chunkId'], []).append(entry)
     output.mkdir(parents=True, exist_ok=True)
     result = {'purpose': 'Full-year evidence for supplied zones; not historical-zone approval',
               'sourceVersion': audit['sourceVersion'], 'boundarySha256': audit['boundarySha256'],
@@ -59,7 +55,7 @@ def extract(inputs, zones, output):
                 raise ValueError('No national fragments cover zone')
             target = output/f"{p['id']}-yearly-{year}.tif"
             receipt_path = output/(target.stem+'.json')
-            stamp = {'zonesSha256': result['zonesSha256'], 'maskSha256': p['maskSha256'], 'correction': CORRECTION,
+            stamp = {'zonesSha256': result['zonesSha256'], 'maskSha256': p['maskSha256'],
                      'sources': {e['file']: e['sha256'] for e in entries}}
             for e in entries:
                 if Path(e['file']).name != e['file'] or sha256(inputs/e['file']) != e['sha256']:
@@ -73,7 +69,6 @@ def extract(inputs, zones, output):
             covered = np.zeros(dimensions, dtype='uint8')
             with rasterio.open(staged, 'w', **profile) as dst:
                 for e in entries:
-                    ever = ever_water(inputs, history[e['chunkId']])
                     with rasterio.open(inputs/e['file']) as src:
                         if (src.crs.to_epsg() != 4326 or not np.allclose(
                                 [src.transform.a, src.transform.e], [transform.a, transform.e], rtol=0, atol=1e-15)):
@@ -97,7 +92,6 @@ def extract(inputs, zones, output):
                                 data = src.read(1, window=Window(col-dx, row-dy, width, height), masked=True).filled(0)
                                 if not np.isin(data, [0, 1, 2, 3]).all():
                                     raise ValueError('Undocumented annual class')
-                                dry_never_water(data, year, ever[row-dy:row-dy+height, col-dx:col-dx+width])
                                 dst.write(data, 1, window=Window(col, row, width, height))
             if not covered[inside].all():
                 raise ValueError('National fragments do not cover the supplied zone')

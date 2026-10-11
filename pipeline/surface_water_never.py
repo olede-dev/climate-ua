@@ -1,10 +1,14 @@
-"""GSW1_4 never-water correction shared by every reader of national annual fragments.
+"""GSW1_4 never-water correction for national rendering (tiles and overview).
 
 GSW1_4 YearlyHistory (1984–2015) masks cells never mapped as water, so they
-arrive as class 0 although they were observed dry. GSW1_5 (2016–2024) has no
+arrive as class 0 even where they were dry. GSW1_5 (2016–2024) has no
 such mask. A cell with no water class (2 or 3) in any supported year is outside
 the ever-water footprint (the annual equivalent of GSW max_extent); its 1984–2015
 class 0 becomes 1. Unobserved cells inside the footprint stay 0.
+
+Area accounting (zone extraction) keeps raw classes: GSW1_4 masks never-water
+cells whether or not they were observed, so treating them as dry would let a
+buffered zone pass the coverage gate in a year its water was unobserved.
 """
 import hashlib
 

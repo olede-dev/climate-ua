@@ -158,10 +158,9 @@ class NationalTileTests(unittest.TestCase):
                 crops = extract(root, zones, root/'crops')
             self.assertEqual(len(crops['files']), 41)
             with rasterio.open(root/'crops'/crops['files'][0]['file']) as crop:
-                np.testing.assert_array_equal(crop.read(1), np.tile([3, 2, 1, 1], (4, 1)))
-                self.assertEqual(crop.transform, transform)
-            with rasterio.open(root/'crops'/crops['files'][-1]['file']) as crop:
+                # Area accounting keeps raw GSW1_4 classes; only rendering applies the correction.
                 np.testing.assert_array_equal(crop.read(1), np.tile([3, 2, 0, 1], (4, 1)))
+                self.assertEqual(crop.transform, transform)
             previous = (root/'crops/inputs.json').read_bytes()
             audit_path = root/'inputs.json'
             audit = json.loads(audit_path.read_text())

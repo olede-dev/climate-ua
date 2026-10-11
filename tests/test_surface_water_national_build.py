@@ -19,6 +19,7 @@ from build_surface_water_overview import build as build_overview
 from extract_surface_water_national import extract
 from package_surface_water_tiles import package as package_tiles
 from prepare_surface_water_national import YEARS, VERSION, collection, sha256
+from surface_water_never import dry_never_water
 
 
 class NationalTileTests(unittest.TestCase):
@@ -54,6 +55,11 @@ class NationalTileTests(unittest.TestCase):
         vertical = owned_window(Affine(.4, 0, 30, 0, -.5, 50.25), [30, 49, 31, 50], 3, 4)
         self.assertEqual((vertical.row_off, vertical.height), (1, 2))
 
+    def test_gsw14_never_water_is_dry_but_footprint_gaps_stay_unobserved(self):
+        ever = np.array([[True, False]])
+        np.testing.assert_array_equal(dry_never_water(np.array([[0, 0]], 'uint8'), 2015, ever), [[0, 1]])
+        np.testing.assert_array_equal(dry_never_water(np.array([[0, 0]], 'uint8'), 2016, ever), [[0, 0]])
+
     def test_packed_tiles_preserve_unobserved_and_country_exterior_with_odd_padding(self):
         payload = encode(np.array([[0, 1, 2, 3, 15]], dtype='uint8'))
         self.assertEqual(gzip.decompress(payload), bytes([0x10, 0x32, 0xff]))
@@ -72,12 +78,16 @@ class NationalTileTests(unittest.TestCase):
             original = index.read_bytes()
             frame = json.loads(original)
             self.assertTrue(result['completeTimeline'])
-            self.assertEqual(result['uniqueTiles'], 1)
-            self.assertEqual(frame['frames'][0]['counts'], [4, 4, 0, 0])
-            asset = next(iter(frame['assets'].values()))
-            packed = np.frombuffer(gzip.decompress((output/asset['url']).read_bytes()), dtype='uint8')
-            decoded = np.stack([packed & 15, packed >> 4], axis=1).ravel().reshape(4, 4)
-            np.testing.assert_array_equal(decoded, np.tile([15, 15, 0, 1], (4, 1)))
+            # The never-water column is dry under GSW1_4 and stays unobserved from 2016.
+            self.assertEqual(result['uniqueTiles'], 2)
+            self.assertEqual(frame['frames'][0]['counts'], [0, 8, 0, 0])
+            self.assertEqual(frame['frames'][-1]['counts'], [4, 4, 0, 0])
+            for year_frame, expected in ((frame['frames'][0], [15, 15, 1, 1]),
+                                         (frame['frames'][-1], [15, 15, 0, 1])):
+                asset = frame['assets'][year_frame['tiles'][0]['asset']]
+                packed = np.frombuffer(gzip.decompress((output/asset['url']).read_bytes()), dtype='uint8')
+                decoded = np.stack([packed & 15, packed >> 4], axis=1).ravel().reshape(4, 4)
+                np.testing.assert_array_equal(decoded, np.tile(expected, (4, 1)))
             with redirect_stdout(io.StringIO()):
                 build(root, boundary, output, workers=1)
             self.assertEqual(index.read_bytes(), original)
@@ -95,7 +105,7 @@ class NationalTileTests(unittest.TestCase):
                 build(root, boundary, output, workers=1)
                 report = package_tiles(output, archive)
             original = archive.read_bytes()
-            self.assertEqual(report['memberCount'], 4)
+            self.assertEqual(report['memberCount'], 5)
             self.assertEqual(sha256(archive), report['archiveSha256'])
             with redirect_stdout(io.StringIO()):
                 package_tiles(output, archive)
@@ -148,8 +158,10 @@ class NationalTileTests(unittest.TestCase):
                 crops = extract(root, zones, root/'crops')
             self.assertEqual(len(crops['files']), 41)
             with rasterio.open(root/'crops'/crops['files'][0]['file']) as crop:
-                np.testing.assert_array_equal(crop.read(1), np.tile([3, 2, 0, 1], (4, 1)))
+                np.testing.assert_array_equal(crop.read(1), np.tile([3, 2, 1, 1], (4, 1)))
                 self.assertEqual(crop.transform, transform)
+            with rasterio.open(root/'crops'/crops['files'][-1]['file']) as crop:
+                np.testing.assert_array_equal(crop.read(1), np.tile([3, 2, 0, 1], (4, 1)))
             previous = (root/'crops/inputs.json').read_bytes()
             audit_path = root/'inputs.json'
             audit = json.loads(audit_path.read_text())

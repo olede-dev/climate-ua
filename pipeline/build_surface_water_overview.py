@@ -1,7 +1,7 @@
 """Nearest native-cell samples for national overview rendering only.
 
-The overview never enters area accounting. Native classes and observation gaps
-remain unchanged at the selected source cell; thin waters can disappear at this
+The overview never enters area accounting. Native classes (after the GSW1_4
+never-water correction) and observation gaps remain unchanged at the selected source cell; thin waters can disappear at this
 scale. Fetch native tiles when zoomed in. Output is deterministic and resumable.
 """
 import argparse
@@ -18,6 +18,7 @@ from shapely.ops import unary_union
 
 from build_surface_water_national import encode, compact_json
 from prepare_surface_water_national import YEARS, sha256, write_json
+from surface_water_never import CORRECTION, dry_never_water, ever_water
 
 
 def build(inputs, boundary, output, factor=16):
@@ -29,6 +30,9 @@ def build(inputs, boundary, output, factor=16):
     for entry in audit['files']:
         if Path(entry['file']).name != entry['file'] or sha256(inputs/entry['file']) != entry['sha256']:
             raise ValueError('Overview annual source changed')
+    history = {}
+    for entry in sorted(audit['files'], key=lambda e: e['year']):
+        history.setdefault(entry['chunkId'], []).append(entry)
     country = unary_union([shape(f['geometry']) for f in json.loads(boundary.read_text())['features']])
     with rasterio.open(inputs/audit['files'][0]['file']) as first:
         native = first.transform
@@ -42,7 +46,8 @@ def build(inputs, boundary, output, factor=16):
     xs = grid.c+(np.arange(width)+.5)*grid.a
     ys = grid.f+(np.arange(height)+.5)*grid.e
     stamp = {'auditSha256': sha256(inputs/'inputs.json'), 'boundarySha256': sha256(boundary),
-             'builderSha256': sha256(Path(__file__)), 'factor': factor}
+             'builderSha256': sha256(Path(__file__)), 'factor': factor,
+             'correction': CORRECTION}
     output.mkdir(parents=True, exist_ok=True)
     result = {'schemaVersion': 1, 'stamp': stamp, 'crs': 'EPSG:4326', 'transform': list(grid)[:6],
               'width': width, 'height': height, 'factor': factor, 'years': list(YEARS),
@@ -76,6 +81,7 @@ def build(inputs, boundary, output, factor=16):
                 native_rows = np.floor((ys[rows]-source.transform.f)/source.transform.e).astype(int)
                 # One degree bounds memory independently of national dimensions.
                 data = source.read(1, masked=True).filled(0)
+                dry_never_water(data, year, ever_water(inputs, history[entry['chunkId']]))
                 sampled = data[np.ix_(native_rows, native_cols)]
             if covered[np.ix_(rows, cols)].any():
                 raise ValueError('Duplicate overview ownership')

@@ -45,7 +45,7 @@ def inventory(inputs):
             raise ValueError('Duplicate chunk reference')
         files[chunk['url']] = {k: chunk[k] for k in ('sha256', 'bytes')}
         index = json.loads(path.read_text())
-        identity = {k: manifest[k] for k in ('processingVersion', 'builderSha256', 'auditSha256', 'boundarySha256', 'years')}
+        identity = {k: manifest[k] for k in ('processingVersion', 'correction', 'builderSha256', 'auditSha256', 'boundarySha256', 'years')}
         if (index['id'] != chunk['id'] or index['stamp']['buildIdentity'] != identity or
                 any(index[k] != chunk[k] for k in ('width', 'height', 'transform')) or
                 [f['year'] for f in index['frames']] != list(YEARS) or

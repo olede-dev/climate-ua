@@ -18,10 +18,8 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
-import AppHeader from '../layout/AppHeader.vue'
-import LanguageMenu from '../layout/LanguageMenu.vue'
-import ThemeMenu from '../layout/ThemeMenu.vue'
 import {
+  useOblasts,
   useSurfaceWaterManifest,
   useSurfaceWaterOutlines,
   useSurfaceWaterSeriesList,
@@ -56,6 +54,7 @@ import { paintSurfaceWaterTile, surfaceWaterCorners } from '../../lib/surfaceWat
 import type { SurfaceWaterBodyEntry, SurfaceWaterState } from '../../types'
 import { basemapStyle, applyLabelFilters, type LabelFilter, type BasemapKind } from './basemap'
 import { addLayer, addSource, NO_VALIDATE, styleLayers } from './mapStyle'
+import { geojsonData } from '../../lib/fileUrls'
 
 const props = defineProps<{
   wide: boolean
@@ -79,6 +78,7 @@ const { locale, t } = useLocale()
 const { theme } = useTheme()
 const copy = computed(() => t.value.surfaceWater)
 const query = useSurfaceWaterManifest()
+const oblasts = useOblasts()
 const loader = useSurfaceWaterTiles()
 const manifest = computed(() => query.data.value?.manifest)
 const locals = computed(() => (manifest.value ? localWaterbodies(manifest.value) : []))
@@ -152,14 +152,6 @@ const legend = computed(() => {
 // Native tiles are requested from this zoom; above it the loader may still fall back to the
 // overview when the viewport exceeds its tile budget.
 const NATIVE_ZOOM = 10
-const zoom = ref(0)
-const detail = computed(() => {
-  if (fallback.value) return null
-  if (pending.value) return 'loading'
-  if (!shown.value) return null
-  if (shown.value.native) return 'native'
-  return zoom.value < NATIVE_ZOOM ? 'overview' : 'overviewMore'
-})
 const shownYears = computed(() => {
   const s = shown.value?.state
   return s ? (s.mode === 'annual' ? String(s.year) : `${s.before} → ${s.after}`) : ''
@@ -269,6 +261,26 @@ function syncBorder() {
       'line-width': 1.5,
     },
   })
+}
+const OBLASTS = 'surface-water-oblasts'
+/** Oblast outlines: shared borders draw twice, so the colour stays opaque to avoid darker seams. */
+function syncOblasts() {
+  const data = oblasts.data.value
+  if (!map || !styleReady || !data || map.getSource(OBLASTS)) return
+  addSource(map, OBLASTS, { type: 'geojson', data: geojsonData(data) })
+  addLayer(
+    map,
+    {
+      id: OBLASTS,
+      type: 'line',
+      source: OBLASTS,
+      paint: {
+        'line-color': theme.value === 'dark' ? '#8e8e93' : '#636366',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.75, 10, 1.25],
+      },
+    },
+    map.getLayer('surface-water-country') ? 'surface-water-country' : undefined,
+  )
 }
 const LOCAL = 'surface-water-local'
 const LOCAL_LABELS = 'surface-water-local-labels'
@@ -642,15 +654,13 @@ async function startMap() {
       const own = styleGeneration
       applyLabelFilters(map!, labelFilters, () => !destroyed && own === styleGeneration)
       syncBorder()
+      syncOblasts()
       syncLocal()
       syncSelection()
       void render()
     })
     map.on('sourcedata', reveal)
-    map.on('moveend', () => {
-      zoom.value = map?.getZoom() ?? 0
-      void render()
-    })
+    map.on('moveend', () => void render())
     map.on('click', 'surface-water-selection', (event) => {
       const id = event.features?.[0]?.properties.id
       if (typeof id === 'string') ui.surfaceWater = { ...ui.surfaceWater, waterbody: id }
@@ -714,6 +724,7 @@ watch(
   () => frameSelection(false),
 )
 watch(() => props.countryBorder, syncBorder)
+watch(() => oblasts.data.value, syncOblasts)
 onMounted(async () => {
   await firstPaint()
   if (destroyed) return
@@ -764,96 +775,97 @@ onBeforeUnmount(() => {
         :aria-label="`${copy.name} ${shownYears}`"
       />
     </div>
-    <section
-      class="glass pointer-events-auto z-10 overflow-y-auto rounded-2xl p-4 text-ink shadow-float"
-      :class="
-        wide ? 'absolute top-3 bottom-3 left-3 w-[22rem]' : 'relative order-2 shrink-0 text-sm'
-      "
-      :aria-label="copy.name"
-      @keydown.esc="selected && closeBody()"
-    >
-      <AppHeader v-if="wide" inline class="mb-4"
-        ><LanguageMenu button-class="size-9 rounded-full focus-ring" icon-only /><ThemeMenu
-          button-class="size-9 rounded-full focus-ring"
-          icon-only
-      /></AppHeader>
-      <h1
-        v-if="!selected"
-        ref="bodyPicker"
-        tabindex="-1"
-        class="text-[22px] font-bold tracking-tight focus-visible:outline-none"
+    <Teleport defer to="#surface-water-panel" :disabled="!wide">
+      <section
+        class="overflow-y-auto p-4 text-ink"
+        :class="
+          wide
+            ? 'min-h-0 flex-1'
+            : 'glass pointer-events-auto relative z-10 order-2 shrink-0 rounded-2xl text-sm shadow-float'
+        "
+        :aria-label="copy.name"
+        @keydown.esc="selected && closeBody()"
       >
-        {{ copy.name }}
-      </h1>
-      <div v-if="!selected" class="mt-3">
-        <WaterTabs v-model="mode" :views="modes" :label="copy.name" />
-        <div
-          v-if="ui.surfaceWater.mode === 'comparison'"
-          class="mt-3 divide-y divide-line overflow-hidden rounded-xl bg-group"
+        <h1
+          v-if="!selected"
+          ref="bodyPicker"
+          tabindex="-1"
+          class="text-[22px] font-bold tracking-tight focus-visible:outline-none"
         >
-          <SelectMenu
-            v-model="ui.surfaceWater.before"
-            row
-            :options="yearOptions"
-            :label="copy.before"
-          />
-          <SelectMenu
-            v-model="ui.surfaceWater.after"
-            row
-            :options="yearOptions"
-            :label="copy.after"
-          />
-          <button
-            type="button"
-            role="switch"
-            :aria-checked="transitions"
-            class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[13px] text-ink transition-colors hover:bg-fill focus-ring-inset"
-            @click="transitions = !transitions"
+          {{ copy.name }}
+        </h1>
+        <div v-if="!selected" class="mt-3">
+          <WaterTabs v-model="mode" :views="modes" :label="copy.name" />
+          <div
+            v-if="ui.surfaceWater.mode === 'comparison'"
+            class="mt-3 divide-y divide-line overflow-hidden rounded-xl bg-group"
           >
-            <span>{{ copy.transitions }}</span>
-            <span
-              class="relative h-[22px] w-9 shrink-0 rounded-full transition-colors"
-              :class="transitions ? 'bg-accent' : 'bg-fill-strong'"
-              aria-hidden="true"
+            <SelectMenu
+              v-model="ui.surfaceWater.before"
+              row
+              :options="yearOptions"
+              :label="copy.before"
+            />
+            <SelectMenu
+              v-model="ui.surfaceWater.after"
+              row
+              :options="yearOptions"
+              :label="copy.after"
+            />
+            <button
+              type="button"
+              role="switch"
+              :aria-checked="transitions"
+              class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[13px] text-ink transition-colors hover:bg-fill focus-ring-inset"
+              @click="transitions = !transitions"
             >
+              <span>{{ copy.transitions }}</span>
               <span
-                class="absolute top-0.5 left-0.5 size-[18px] rounded-full bg-white shadow-card transition-transform"
-                :class="transitions && 'translate-x-3.5'"
-              />
-            </span>
+                class="relative h-[22px] w-9 shrink-0 rounded-full transition-colors"
+                :class="transitions ? 'bg-accent' : 'bg-fill-strong'"
+                aria-hidden="true"
+              >
+                <span
+                  class="absolute top-0.5 left-0.5 size-[18px] rounded-full bg-white shadow-card transition-transform"
+                  :class="transitions && 'translate-x-3.5'"
+                />
+              </span>
+            </button>
+          </div>
+        </div>
+        <WaterbodyList
+          v-if="!selected && manifest && query.data.value"
+          class="mt-4"
+          :bodies="manifest.catalogue"
+          :comparison="listComparison"
+          @select="bodyModel = $event"
+        />
+        <p v-if="query.isError.value || failed" role="alert" class="mt-3 text-sm">
+          {{ copy.error }}
+          <button class="rounded-lg bg-fill p-2 focus-ring" @click="retry">{{ copy.retry }}</button>
+        </p>
+        <p v-else-if="manifest && !state" role="status">{{ copy.empty }}</p>
+        <p v-if="unknownBody" role="status" class="mt-2 text-sm">{{ copy.unknownBody }}</p>
+        <Suspense v-if="selected && query.data.value && state">
+          <WaterbodyCard
+            :key="`${manifest?.version}:${selected.id}`"
+            :body="selected"
+            :release="query.data.value"
+            :state="state"
+            @close="closeBody"
+          />
+          <template #fallback
+            ><LoadingSkeleton :label="copy.detailsLoading" class="h-48"
+          /></template>
+        </Suspense>
+        <div v-if="fallback" class="mt-2">
+          <p class="text-xs">{{ copy.fallback }}</p>
+          <button class="mt-1 rounded-lg bg-fill p-2 text-sm focus-ring" @click="startMap">
+            {{ copy.interactive }}
           </button>
         </div>
-      </div>
-      <WaterbodyList
-        v-if="!selected && manifest && query.data.value"
-        class="mt-4"
-        :bodies="manifest.catalogue"
-        :comparison="listComparison"
-        @select="bodyModel = $event"
-      />
-      <p v-if="query.isError.value || failed" role="alert" class="mt-3 text-sm">
-        {{ copy.error }}
-        <button class="rounded-lg bg-fill p-2 focus-ring" @click="retry">{{ copy.retry }}</button>
-      </p>
-      <p v-else-if="manifest && !state" role="status">{{ copy.empty }}</p>
-      <p v-if="unknownBody" role="status" class="mt-2 text-sm">{{ copy.unknownBody }}</p>
-      <Suspense v-if="selected && query.data.value && state">
-        <WaterbodyCard
-          :key="`${manifest?.version}:${selected.id}`"
-          :body="selected"
-          :release="query.data.value"
-          :state="state"
-          @close="closeBody"
-        />
-        <template #fallback><LoadingSkeleton :label="copy.detailsLoading" class="h-48" /></template>
-      </Suspense>
-      <div v-if="fallback" class="mt-2">
-        <p class="text-xs">{{ copy.fallback }}</p>
-        <button class="mt-1 rounded-lg bg-fill p-2 text-sm focus-ring" @click="startMap">
-          {{ copy.interactive }}
-        </button>
-      </div>
-    </section>
+      </section>
+    </Teleport>
     <div
       v-if="axis"
       class="pointer-events-none z-10"
@@ -881,29 +893,6 @@ onBeforeUnmount(() => {
             </li>
           </ul>
         </figure>
-        <div
-          v-if="detail"
-          class="mt-2 flex items-center gap-2 border-t border-line pt-2 text-[11px] leading-tight"
-          role="status"
-        >
-          <span
-            v-if="detail === 'loading'"
-            class="map-loading-spinner size-3 shrink-0 rounded-full border-2 border-fill border-t-accent"
-            aria-hidden="true"
-          />
-          <span
-            v-else
-            class="size-2 shrink-0 rounded-full"
-            :class="detail === 'native' ? 'bg-accent' : 'bg-ink-muted'"
-            aria-hidden="true"
-          />
-          <span
-            class="min-w-0 flex-1"
-            :title="detail === 'native' ? copy.nativeHint : copy.overviewHint"
-            :class="detail === 'native' ? 'text-ink' : 'text-ink-muted'"
-            >{{ detail === 'loading' ? copy.detailLoading : copy[detail] }}</span
-          >
-        </div>
       </component>
       <ZoomControl v-if="wide" @in="map?.zoomIn()" @out="map?.zoomOut()" />
     </div>
@@ -911,19 +900,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.map-loading-spinner {
-  animation: map-loading-turn 1s linear infinite;
-}
-@keyframes map-loading-turn {
-  to {
-    transform: rotate(360deg);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .map-loading-spinner {
-    animation: none;
-  }
-}
 input:checked {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='m3.5 8 3 3 6-6' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }

@@ -10,7 +10,7 @@ import {
   waterbodyDelta,
   waterbodyPair,
 } from '../../../lib/waterbodyCard'
-import { waterbodyName } from '../../../lib/localWaterbodies'
+import { ownWaterbodyName, waterbodyCoordinates } from '../../../lib/localWaterbodies'
 import type { SurfaceWaterBodyEntry, SurfaceWaterManifest, SurfaceWaterState } from '../../../types'
 import LoadingIndicator from '../../ui/LoadingIndicator.vue'
 import WaterbodyChart from './WaterbodyChart.vue'
@@ -46,10 +46,16 @@ const signed = (value: number) =>
     .replace('-', '−')
 const percent = (value: number) => `${number(value * 100)}%`
 const caption = 'px-3 pb-1 text-[11px] font-semibold tracking-wide text-ink-muted uppercase'
-const name = computed(() => waterbodyName(props.body, locale.value, copy.value))
+// An unnamed body is titled by its coordinates: "near <settlement>" reads like a name it does not have.
+const name = computed(() => ownWaterbodyName(props.body, locale.value))
+const coordinates = computed(() => waterbodyCoordinates(props.body))
 </script>
 <template>
-  <article class="text-[13px] text-ink" :aria-label="name" :aria-busy="query.isPending.value">
+  <article
+    class="text-[13px] text-ink"
+    :aria-label="name ?? coordinates"
+    :aria-busy="query.isPending.value"
+  >
     <button
       type="button"
       class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-fill-strong focus-ring"
@@ -72,7 +78,21 @@ const name = computed(() => waterbodyName(props.body, locale.value, copy.value))
       tabindex="-1"
       class="text-[22px] leading-tight font-bold tracking-tight focus-visible:outline-none"
     >
-      {{ name }}
+      <template v-if="name">{{ name }}</template>
+      <span v-else class="flex items-center gap-2 tabular-nums">
+        <svg
+          viewBox="0 0 16 16"
+          class="size-5 shrink-0 text-ink-muted"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          aria-hidden="true"
+        >
+          <path d="M8 14.5s4.5-4.2 4.5-8a4.5 4.5 0 0 0-9 0c0 3.8 4.5 8 4.5 8z" />
+          <circle cx="8" cy="6.5" r="1.6" />
+        </svg>
+        <span class="sr-only">{{ copy.unnamed }}, </span>{{ coordinates }}
+      </span>
     </h2>
     <p class="mt-1 text-[13px] text-ink-muted">{{ copy[body.type] }}</p>
     <p v-if="body.type === 'local'" role="note" class="mt-2 text-xs leading-relaxed text-ink-muted">
@@ -194,7 +214,26 @@ const name = computed(() => waterbodyName(props.body, locale.value, copy.value))
             :selected="year"
           />
         </div>
-        <p class="mt-1.5 px-3 text-xs leading-relaxed text-ink-muted">{{ copy.chartHelp }}</p>
+        <ul class="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 px-3 text-xs text-ink-muted">
+          <li class="flex items-center gap-1.5">
+            <svg viewBox="0 0 16 10" class="h-2.5 w-4 shrink-0" aria-hidden="true">
+              <path d="M0 5h16" stroke="#2ab0cd" stroke-width="2" />
+            </svg>
+            {{ copy.total }}
+          </li>
+          <li class="flex items-center gap-1.5">
+            <svg viewBox="0 0 10 10" class="size-2.5 shrink-0" aria-hidden="true">
+              <path d="M5 1 9.5 9h-9z" fill="#e66825" />
+            </svg>
+            {{ copy.chartPartial }}
+          </li>
+          <li class="flex items-center gap-1.5">
+            <svg viewBox="0 0 16 10" class="h-2.5 w-4 shrink-0" aria-hidden="true">
+              <path d="M0 5h16" stroke="#9aa3ad" stroke-width="2" stroke-dasharray="4 3" />
+            </svg>
+            {{ copy.chartGap }}
+          </li>
+        </ul>
         <details open class="group mt-3 overflow-hidden rounded-xl bg-group">
           <summary
             class="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 transition-colors hover:bg-fill focus-ring-inset [&::-webkit-details-marker]:hidden"

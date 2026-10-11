@@ -32,11 +32,12 @@ const percent = (value: number) =>
 
 <template>
   <section>
-    <h2
-      v-if="comparison"
-      class="px-3 pb-1 text-[11px] font-semibold tracking-wide text-ink-muted uppercase"
-    >
-      {{ copy.listHeading.replace('{year}', String(comparison.after)) }}
+    <h2 class="px-3 pb-1 text-[11px] font-semibold tracking-wide text-ink-muted uppercase">
+      {{
+        comparison
+          ? copy.listHeading.replace('{year}', String(comparison.after))
+          : copy.listHeadingAnnual
+      }}
     </h2>
     <ul class="divide-y divide-line overflow-hidden rounded-xl bg-group" :aria-label="copy.name">
       <li v-for="body in bodies" :key="body.id">

@@ -15,8 +15,7 @@ import {
 
 import AppFooter from '../components/layout/AppFooter.vue'
 import AppHeader from '../components/layout/AppHeader.vue'
-import LanguageMenu from '../components/layout/LanguageMenu.vue'
-import ThemeMenu from '../components/layout/ThemeMenu.vue'
+import MapSidebar from '../components/layout/MapSidebar.vue'
 import type { BasemapKind } from '../components/map/basemap'
 import ClimateMap, { type RegionHover, type RiverMapData } from '../components/map/ClimateMap.vue'
 import MapLegend from '../components/map/MapLegend.vue'
@@ -468,7 +467,7 @@ const tableCaption = computed(
 
 const isWide = useMediaQuery('(min-width: 64rem)')
 
-const panelCard = useTemplateRef<HTMLElement>('panelCard')
+const panelCard = useTemplateRef<InstanceType<typeof MapSidebar>>('panelCard')
 const controlsColumn = useTemplateRef<HTMLElement>('controlsColumn')
 const climateMap = useTemplateRef<InstanceType<typeof ClimateMap>>('climateMap')
 const bottomBar = useTemplateRef<HTMLElement>('bottomBar')
@@ -482,7 +481,7 @@ function measureInsets() {
   const column = rect(controlsColumn.value)
   const next = {
     top: 0,
-    left: Math.round(rect(panelCard.value)?.right ?? 0),
+    left: Math.round(rect(panelCard.value?.$el)?.right ?? 0),
     right: Math.round(width - (column?.left ?? width)),
     bottom: Math.round(height - (rect(bottomBar.value)?.top ?? height)),
   }
@@ -496,7 +495,7 @@ function measureInsets() {
 }
 const insetObserver = new ResizeObserver(measureInsets)
 watchEffect((onCleanup) => {
-  const els = [panelCard.value, controlsColumn.value, bottomBar.value]
+  const els = [panelCard.value?.$el, controlsColumn.value, bottomBar.value]
   for (const el of els) if (el instanceof HTMLElement) insetObserver.observe(el)
   window.addEventListener('resize', measureInsets)
   onCleanup(() => {
@@ -551,9 +550,6 @@ watch(
     })
   },
 )
-
-const menuButtonClass =
-  'inline-flex size-10 items-center justify-center rounded-xl text-ink transition-colors hover:bg-fill focus-ring'
 
 const vFocus = { mounted: (el: HTMLElement) => el.focus() }
 
@@ -794,19 +790,11 @@ const tooltip = computed(() => {
         class="rounded-2xl bg-surface px-3 py-2 shadow-card"
       >
       </MapLegend>
-      <div
-        v-if="isWide && !isSurfaceWater"
-        ref="panelCard"
-        class="glass pointer-events-auto relative z-10 flex w-[22rem] shrink-0 flex-col overflow-hidden rounded-2xl shadow-float"
-      >
-        <AppHeader inline class="shrink-0 px-4 pt-4">
-          <div class="-my-1 flex gap-0.5">
-            <LanguageMenu :button-class="menuButtonClass" icon-only />
-            <ThemeMenu :button-class="menuButtonClass" icon-only />
-          </div>
-        </AppHeader>
+      <MapSidebar v-if="isWide" ref="panelCard">
+        <!-- SurfaceWaterView teleports its panel here, so every layer shares one sidebar. -->
+        <div v-if="isSurfaceWater" id="surface-water-panel" class="flex min-h-0 flex-1 flex-col" />
         <SidePanel
-          v-if="panel"
+          v-else-if="panel"
           class="min-h-0 flex-1"
           v-bind="panel"
           @close="ui.regionId = null"
@@ -853,7 +841,7 @@ const tooltip = computed(() => {
             />
           </template>
         </SidePanel>
-      </div>
+      </MapSidebar>
       <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
         <div
           ref="bottomBar"

@@ -25,6 +25,20 @@ export function waterbodyName(
   )
 }
 
+/** The body's own name in this locale, or null when it has none. */
+export function ownWaterbodyName(body: SurfaceWaterBodyEntry, locale: Locale): string | null {
+  return (locale === 'uk' ? body.nameUk : body.nameEn || body.nameUk) || null
+}
+
+/** Google Maps style "lat, lon" at the marker, or the bounds centre for a curated body. */
+export function waterbodyCoordinates(body: SurfaceWaterBodyEntry): string {
+  const [lon, lat] =
+    body.type === 'local'
+      ? body.markerCoordinates
+      : [(body.bounds[0] + body.bounds[2]) / 2, (body.bounds[1] + body.bounds[3]) / 2]
+  return `${lat.toFixed(5)}, ${lon.toFixed(5)}`
+}
+
 /**
  * Smallest area, in km², labelled at each zoom: a few dozen country-scale bodies first,
  * everything at district scale. Larger bodies win label collisions through the sort key.

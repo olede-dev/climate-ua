@@ -576,8 +576,9 @@ async function render() {
         tiles: result.tiles.length,
       }),
     )
-  } catch {
+  } catch (error) {
     if (!own.signal.aborted && !destroyed) {
+      console.error('Surface-water render failed', error)
       failed.value = true
       pending.value = false
     }

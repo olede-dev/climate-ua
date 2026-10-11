@@ -6,14 +6,15 @@ An interactive map of changes in Ukraine's climate and water resources: observat
 
 **Live demo:** https://olede-dev.github.io/climate-ua/
 
-![Water deficit map of Ukraine by sub-basin](.github/screenshot.png)
+![Kakhovka Reservoir surface-water change, 1984 vs 2024](.github/screenshot.png)
 
 ## Features
 
-- Six thematic layers at the level of oblasts, sub-basins and river gauging stations.
+- Seven thematic layers at the level of oblasts, sub-basins, river gauging stations and waterbodies.
 - A single timeline covering both the historical period and the projections.
 - Region card: a past–present–projection comparison, a chart for the full period, and the Köppen–Geiger climate type today and in the future.
 - River mode: 10 GloFAS stations coloured by today's water state, the long-term flow trend or yearly low-flow days, with a daily timelapse; a sortable station list with a basin filter; a station card with the discharge chart, the 7-month ensemble forecast, a forecast badge and precipitation.
+- Waterbodies mode: an annual surface-water map for 1984–2024 and a comparison of any two years (water in both years, gained, lost, no common observations), with optional category transitions; a catalogue of major reservoirs and lakes plus automatic local waterbodies of 1 km² or more, outlined from zoom 8; a waterbody card with the area change, permanent/seasonal composition and annual area history.
 - Interface state (layer, period, region, station, basin, chart settings) is stored in the URL.
 - Ukrainian and English interface.
 
@@ -27,6 +28,7 @@ An interactive map of changes in Ukraine's climate and water resources: observat
 | Days with minimum below 0 °C | 25 oblasts | 1950–2025 | 2021–2040, 2041–2060, 2081–2100 (SSP2-4.5) |
 | Drought: months with SPEI-6 below −1 | 25 oblasts | 1950–2025 | 2021–2040, 2041–2060, 2081–2100 (SSP2-4.5) |
 | River low flow relative to the 1997–2020 norm | 10 gauging stations | 1997–2025 | — |
+| Surface water: annual map and two-year comparison | 30 m raster; catalogue waterbodies and local waterbodies ≥ 1 km² | 1984–2024 | — |
 
 ## Methodology
 
@@ -100,7 +102,7 @@ uv run python build_river_lines.py # → public/data/river-lines.geojson (after 
 
 Raw downloads are stored in `pipeline/data/raw/` and are not committed.
 
-National annual surface-water data covers Ukraine, including Crimea, for 1984–2024, with an initial eleven-waterbody catalogue. Generation, historical-zone review, checksummed release packaging, same-origin deployment staging and rollback are documented in [the generation runbook](docs/surface-water-generation.md). Heavy assets stay outside Git; ordinary CI checks the small generated reference catalogue.
+National annual surface-water data covers Ukraine, including Crimea, for 1984–2024, with an eleven-waterbody catalogue and automatic local waterbodies of 1 km² or more. Each release carries a compact comparison summary for the waterbody list, so comparison mode does not load per-waterbody series. Generation, historical-zone review, checksummed release packaging, same-origin deployment staging and rollback are documented in [the generation runbook](docs/surface-water-generation.md). Heavy assets stay outside Git; ordinary CI checks the small generated reference catalogue.
 
 For local development, keep surface-water archives in `pipeline/data/raw/surface-water/archives/` and stage the verified release into `public/` once before starting Vite:
 

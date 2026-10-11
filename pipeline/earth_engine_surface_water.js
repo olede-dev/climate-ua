@@ -39,12 +39,14 @@ var provenance = []
 // Resolve and check every request before creating any tasks. Date filtering also
 // accepts assets that expose system:time_start instead of a numeric year field.
 var resolved = requests.map(function (request) {
-  var matches = ee.ImageCollection(request.collection).filter(
-    ee.Filter.or(
-      ee.Filter.eq('year', request.year),
-      ee.Filter.date(request.year + '-01-01', request.year + 1 + '-01-01')
+  var matches = ee
+    .ImageCollection(request.collection)
+    .filter(
+      ee.Filter.or(
+        ee.Filter.eq('year', request.year),
+        ee.Filter.date(request.year + '-01-01', request.year + 1 + '-01-01')
+      )
     )
-  )
   if (matches.size().getInfo() !== 1) {
     throw new Error('Expected exactly one annual image: ' + request.collection + ' ' + request.year)
   }

@@ -18,12 +18,11 @@ function runYear(index) {
       ? 'JRC/GSW1_4/YearlyHistory'
       : 'projects/global-surface-water/assets/GSW1_5/YearlyHistory_' +
         (year <= 2021 ? '2016_2021' : '2022_2024')
-  var matches = ee.ImageCollection(collection).filter(
-    ee.Filter.or(
-      ee.Filter.eq('year', year),
-      ee.Filter.date(year + '-01-01', year + 1 + '-01-01'),
-    ),
-  )
+  var matches = ee
+    .ImageCollection(collection)
+    .filter(
+      ee.Filter.or(ee.Filter.eq('year', year), ee.Filter.date(year + '-01-01', year + 1 + '-01-01'))
+    )
   if (matches.size().getInfo() !== 1) throw new Error('Not unique annual source: ' + year)
   var image = ee.Image(matches.first()).select('waterClass')
   var imageId = image.id().getInfo()
@@ -51,7 +50,7 @@ function runYear(index) {
           crs: projection.crs,
           crs_transform: grid,
           dimensions: [x2 - x, y2 - y],
-          format: 'GEO_TIFF',
+          format: 'GEO_TIFF'
         },
         function (url, error) {
           if (error && attempt < 3) {
@@ -75,8 +74,8 @@ function runYear(index) {
                 missingClass: 0,
                 attribution: 'Source: EC JRC/Google',
                 citation: 'Pekel et al. (2016), doi:10.1038/nature20584',
-                downloadUrl: url,
-              }),
+                downloadUrl: url
+              })
             )
           done++
           status.setValue('Year ' + year + ': ' + done + '/' + cells.length + ' URLs')
@@ -97,10 +96,10 @@ function runYear(index) {
                 }
                 print('MANIFEST ' + year, manifest)
                 runYear(index + 1)
-              },
+              }
             )
           }
-        },
+        }
       )
   }
   for (var k = 0; k < Math.min(16, cells.length); k++) request(cells[next++], 0)

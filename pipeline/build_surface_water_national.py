@@ -1,7 +1,8 @@
 """Build resumable native national tiles in ignored storage; never publish.
 
 Each native cell belongs to the one-degree envelope containing its centre.
-Country-exterior cells are 15; unobserved country cells remain 0. Content hashes
+Country-exterior cells are 15; unobserved country cells remain 0 after
+the GSW1_4 never-water correction (surface_water_never). Content hashes
 allow identical annual tiles to share one immutable asset without resampling.
 """
 import argparse
@@ -22,9 +23,10 @@ from shapely.geometry import box, mapping, shape
 from shapely.ops import unary_union
 
 from prepare_surface_water_national import YEARS, VERSION, collection, sha256, write_json
+from surface_water_never import CORRECTION, dry_never_water, ever_water
 
 ROOT = Path(__file__).resolve().parent
-PROCESSING_VERSION = 'national-packed4-1'
+PROCESSING_VERSION = 'national-packed4-2'
 TILE_SIZE = 512
 ASSET_LOCK = Lock()
 
@@ -65,12 +67,13 @@ def compact_json(path, value):
     temporary.replace(path)
 
 
-def build_chunk(chunk, entries, inputs, country, output, identity):
+def build_chunk(chunk, entries, inputs, country, output, identity, history=None):
     index_path = output / 'frames' / (chunk['id'] + '.json')
     stamp = {'buildIdentity': identity, 'sources': [{k: e[k] for k in
              ('year', 'sha256', 'file')} for e in entries]}
+    history = history or entries
     # Verify sources even on resume; audit metadata alone cannot authorize skipping.
-    for entry in entries:
+    for entry in {e['file']: e for e in [*entries, *history]}.values():
         if sha256(inputs / entry['file']) != entry['sha256']:
             raise ValueError('Source changed since national audit')
     if index_path.exists():
@@ -98,6 +101,8 @@ def build_chunk(chunk, entries, inputs, country, output, identity):
                                  transform=first.window_transform(w), dtype='uint8') != 0
                 if mask.any():
                     windows.append((col, row, w, mask))
+    footprint = ever_water(inputs, history)
+    ever = [footprint[w.toslices()] for _, _, w, _ in windows]
     # Country masks consume at most one one-degree UInt8 fragment per worker.
     for entry in entries:
         frame = {'year': entry['year'], 'tiles': [], 'counts': [0]*4}
@@ -107,10 +112,11 @@ def build_chunk(chunk, entries, inputs, country, output, identity):
                     not np.allclose(list(source.transform)[:6], entry['transform'], rtol=0, atol=1e-10) or
                     not np.allclose(list(source.window_transform(owned))[:6], list(base)[:6], rtol=0, atol=1e-10)):
                 raise ValueError('Incompatible annual native grid')
-            for col, row, w, mask in windows:
+            for (col, row, w, mask), wet in zip(windows, ever):
                 data = source.read(1, window=w, masked=True).filled(0)
                 if not np.isin(data, [0, 1, 2, 3]).all():
                     raise ValueError('Undocumented source class')
+                dry_never_water(data, entry['year'], wet)
                 counts = np.bincount(data[mask], minlength=4)
                 frame['counts'] = [a+int(b) for a,b in zip(frame['counts'], counts)]
                 data[~mask] = 15
@@ -159,13 +165,14 @@ def build(inputs, boundary, output, years=YEARS, workers=4):
     country = unary_union([shape(f['geometry']) for f in json.loads(boundary.read_text())['features']])
     if country.is_empty or not country.is_valid:
         raise ValueError('Invalid country boundary')
-    identity = {'processingVersion': PROCESSING_VERSION, 'builderSha256': sha256(Path(__file__)),
+    identity = {'processingVersion': PROCESSING_VERSION, 'correction': CORRECTION, 'builderSha256': sha256(Path(__file__)),
                 'auditSha256': sha256(audit_path), 'boundarySha256': sha256(boundary), 'years': list(years)}
     output.mkdir(parents=True, exist_ok=True)
     chunks, assets = [], {}
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = [pool.submit(build_chunk, c, [entries[(c['id'], y)] for y in years],
-                               inputs, country, output, identity) for c in requests['chunks']]
+                               inputs, country, output, identity,
+                               [entries[(c['id'], y)] for y in YEARS]) for c in requests['chunks']]
         for future in as_completed(futures):
             result = future.result()
             index = output/'frames'/(result['id']+'.json')

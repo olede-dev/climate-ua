@@ -16,6 +16,9 @@ __pycache__/
 # Daily discharge fallback: built in CI before every deploy
 /public/data/discharge-snapshot.json
 
+# Verified surface-water release assets are staged locally from the pipeline archive
+/public/data/surface-water/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

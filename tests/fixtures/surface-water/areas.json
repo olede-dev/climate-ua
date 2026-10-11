@@ -1,0 +1,21 @@
+{
+  "description": "Hand-calculated square-metre intersections; not real observations",
+  "before": [3, 2, 1, 3, 0, 1, 3, 2, 1, 1],
+  "after": [2, 3, 3, 1, 3, 0, 3, 2, 1, 1],
+  "weightsM2": [900, 900, 450, 900, 450, 450, 900, 900, 900, 900],
+  "expected": {
+    "zoneM2": 7650,
+    "commonM2": 6750,
+    "annualBeforeUnionM2": 4500,
+    "annualAfterUnionM2": 4500,
+    "pairBeforeUnionM2": 4500,
+    "pairAfterUnionM2": 4050,
+    "gainedM2": 450,
+    "lostM2": 900,
+    "persistentM2": 3600,
+    "permanentToSeasonalM2": 900,
+    "seasonalToPermanentM2": 900,
+    "deltaM2": -450,
+    "deltaPercent": -10
+  }
+}

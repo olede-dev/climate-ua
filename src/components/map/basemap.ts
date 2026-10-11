@@ -42,8 +42,14 @@ const PALETTES: Record<
 /**
  * Region names come from the data layers. The basemap's own first-level labels would repeat
  * them, and OSM names Crimea twice there, so that layer is left out.
+ * Road-number shields add clutter to the thematic map.
  */
-const DROPPED_LAYERS = new Set(['place_state'])
+const DROPPED_LAYERS = new Set([
+  'place_state',
+  'highway-shield-non-us',
+  'highway-shield-us-interstate',
+  'road_shield_us',
+])
 
 // Esri's label layers are left out of the fallback: they use Russian-derived names such as "Kiev".
 const ESRI_CANVAS_URL = (style: string) =>

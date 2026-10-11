@@ -4,6 +4,14 @@ import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 import { layerConfig } from '../config/layers'
 import { rememberUrl } from '../lib/fileUrls'
 import { firstPaint } from '../lib/firstPaint'
+import { surfaceWaterAssetUrl } from '../lib/surfaceWaterAssets'
+import type {
+  SurfaceWaterAsset,
+  SurfaceWaterCatalogueFile,
+  SurfaceWaterComparisonSummary,
+  SurfaceWaterManifest,
+  SurfaceWaterPointer,
+} from '../types'
 import { riversLayer } from '../lib/rivers'
 import type {
   BasinsFile,
@@ -39,7 +47,7 @@ export function useLayer(id: MaybeRefOrGetter<LayerId | null>) {
       layer.value === 'rivers'
         ? riversLayer(await client.ensureQueryData(RIVERS_QUERY))
         : fetchStatic<LayerFile>(layerConfig(layer.value!).path),
-    enabled: computed(() => layer.value !== null),
+    enabled: computed(() => layer.value !== null && layer.value !== 'waterbodies'),
   })
 }
 
@@ -101,4 +109,219 @@ export function useGrid(path: MaybeRefOrGetter<string | null>) {
     queryFn: () => fetchStatic<GridFile>(file.value!),
     enabled: computed(() => file.value !== null),
   })
+}
+
+/** Surface-water assets always remain within one checksummed same-origin release. */
+export async function fetchSurfaceWaterAsset(
+  root: URL,
+  asset: SurfaceWaterAsset,
+  signal: AbortSignal,
+  binary: true,
+): Promise<Uint8Array<ArrayBuffer>>
+export async function fetchSurfaceWaterAsset<T>(
+  root: URL,
+  asset: SurfaceWaterAsset,
+  signal: AbortSignal,
+  binary?: false,
+): Promise<T>
+export async function fetchSurfaceWaterAsset<T>(
+  root: URL,
+  asset: SurfaceWaterAsset,
+  signal: AbortSignal,
+  binary = false,
+): Promise<T | Uint8Array<ArrayBuffer>> {
+  const url = surfaceWaterAssetUrl(root, asset)
+  if (asset.bytes > 2_000_000) throw new Error('Surface-water request exceeds viewport budget')
+  const response = await fetch(url, { signal })
+  if (!response.ok) throw new Error(`Surface-water HTTP ${response.status}`)
+  const bytes = new Uint8Array(await readSurfaceWaterBytes(response.body, asset.bytes, signal))
+  if (bytes.length !== asset.bytes) throw new Error('Surface-water byte count mismatch')
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+    .map((x) => x.toString(16).padStart(2, '0'))
+    .join('')
+  signal.throwIfAborted()
+  if (hash !== asset.sha256) throw new Error('Surface-water checksum mismatch')
+  return binary ? bytes : (JSON.parse(new TextDecoder().decode(bytes)) as T)
+}
+
+export async function readSurfaceWaterBytes(
+  stream: ReadableStream<Uint8Array> | null,
+  limit: number,
+  signal: AbortSignal,
+): Promise<ArrayBuffer> {
+  if (!stream) throw new Error('Empty surface-water response')
+  const reader = stream.getReader()
+  const output = new Uint8Array(limit)
+  let offset = 0
+  const abort = () => {
+    void reader.cancel(signal.reason)
+  }
+  signal.addEventListener('abort', abort, { once: true })
+  try {
+    while (true) {
+      signal.throwIfAborted()
+      const { done, value } = await reader.read()
+      if (done) break
+      if (offset + value.length > limit)
+        throw new Error('Surface-water payload exceeds declared size')
+      output.set(value, offset)
+      offset += value.length
+    }
+    signal.throwIfAborted()
+    return output.buffer.slice(0, offset)
+  } finally {
+    signal.removeEventListener('abort', abort)
+    await reader.cancel()
+    reader.releaseLock()
+  }
+}
+
+export function useSurfaceWaterManifest() {
+  return useQuery({
+    queryKey: ['surface-water-release'],
+    queryFn: async ({ signal }) => {
+      const root = new URL(`${import.meta.env.BASE_URL}data/surface-water/`, location.href)
+      const response = await fetch(new URL('current.json', root), { signal })
+      if (!response.ok) throw new Error(`Surface-water pointer HTTP ${response.status}`)
+      const pointer = JSON.parse(
+        new TextDecoder().decode(await readSurfaceWaterBytes(response.body, 4096, signal)),
+      ) as SurfaceWaterPointer
+      if (
+        pointer.schemaVersion !== 1 ||
+        !/^[a-f0-9]{20}$/.test(pointer.version) ||
+        pointer.url !== `versions/${pointer.version}/manifest.json`
+      )
+        throw new Error('Invalid surface-water pointer')
+      const manifest = await fetchSurfaceWaterAsset<SurfaceWaterManifest>(root, pointer, signal)
+      if (
+        (manifest.schemaVersion !== 1 && manifest.schemaVersion !== 2) ||
+        manifest.version !== pointer.version ||
+        manifest.encoding !== 'packed4-gzip' ||
+        manifest.rasterCRS !== 'EPSG:4326' ||
+        manifest.tileSize !== 512 ||
+        !Array.isArray(manifest.years) ||
+        manifest.years.some((year) => !Number.isSafeInteger(year)) ||
+        new Set(manifest.years).size !== manifest.years.length ||
+        new Set(manifest.catalogue.map((body) => body.id)).size !== manifest.catalogue.length
+      )
+        throw new Error('Invalid surface-water manifest')
+      const catalogue = await fetchStatic<SurfaceWaterCatalogueFile>(
+        'data/surface-water-catalogue.json',
+      )
+      if (catalogue.version !== manifest.version || catalogue.zoneVersion !== manifest.zoneVersion)
+        throw new Error('Surface-water marker catalogue does not match selected release')
+      const markers = Object.fromEntries(
+        catalogue.catalogue.map((body) => [body.id, body.markerCoordinates]),
+      )
+      for (const body of manifest.catalogue) {
+        const point = markers[body.id]
+        if (!point || point.length !== 2 || !point.every(Number.isFinite))
+          throw new Error('Missing surface-water marker coordinates')
+      }
+      return {
+        manifest,
+        markers,
+        root: new URL(`versions/${pointer.version}/`, root).href,
+      }
+    },
+    retry: false,
+  })
+}
+
+type SurfaceWaterRelease = { manifest: SurfaceWaterManifest; root: string }
+type SurfaceWaterBody = import('../types').SurfaceWaterBodyEntry
+
+function seriesQuery(release: SurfaceWaterRelease, entry: SurfaceWaterBody) {
+  return {
+    queryKey: ['surface-water-series', release.manifest.version, entry.id],
+    queryFn: async ({ signal }: { signal: AbortSignal }) => {
+      const { manifest, root } = release
+      const series = await fetchSurfaceWaterAsset<import('../types').SurfaceWaterSeries>(
+        new URL(root),
+        entry.series,
+        signal,
+      )
+      if (
+        series.schemaVersion !== 1 ||
+        series.version !== manifest.version ||
+        series.zoneVersion !==
+          (entry.type === 'local' ? manifest.local?.zoneVersion : manifest.zoneVersion) ||
+        series.id !== entry.id ||
+        series.unit !== 'm2' ||
+        series.areaCRS !== 'EPSG:6933'
+      )
+        throw new Error('Invalid surface-water series')
+      return series
+    },
+    retry: false,
+  }
+}
+
+/** Details share the selected immutable release; no request before a card opens. */
+export function useSurfaceWaterSeries(
+  release: MaybeRefOrGetter<SurfaceWaterRelease>,
+  body: MaybeRefOrGetter<SurfaceWaterBody>,
+) {
+  return useQuery(computed(() => seriesQuery(toValue(release), toValue(body))))
+}
+
+/** Local outlines for hit-testing; idle until enabled (the map is zoomed in far enough). */
+export function useSurfaceWaterOutlines(
+  release: MaybeRefOrGetter<SurfaceWaterRelease | null | undefined>,
+  enabled: MaybeRefOrGetter<boolean>,
+) {
+  return useQuery(
+    computed(() => {
+      const value = toValue(release)
+      const asset = value?.manifest.local?.outlines
+      return {
+        queryKey: ['surface-water-outlines', value?.manifest.version],
+        queryFn: ({ signal }: { signal: AbortSignal }) =>
+          fetchSurfaceWaterAsset<import('geojson').FeatureCollection>(
+            new URL(value!.root),
+            asset!,
+            signal,
+          ),
+        enabled: !!asset && toValue(enabled),
+        retry: false,
+      }
+    }),
+  )
+}
+
+/** Compact pair areas for the comparison list; idle until enabled. */
+export function useSurfaceWaterComparison(
+  release: MaybeRefOrGetter<SurfaceWaterRelease | null | undefined>,
+  enabled: MaybeRefOrGetter<boolean>,
+) {
+  return useQuery(
+    computed(() => {
+      const value = toValue(release)
+      const asset = value?.manifest.comparison
+      return {
+        queryKey: ['surface-water-comparison', value?.manifest.version],
+        queryFn: async ({ signal }: { signal: AbortSignal }) => {
+          const summary = await fetchSurfaceWaterAsset<SurfaceWaterComparisonSummary>(
+            new URL(value!.root),
+            asset!,
+            signal,
+          )
+          const years = value!.manifest.years
+          const pairs = (years.length * (years.length - 1)) / 2
+          if (
+            summary.schemaVersion !== 1 ||
+            summary.version !== value!.manifest.version ||
+            summary.years.join() !== years.join() ||
+            summary.bodies.some(
+              (body) => body.annual.length !== years.length || body.pairs.length !== pairs,
+            )
+          )
+            throw new Error('Invalid surface-water comparison summary')
+          return summary
+        },
+        enabled: !!asset && toValue(enabled),
+        retry: false,
+      }
+    }),
+  )
 }

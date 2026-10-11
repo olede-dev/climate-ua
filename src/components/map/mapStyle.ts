@@ -1,5 +1,6 @@
 import type {
   AddLayerObject,
+  CanvasSourceSpecification,
   Map as MaplibreMap,
   SourceSpecification,
   StyleLayer,
@@ -15,7 +16,11 @@ import type {
  */
 export const NO_VALIDATE: StyleSetterOptions = { validate: import.meta.env.DEV }
 
-export function addSource(map: MaplibreMap, id: string, source: SourceSpecification) {
+export function addSource(
+  map: MaplibreMap,
+  id: string,
+  source: SourceSpecification | CanvasSourceSpecification,
+) {
   map.style.addSource(id, source, NO_VALIDATE)
   map._update(true)
 }

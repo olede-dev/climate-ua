@@ -1,11 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-import {
-  DEFAULT_URL_STATE,
-  type BasinFilter,
-  type UrlState,
-} from '../lib/urlState'
+import { DEFAULT_URL_STATE, type BasinFilter, type UrlState } from '../lib/urlState'
 import type { RiverSpan } from '../config/discharge'
 import type { RiverView } from '../lib/river/marks'
 import type { TimeStep } from '../lib/time'
@@ -24,9 +20,14 @@ export const useUiStore = defineStore('ui', () => {
   const basin = ref<BasinFilter>(DEFAULT_URL_STATE.basin)
   const riverSpan = ref<RiverSpan>(DEFAULT_URL_STATE.riverSpan)
 
+  const surfaceWaterTransitions = ref(DEFAULT_URL_STATE.surfaceWaterTransitions)
+  const surfaceWater = ref({ ...DEFAULT_URL_STATE.surfaceWater })
+
   function toUrlState(): UrlState {
     return {
       layer: layer.value,
+      surfaceWater: { ...surfaceWater.value },
+      surfaceWaterTransitions: surfaceWaterTransitions.value,
       time: time.value,
       region: regionId.value,
       waterView: waterView.value,
@@ -41,6 +42,8 @@ export const useUiStore = defineStore('ui', () => {
 
   function applyUrlState(state: UrlState) {
     layer.value = state.layer
+    surfaceWater.value = { ...state.surfaceWater }
+    surfaceWaterTransitions.value = state.surfaceWaterTransitions
     time.value = state.time
     regionId.value = state.region
     waterView.value = state.waterView
@@ -64,6 +67,8 @@ export const useUiStore = defineStore('ui', () => {
     riverView,
     basin,
     riverSpan,
+    surfaceWater,
+    surfaceWaterTransitions,
     toUrlState,
     applyUrlState,
   }

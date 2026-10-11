@@ -28,104 +28,267 @@ export const en: Messages = {
     about: 'About the data and method',
   },
   about: {
-    heading: 'About the data',
+    heading: 'About the data and method',
     close: 'Close',
+    contents: 'Contents',
     intro:
-      'The map shows how the climate and water resources of Ukraine have changed and what to expect next. Every number comes from a model: a reanalysis, a hydrological model or climate models, not from readings at individual weather stations.',
-    sections: [
+      'The map shows how the climate and water resources of Ukraine have changed and what to expect next. Every number comes from a model: a reanalysis, a hydrological model, satellite imagery or climate models, not from readings at individual weather stations. Below is what each layer shows, where its data come from and how they were computed.',
+    sourcesLabel: 'Sources',
+    groups: [
       {
-        heading: 'The past',
-        paragraphs: [
-          'Temperature, extreme heat, frost and drought come from the ERA5 reanalysis, year by year since 1950. A region’s value is the mean over the grid cells (~25 km), weighted by how much of each cell lies in the region. The climate layer maps show the cells themselves, blended smoothly between their centres; a cell’s projection is its norm plus the models’ change, interpolated from their ~100 km grid. The norm is 1991–2020.',
-          'Water comes from the PCR-GLOBWB 2 hydrological model of Utrecht University as the World Water Map shows it: demand and the gap by year, 1980–2019, on 265 HydroBASINS level 7 subbasins. Rivers come from the GloFAS v4 reanalysis, 1997–2025.',
-        ],
-      },
-      {
-        heading: 'The future',
-        paragraphs: [
-          'Climate models do not forecast the weather of a given year: 2047 in a model is just one possible year. So the climate layers show the future as a 20-year mean (2021–2040, 2041–2060, 2081–2100): the median of 17–23 CMIP6 models (depending on the measure), with the range that 80% of the models fall in in brackets. The switch under a projection puts the median or an end of that range on the map; the ends are taken cell by cell, so such a map matches no single model.',
-          'The World Water Map projects the water gap year by year, 2020–2050, but a modelled year is just one possible year. So the projection is shown as 15-year means (2021–2035, 2036–2050), tied to the observations by the delta method: the 2010–2019 gap plus the change the models’ mean gives from 2020–2029 to the period. The source has no historical runs of the models, so the projection’s first decade serves as the base of the change. The range in brackets is the lowest and highest single year of the period across all models, not the spread of the models themselves. There is no projection of demand or of the gap by sector.',
-        ],
-      },
-      {
-        heading: 'Scenarios',
-        paragraphs: [
-          'Climate layers use SSP2-4.5: the world cuts emissions slowly.',
-          'Water offers the three World Water Map scenarios: “Sustainable” (SSP1-2.6, the least warming), “Nationalist” (SSP3-7.0, a fragmented world) and “Fossil-powered” (SSP5-8.5, the most warming). SSP2-4.5 is not among them, so water and climate projections should not be compared directly.',
-        ],
-      },
-      {
-        heading: 'The delta method',
-        paragraphs: [
-          'Every model is off in its own way: one runs warmer than reality overall, another colder. So only the change is taken from a model: future = observed norm + (model in the future − model in the baseline). The change is computed for each model, then the median is taken. This keeps charts from jumping where the past meets the future. Days and months are clipped to what is possible (0–365 days, 0–12 months). For heat and frost the change is also scaled: the models had three times the hot days of ERA5, so a model with twice the real number of such days in 1991–2020 adds half its change.',
-        ],
-      },
-    ],
-    measuresHeading: 'What each layer means',
-    measures: [
-      {
+        id: 'water',
         name: 'Water',
-        text: 'demand: how much water irrigation, households and industry need in a year; the gap: the part of the demand that renewable water from rivers and rain does not cover (demand minus withdrawal, as on the World Water Map). Both are in km³ for the part of each subbasin inside Ukraine; all of Ukraine is their sum. The map runs from dark green (little) to red (much), scaled on every subbasin and year.',
+        layers: [
+          {
+            id: 'water',
+            name: 'Water',
+            paragraphs: [
+              'Demand: how much water irrigation, households and industry need in a year; the gap: the part of the demand that renewable water from rivers and rain does not cover (demand minus withdrawal, as on the World Water Map). Both are in km³ for the part of each subbasin inside Ukraine; all of Ukraine is their sum. The map runs from dark green (little) to red (much), scaled on every subbasin and year.',
+              'The data come from the PCR-GLOBWB 2 hydrological model of Utrecht University as the World Water Map shows it: demand and the gap by year, 1980–2019, on 265 HydroBASINS level 7 subbasins.',
+            ],
+            topics: [
+              {
+                id: 'water-forecast',
+                heading: 'Projection',
+                paragraphs: [
+                  'The World Water Map projects the water gap year by year, 2020–2050, but a modelled year is just one possible year. So the projection is shown as 15-year means (2021–2035, 2036–2050), tied to the observations by the delta method: the 2010–2019 gap plus the change the models’ mean gives from 2020–2029 to the period. The source has no historical runs of the models, so the projection’s first decade serves as the base of the change. The range in brackets is the lowest and highest single year of the period across all models, not the spread of the models themselves. There is no projection of demand or of the gap by sector.',
+                ],
+                sources: [],
+              },
+              {
+                id: 'water-scenarios',
+                heading: 'Scenarios',
+                paragraphs: [
+                  'The three World Water Map scenarios: “Sustainable” (SSP1-2.6, the least warming), “Nationalist” (SSP3-7.0, a fragmented world) and “Fossil-powered” (SSP5-8.5, the most warming). SSP2-4.5 is not among them, so water and climate projections should not be compared directly.',
+                ],
+                sources: [],
+              },
+              {
+                id: 'water-caveats',
+                heading: 'Caveats',
+                paragraphs: [
+                  'Water demand in the model is gross: it includes the water that returns to the rivers, power plant cooling among it. It can therefore be well above the withdrawals in official statistics; compare changes and regions with each other, not absolute volumes. The Kakhovka Reservoir was destroyed in June 2023; the data (to 2019) and the projection do not reflect this, and the cards of the lower Dnipro subbasins carry a note.',
+                ],
+                sources: [],
+              },
+            ],
+            sources: [
+              {
+                name: 'Utrecht University, World Water Map (PCR-GLOBWB 2)',
+                detail: 'Sutanudjaja et al. (2018), CC BY 4.0',
+                url: 'https://doi.org/10.24416/UU01-0Q6SU6',
+              },
+              {
+                name: 'National Geographic Society, World Water Map',
+                detail:
+                  'the World Water Map site’s data: subbasins, the gap and the projection to 2050',
+                url: 'https://worldwatermap.nationalgeographic.org/',
+              },
+              {
+                name: 'Natural Earth',
+                detail: 'river names for the subbasins',
+                url: 'https://www.naturalearthdata.com/',
+              },
+            ],
+          },
+          {
+            id: 'rivers',
+            name: 'Rivers',
+            paragraphs: [
+              'Low-flow days: a river carries less water than on 9 in 10 of the same days of 1997–2020. The norm for a day is the median discharge on that day of the year over the same period.',
+              'Discharge comes from the GloFAS v4 reanalysis, 1997–2025, in the model cell near each station. The browser requests the current state and the 7-month outlook directly from Open-Meteo; when the service is unavailable, the map shows a saved snapshot. There is no climate projection for rivers.',
+            ],
+            topics: [
+              {
+                id: 'rivers-regulated',
+                heading: 'Regulated rivers',
+                paragraphs: [
+                  'Where a cascade of reservoirs regulates a river, hydropower operations set the discharge and the model only approximates it; such stations are flagged in their card.',
+                ],
+                sources: [],
+              },
+            ],
+            sources: [
+              {
+                name: 'GloFAS v4',
+                detail:
+                  'Copernicus Emergency Management Service, reanalysis and outlook via Open-Meteo',
+                url: 'https://open-meteo.com/en/docs/flood-api',
+              },
+              {
+                name: 'Open-Meteo Weather API',
+                detail: 'precipitation for the station card',
+                url: 'https://open-meteo.com/en/docs',
+              },
+            ],
+          },
+          {
+            id: 'waterbodies',
+            name: 'Waterbodies',
+            paragraphs: [
+              'Water detected during a year, rather than a shoreline on a particular date. Comparisons use the common observation mask.',
+              'JRC Global Surface Water YearlyHistory, Landsat at approximately 30 m resolution. Permanent and seasonal water are detections during a year, not a dated shoreline, depth or volume. Areas use native-cell intersections with fixed historical zones in EPSG:6933. Each annual total uses its own valid mask; comparison totals use the intersection of both masks. Missing observations are not dry land. These data do not establish causes of change.',
+            ],
+            topics: [
+              {
+                id: 'waterbodies-coverage',
+                heading: 'Coverage and quality',
+                paragraphs: [
+                  'Below 80% coverage, areas are hidden; 80–95% is partial; at least 95% passes the spatial gate. Temporal completeness remains unknown, even at 100% spatial coverage.',
+                ],
+                sources: [],
+              },
+              {
+                id: 'waterbodies-registration',
+                heading: 'Registration',
+                paragraphs: [
+                  'Landsat collection registration differences may dominate small changes between releases. One-cell sensitivity scenarios are not accuracy bounds.',
+                ],
+                sources: [],
+              },
+            ],
+            sources: [
+              {
+                name: 'JRC Global Surface Water',
+                detail: 'EC JRC / Google, Pekel et al. (2016), Nature 540',
+                url: 'https://global-surface-water.appspot.com/',
+              },
+              {
+                name: 'UNEP: Kakhovka dam breach assessment',
+                detail: 'context for the 2023 changes of the Kakhovka Reservoir',
+                url: 'https://www.unep.org/resources/report/rapid-environmental-assessment-kakhovka-dam-breach-ukraine-2023',
+              },
+            ],
+          },
+        ],
+        topicsHeading: '',
+        topics: [],
       },
       {
-        name: 'Temperature',
-        text: 'mean annual temperature; the map shows its departure from the 1991–2020 norm.',
-      },
-      { name: 'Extreme heat', text: 'days with a maximum temperature above 35 °C.' },
-      { name: 'Frost', text: 'days with a minimum temperature below 0 °C.' },
-      {
-        name: 'Drought',
-        text: 'months with SPEI-6 below −1 (moderate drought or worse), counted in each grid cell and averaged over the region’s area. The C3S Atlas standardises the index on 1971–2005 (1971–2010 for ERA5), not on 1991–2020.',
-      },
-      {
-        name: 'Rivers',
-        text: 'low-flow days: a river carries less water than on 9 in 10 of the same days of 1997–2020. There is no projection for rivers.',
-      },
-      {
-        name: 'Climate type',
-        text: 'the Köppen–Geiger classification by Beck et al. (2023) on a 1 km grid; for a region, the class covering most of it.',
+        id: 'climate',
+        name: 'Climate',
+        layers: [
+          {
+            id: 'temp',
+            name: 'Temperature',
+            paragraphs: [
+              'Mean annual temperature; the map shows its departure from the 1991–2020 norm. Data and projection as for every climate layer, see “Climate layers: how they are computed”.',
+            ],
+            topics: [],
+            sources: [
+              {
+                name: 'Copernicus Interactive Climate Atlas',
+                detail: 'C3S / ECMWF: ERA5, CMIP6; CC BY 4.0',
+                url: 'https://atlas.climate.copernicus.eu/',
+              },
+            ],
+          },
+          {
+            id: 'heat',
+            name: 'Extreme heat',
+            paragraphs: [
+              'Days with a maximum temperature above 35 °C. The models’ change is scaled (see “The delta method”), since the models had three times the hot days of ERA5.',
+            ],
+            topics: [],
+            sources: [
+              {
+                name: 'Copernicus Interactive Climate Atlas',
+                detail: 'C3S / ECMWF: ERA5, CMIP6; CC BY 4.0',
+                url: 'https://atlas.climate.copernicus.eu/',
+              },
+            ],
+          },
+          {
+            id: 'frost',
+            name: 'Frost',
+            paragraphs: [
+              'Days with a minimum temperature below 0 °C. The models’ change is scaled as for heat.',
+            ],
+            topics: [],
+            sources: [
+              {
+                name: 'Copernicus Interactive Climate Atlas',
+                detail: 'C3S / ECMWF: ERA5, CMIP6; CC BY 4.0',
+                url: 'https://atlas.climate.copernicus.eu/',
+              },
+            ],
+          },
+          {
+            id: 'drought',
+            name: 'Drought',
+            paragraphs: [
+              'Months with SPEI-6 below −1 (moderate drought or worse), counted in each grid cell and averaged over the region’s area. The C3S Atlas standardises the index on 1971–2005 (1971–2010 for ERA5), not on 1991–2020.',
+            ],
+            topics: [],
+            sources: [
+              {
+                name: 'Copernicus Interactive Climate Atlas',
+                detail: 'C3S / ECMWF: ERA5, CMIP6; CC BY 4.0',
+                url: 'https://atlas.climate.copernicus.eu/',
+              },
+            ],
+          },
+        ],
+        topicsHeading: 'Shared by the climate layers',
+        topics: [
+          {
+            id: 'climate',
+            heading: 'Climate layers: how they are computed',
+            paragraphs: [
+              'Temperature, extreme heat, frost and drought come from the ERA5 reanalysis, year by year since 1950. A region’s value is the mean over the grid cells (~25 km), weighted by how much of each cell lies in the region. The climate layer maps show the cells themselves, blended smoothly between their centres; a cell’s projection is its norm plus the models’ change, interpolated from their ~100 km grid. The norm is 1991–2020.',
+              'Climate models do not forecast the weather of a given year: 2047 in a model is just one possible year. So the climate layers show the future as a 20-year mean (2021–2040, 2041–2060, 2081–2100): the median of 17–23 CMIP6 models (depending on the measure), with the range that 80% of the models fall in in brackets. The switch under a projection puts the median or an end of that range on the map; the ends are taken cell by cell, so such a map matches no single model.',
+              'Scenario: SSP2-4.5, the world cuts emissions slowly.',
+            ],
+            sources: [],
+          },
+          {
+            id: 'delta',
+            heading: 'The delta method',
+            paragraphs: [
+              'Every model is off in its own way: one runs warmer than reality overall, another colder. So only the change is taken from a model: future = observed norm + (model in the future − model in the baseline). The change is computed for each model, then the median is taken. This keeps charts from jumping where the past meets the future. Days and months are clipped to what is possible (0–365 days, 0–12 months). For heat and frost the change is also scaled: the models had three times the hot days of ERA5, so a model with twice the real number of such days in 1991–2020 adds half its change.',
+            ],
+            sources: [],
+          },
+          {
+            id: 'koppen',
+            heading: 'Climate type',
+            paragraphs: [
+              'The Köppen–Geiger classification by Beck et al. (2023) on a 1 km grid; for a region, the class covering most of it. It appears in the region card together with cities whose climate resembles the region’s future one.',
+            ],
+            sources: [
+              {
+                name: 'Beck et al. (2023), Scientific Data 10, 724',
+                detail: 'Köppen–Geiger maps, CC BY 4.0',
+                url: 'https://doi.org/10.1038/s41597-023-02549-6',
+              },
+            ],
+          },
+        ],
       },
     ],
+    generalHeading: 'General',
     limitsHeading: 'Limitations',
     limits: [
       'All data are modelled. Conditions in a particular town or village may differ from the mean of its region or subbasin.',
       'Climate models have a resolution of about 100 km: a small region is covered by only 1–3 cells.',
-      'Water demand in the model is gross: it includes the water that returns to the rivers, power plant cooling among it. It can therefore be well above the withdrawals in official statistics; compare changes and regions with each other, not absolute volumes.',
-      'The Kakhovka Reservoir was destroyed in June 2023. The water data (to 2019) and the World Water Map projection do not reflect this; the cards of the lower Dnipro subbasins carry a note.',
-      'There are no ground observations from the temporarily occupied territories, but every source is a gridded model, so the map covers all of Ukraine, Crimea included.',
+      'There are no ground observations from the temporarily occupied territories, but every source is a gridded model or satellite imagery, so the map covers all of Ukraine, Crimea included.',
     ],
-    sourcesHeading: 'Sources',
-    sources: [
+    mapHeading: 'Boundaries and basemap',
+    mapSources: [
       {
-        name: 'Utrecht University, World Water Map (PCR-GLOBWB 2)',
-        detail: 'Sutanudjaja et al. (2018), CC BY 4.0',
-        url: 'https://doi.org/10.24416/UU01-0Q6SU6',
-      },
-      {
-        name: 'National Geographic Society, World Water Map',
-        detail: 'the World Water Map site’s data: subbasins, the gap and the projection to 2050',
-        url: 'https://worldwatermap.nationalgeographic.org/',
-      },
-      {
-        name: 'Copernicus Interactive Climate Atlas',
-        detail: 'C3S / ECMWF: ERA5, CMIP6; CC BY 4.0',
-        url: 'https://atlas.climate.copernicus.eu/',
-      },
-      {
-        name: 'Beck et al. (2023), Scientific Data 10, 724',
-        detail: 'Köppen–Geiger maps, CC BY 4.0',
-        url: 'https://doi.org/10.1038/s41597-023-02549-6',
-      },
-      {
-        name: 'GloFAS v4',
-        detail: 'Copernicus Emergency Management Service, reanalysis via Open-Meteo',
-        url: 'https://open-meteo.com/en/docs/flood-api',
-      },
-      {
-        name: 'geoBoundaries and Natural Earth',
-        detail:
-          'region boundaries: © OpenStreetMap, ODbL; river names for the subbasins: Natural Earth',
+        name: 'geoBoundaries',
+        detail: 'region boundaries: © OpenStreetMap, ODbL',
         url: 'https://www.geoboundaries.org/',
+      },
+      {
+        name: 'OpenFreeMap, OpenMapTiles, OpenStreetMap',
+        detail: 'vector basemap',
+        url: 'https://openfreemap.org/',
+      },
+      {
+        name: 'Esri World Imagery',
+        detail: 'satellite basemap: Esri, Maxar, Earthstar Geographics',
+        url: 'https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9',
       },
     ],
     code: 'Code and data pipeline',
@@ -133,10 +296,15 @@ export const en: Messages = {
   home: {
     showMap: 'Show the interactive map',
     loadingMap: 'Loading the map…',
+    zoom: 'Map zoom',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    loading: 'Loading…',
     map: 'Map',
     loadError: 'The map data could not be loaded. Reload the page.',
     panel: 'About the map',
     layers: 'Map layer',
+    layerGroups: { water: 'Water', climate: 'Climate' },
     hideLayers: 'Hide layers',
     showLayers: 'Show layers',
   },
@@ -199,7 +367,7 @@ export const en: Messages = {
     domestic: 'Households',
     industrial: 'Industry',
     kakhovka:
-      'The Kakhovka Reservoir was destroyed in June 2023. Neither the data (up to 2019) nor the projections reflect this.',
+      'The Kakhovka Reservoir was destroyed in June 2023, when Russian occupying forces blew up the dam. Neither the data (up to 2019) nor the projections reflect this.',
   },
   station: {
     name: '{river} at {place}',
@@ -553,6 +721,68 @@ export const en: Messages = {
         same: 'in line with the average',
       },
     },
+  },
+  surfaceWater: {
+    total: 'Observed annual water',
+    km2: 'km²',
+    history: 'Annual area history',
+    listHeading: 'Area in {year}',
+    listHeadingAnnual: 'Major waterbodies',
+    composition: 'Water type',
+    yearly: 'Area by year',
+    detailsLoading: 'Loading waterbody details…',
+    close: 'Close details',
+    unnamed: 'Unnamed waterbody',
+    nearby: 'Waterbody near {place}',
+    local: 'Waterbody of 1 km² or more',
+    localNote:
+      'Outline built automatically from OpenStreetMap and satellite imagery, without manual review.',
+    lake: 'Lake',
+    reservoir: 'Reservoir',
+    location: 'Location (latitude, longitude)',
+    coverage: 'Spatial coverage',
+    complete: 'Spatial gate passed',
+    partial: 'Partial spatial coverage',
+    suppressed: 'Insufficient spatial coverage',
+    noArea: 'Area unavailable',
+    commonMask: 'Comparison on the common observation mask',
+    delta: 'Area change',
+    noComparison: 'Comparison unavailable for these years.',
+    zeroBaseline: 'Percentage unavailable for a zero baseline.',
+    chartPartial: 'Partial observation',
+    chartGap: 'No data',
+    kakhovka:
+      'The Kakhovka dam was blown up by Russian occupying forces on 6 June 2023. Annual seasonal water in 2023 includes detections before the breach and is not a post-breach shoreline. The loss must not be attributed solely to climate.',
+    kakhovkaSource: 'UNEP assessment',
+    unknownBody: 'Selected waterbody is unavailable.',
+
+    name: 'Waterbodies',
+    description: 'Annual surface water and area changes',
+    annual: 'Annual map',
+    comparison: 'Comparison',
+    year: 'Year',
+    before: 'Before year',
+    after: 'After year',
+    waterbody: 'Waterbody',
+    country: 'All Ukraine',
+    error: 'Unable to load surface-water data.',
+    retry: 'Try again',
+    empty: 'No supported years.',
+    staticOverview: 'Overview: selected native cells, for visualization only.',
+    fallback: 'Static map without WebGL',
+    interactive: 'Open interactive map',
+    permanent: 'Permanent water',
+    seasonal: 'Seasonal water',
+    dry: 'Dry',
+    insufficient: 'Insufficient data',
+    persistent: 'Water in both years',
+    gained: 'Gained water',
+    lost: 'Lost water',
+    uncomparable: 'No common observations',
+    permanentToSeasonal: 'Permanent → seasonal',
+    seasonalToPermanent: 'Seasonal → permanent',
+    transitions: 'Show category transitions',
+    selection: 'Selected waterbody',
   },
   tooltip: {
     range: '{low} to {high}',

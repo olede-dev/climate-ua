@@ -8,6 +8,7 @@
     "dev": "vite",
     "typecheck": "vue-tsc -b",
     "build": "vue-tsc -b && vite build",
+    "build:check": "vue-tsc -b && vite build --mode check --outDir node_modules/.cache/build-check",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",

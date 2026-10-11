@@ -100,6 +100,19 @@ uv run python build_river_lines.py # → public/data/river-lines.geojson (after 
 
 Raw downloads are stored in `pipeline/data/raw/` and are not committed.
 
+National annual surface-water data covers Ukraine, including Crimea, for 1984–2024, with an initial eleven-waterbody catalogue. Generation, historical-zone review, checksummed release packaging, same-origin deployment staging and rollback are documented in [the generation runbook](docs/surface-water-generation.md). Heavy assets stay outside Git; ordinary CI checks the small generated reference catalogue.
+
+For local development, keep surface-water archives in `pipeline/data/raw/surface-water/archives/` and stage the verified release into `public/` once before starting Vite:
+
+```sh
+python3 scripts/stage-surface-water.py \
+  --archive pipeline/data/raw/surface-water/archives/climate-ua-surface-water-release-803648c2ca8eb4fd5ba2.tar.gz \
+  --sha256 1bcf6ca289af0a1c253b2d892de0cd56e118884d0a126f3c4d5513be4f8812c2 \
+  --site public
+```
+
+The digest pins the release documented in the runbook. The staging script verifies all assets and preserves an existing installation. Both the archives and staged `public/data/surface-water/` directory are ignored by Git. Vite serves the packed gzip tiles as application bytes in development and preview so the browser can verify their compressed checksums.
+
 ## Data sources
 
 - **Water resources:** PCR-GLOBWB 2 model, Utrecht University (Sutanudjaja et al., 2018), as published in [World Water Map](https://worldwatermap.nationalgeographic.org/) (National Geographic Society); HydroBASINS level 7 sub-basins. Data: [doi:10.24416/UU01-0Q6SU6](https://doi.org/10.24416/UU01-0Q6SU6), CC BY 4.0.
@@ -107,6 +120,7 @@ Raw downloads are stored in `pipeline/data/raw/` and are not committed.
 - **Köppen–Geiger classification:** [Beck et al. (2023)](https://doi.org/10.1038/s41597-023-02549-6), *Scientific Data* 10, 724, CC BY 4.0.
 - **River discharge:** GloFAS v4 reanalysis and ensemble forecast (Copernicus Emergency Management Service) via the [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api).
 - **Precipitation at river stations:** [Open-Meteo Forecast API](https://open-meteo.com/en/docs).
+- **Surface water:** EC JRC/Google [Global Surface Water](https://global-surface-water.appspot.com/), native YearlyHistory classes; GSW1_4 through 2015, corrected GSW1_5 for 2016–2021 and GSW1_5 for 2022–2024. Pekel et al. (2016), [doi:10.1038/nature20584](https://doi.org/10.1038/nature20584). Historical identity constraints: © OpenStreetMap contributors, ODbL-1.0, pinned to end-2022; observed classification supplies the fixed analysis zones. Missing observations are not dry land; annual temporal completeness remains unknown.
 - **Administrative boundaries:** [geoBoundaries](https://www.geoboundaries.org/) (© OpenStreetMap, ODbL); land polygons from [Natural Earth](https://www.naturalearthdata.com/).
 - **Basemap:** [OpenFreeMap](https://openfreemap.org/), © OpenMapTiles, © OpenStreetMap.
 

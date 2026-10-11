@@ -25,12 +25,6 @@ function runYear(index) {
     )
   if (matches.size().getInfo() !== 1) throw new Error('Not unique annual source: ' + year)
   var image = ee.Image(matches.first()).select('waterClass')
-  var classes = image.unmask({ value: 0, sameFootprint: false })
-  // GSW1_4 masks cells never detected as water (max_extent = 0): dry, not unobserved.
-  if (year <= 2015) {
-    var never = ee.Image('NEVER_WATER').select('max_extent').unmask(0).eq(0)
-    classes = classes.where(never, 1)
-  }
   var imageId = image.id().getInfo()
   var projection = image.projection().getInfo()
   var t = projection.transform
@@ -48,63 +42,65 @@ function runYear(index) {
     var x2 = Math.ceil((w + 1 - t[2]) / t[0])
     var y2 = Math.ceil((s - t[5]) / t[4])
     var grid = [t[0], 0, t[2] + x * t[0], 0, t[4], t[5] + y * t[4]]
-    classes.toUint8().getDownloadURL(
-      {
-        crs: projection.crs,
-        crs_transform: grid,
-        dimensions: [x2 - x, y2 - y],
-        format: 'GEO_TIFF'
-      },
-      function (url, error) {
-        if (error && attempt < 3) {
-          request(cell, attempt + 1)
-          return
-        }
-        if (error) failed.push(chunk + ': ' + error)
-        else
-          results.push(
-            ee.Feature(null, {
-              id: chunk + '-' + year,
-              chunkId: chunk,
-              year: year,
-              file: chunk + '-yearly-' + year + '.tif',
-              collection: collection,
-              imageId: imageId,
-              band: 'waterClass',
-              crs: projection.crs,
-              nativeTransform: JSON.stringify(t),
-              downloadEnvelope: JSON.stringify([w, s, w + 1, s + 1]),
-              missingClass: 0,
-              neverWater: year <= 2015 ? 'NEVER_WATER max_extent = 0 -> 1' : null,
-              attribution: 'Source: EC JRC/Google',
-              citation: 'Pekel et al. (2016), doi:10.1038/nature20584',
-              downloadUrl: url
-            })
-          )
-        done++
-        status.setValue('Year ' + year + ': ' + done + '/' + cells.length + ' URLs')
-        if (next < cells.length) request(cells[next++], 0)
-        if (done === cells.length) {
-          if (failed.length) {
-            print('FAILED ' + year, failed)
+    image
+      .unmask({ value: 0, sameFootprint: false })
+      .toUint8()
+      .getDownloadURL(
+        {
+          crs: projection.crs,
+          crs_transform: grid,
+          dimensions: [x2 - x, y2 - y],
+          format: 'GEO_TIFF'
+        },
+        function (url, error) {
+          if (error && attempt < 3) {
+            request(cell, attempt + 1)
             return
           }
-          ee.FeatureCollection(results).getDownloadURL(
-            'geojson',
-            undefined,
-            'provenance-direct-' + year,
-            function (manifest, manifestError) {
-              if (manifestError) {
-                print('MANIFEST ERROR ' + year, manifestError)
-                return
-              }
-              print('MANIFEST ' + year, manifest)
-              runYear(index + 1)
+          if (error) failed.push(chunk + ': ' + error)
+          else
+            results.push(
+              ee.Feature(null, {
+                id: chunk + '-' + year,
+                chunkId: chunk,
+                year: year,
+                file: chunk + '-yearly-' + year + '.tif',
+                collection: collection,
+                imageId: imageId,
+                band: 'waterClass',
+                crs: projection.crs,
+                nativeTransform: JSON.stringify(t),
+                downloadEnvelope: JSON.stringify([w, s, w + 1, s + 1]),
+                missingClass: 0,
+                attribution: 'Source: EC JRC/Google',
+                citation: 'Pekel et al. (2016), doi:10.1038/nature20584',
+                downloadUrl: url
+              })
+            )
+          done++
+          status.setValue('Year ' + year + ': ' + done + '/' + cells.length + ' URLs')
+          if (next < cells.length) request(cells[next++], 0)
+          if (done === cells.length) {
+            if (failed.length) {
+              print('FAILED ' + year, failed)
+              return
             }
-          )
+            ee.FeatureCollection(results).getDownloadURL(
+              'geojson',
+              undefined,
+              'provenance-direct-' + year,
+              function (manifest, manifestError) {
+                if (manifestError) {
+                  print('MANIFEST ERROR ' + year, manifestError)
+                  return
+                }
+                print('MANIFEST ' + year, manifest)
+                runYear(index + 1)
+              }
+            )
+          }
         }
-      }
-    )
+      )
   }
   for (var k = 0; k < Math.min(16, cells.length); k++) request(cells[next++], 0)
 }

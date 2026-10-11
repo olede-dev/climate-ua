@@ -26,6 +26,12 @@ function runYear(index) {
   )
   if (matches.size().getInfo() !== 1) throw new Error('Not unique annual source: ' + year)
   var image = ee.Image(matches.first()).select('waterClass')
+  var classes = image.unmask({ value: 0, sameFootprint: false })
+  // GSW1_4 masks cells never detected as water (max_extent = 0): dry, not unobserved.
+  if (year <= 2015) {
+    var never = ee.Image('NEVER_WATER').select('max_extent').unmask(0).eq(0)
+    classes = classes.where(never, 1)
+  }
   var imageId = image.id().getInfo()
   var projection = image.projection().getInfo()
   var t = projection.transform
@@ -43,8 +49,7 @@ function runYear(index) {
     var x2 = Math.ceil((w + 1 - t[2]) / t[0])
     var y2 = Math.ceil((s - t[5]) / t[4])
     var grid = [t[0], 0, t[2] + x * t[0], 0, t[4], t[5] + y * t[4]]
-    image
-      .unmask({ value: 0, sameFootprint: false })
+    classes
       .toUint8()
       .getDownloadURL(
         {
@@ -73,6 +78,7 @@ function runYear(index) {
                 nativeTransform: JSON.stringify(t),
                 downloadEnvelope: JSON.stringify([w, s, w + 1, s + 1]),
                 missingClass: 0,
+                neverWater: year <= 2015 ? 'NEVER_WATER max_extent = 0 -> 1' : null,
                 attribution: 'Source: EC JRC/Google',
                 citation: 'Pekel et al. (2016), doi:10.1038/nature20584',
                 downloadUrl: url,

@@ -14,7 +14,10 @@ from shapely.ops import unary_union
 
 ROOT = Path(__file__).resolve().parent
 YEARS = tuple(range(1984, 2025))
-VERSION = "national-source-1"
+VERSION = "national-source-2"
+# GSW1_4 masks cells never detected as water in 1984–2021 (max_extent = 0); those are dry,
+# not unobserved. GSW1_5 already reports them as class 1.
+NEVER_WATER = "JRC/GSW1_4/GlobalSurfaceWater"
 BOUNDARY_ATTRIBUTION = ('Ukraine boundary: geoBoundaries (© OpenStreetMap contributors, '
                         'ODbL-1.0); Natural Earth (public domain)')
 
@@ -88,13 +91,18 @@ requests.forEach(function (r) {
   ))
   if (matches.size().getInfo() !== 1) throw new Error('Missing unique annual image ' + r.year)
   var image = ee.Image(matches.first()).select('waterClass')
-  resolved[r.year] = {image: image, imageId: image.id().getInfo(), projection: image.projection().getInfo()}
+  var classes = image.unmask({value: 0, sameFootprint: false})
+  if (r.year <= 2015) {
+    var never = ee.Image('NEVER_WATER').select('max_extent').unmask(0).eq(0)
+    classes = classes.where(never, 1)
+  }
+  resolved[r.year] = {image: image, classes: classes, imageId: image.id().getInfo(), projection: image.projection().getInfo()}
 })
 var provenance = []
 requests.forEach(function (r) {
   var item = resolved[r.year]
   Export.image.toDrive({
-    image: item.image.unmask({value: 0, sameFootprint: false}).toUint8(),
+    image: item.classes.toUint8(),
     description: r.id, folder: 'climate-ua-surface-water-national',
     fileNamePrefix: r.file.slice(0, -4),
     region: ee.Geometry.Rectangle(r.downloadEnvelope, 'EPSG:4326', false),
@@ -106,7 +114,7 @@ requests.forEach(function (r) {
     id: r.id, chunkId: r.chunkId, year: r.year, file: r.file,
     collection: r.collection, imageId: item.imageId, band: 'waterClass',
     crs: item.projection.crs, nativeTransform: JSON.stringify(item.projection.transform),
-    downloadEnvelope: JSON.stringify(r.downloadEnvelope), missingClass: 0,
+    downloadEnvelope: JSON.stringify(r.downloadEnvelope), missingClass: 0, neverWater: r.year <= 2015 ? 'NEVER_WATER max_extent = 0 -> 1' : null,
     attribution: 'Source: EC JRC/Google',
     citation: 'Pekel et al. (2016), doi:10.1038/nature20584'
   }))
@@ -115,7 +123,7 @@ Export.table.toDrive({
   collection: ee.FeatureCollection(provenance), folder: 'climate-ua-surface-water-national',
   description: 'provenance-BATCH', fileNamePrefix: 'provenance-BATCH', fileFormat: 'GeoJSON'
 })
-""".replace("REQUESTS", json.dumps(requests, ensure_ascii=False)).replace("BATCH", batch_id)
+""".replace("REQUESTS", json.dumps(requests, ensure_ascii=False)).replace("BATCH", batch_id).replace("NEVER_WATER", NEVER_WATER)
 
 
 def prepare(boundary, output, *, year, offset=0, limit=25, audit=None):
@@ -150,6 +158,7 @@ def prepare_direct(requests, output):
     script = template.replace('NATIONAL_CELLS', json.dumps([
         c['downloadEnvelope'][:2] for c in requests['chunks']]))
     script = script.replace('SUPPORTED_YEARS', json.dumps(requests['years']))
+    script = script.replace('NEVER_WATER', NEVER_WATER)
     (output / 'direct-downloads.js').write_text(script)
 
 

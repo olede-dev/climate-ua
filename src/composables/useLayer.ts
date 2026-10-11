@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/vue-query'
+import { useQueries, useQuery, useQueryClient } from '@tanstack/vue-query'
 import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 
 import { layerConfig } from '../config/layers'
@@ -217,26 +217,24 @@ export function useSurfaceWaterManifest() {
         if (!point || point.length !== 2 || !point.every(Number.isFinite))
           throw new Error('Missing surface-water marker coordinates')
       }
-      return { manifest, markers, root: new URL(`versions/${pointer.version}/`, root).href }
+      return {
+        manifest,
+        markers,
+        root: new URL(`versions/${pointer.version}/`, root).href,
+      }
     },
     retry: false,
   })
 }
 
-/** Details share the selected immutable release; no request before a card opens. */
-export function useSurfaceWaterSeries(
-  release: MaybeRefOrGetter<{ manifest: SurfaceWaterManifest; root: string }>,
-  body: MaybeRefOrGetter<import('../types').SurfaceWaterCatalogueEntry>,
-) {
-  return useQuery({
-    queryKey: computed(() => [
-      'surface-water-series',
-      toValue(release).manifest.version,
-      toValue(body).id,
-    ]),
-    queryFn: async ({ signal }) => {
-      const { manifest, root } = toValue(release)
-      const entry = toValue(body)
+type SurfaceWaterRelease = { manifest: SurfaceWaterManifest; root: string }
+type SurfaceWaterBody = import('../types').SurfaceWaterBodyEntry
+
+function seriesQuery(release: SurfaceWaterRelease, entry: SurfaceWaterBody) {
+  return {
+    queryKey: ['surface-water-series', release.manifest.version, entry.id],
+    queryFn: async ({ signal }: { signal: AbortSignal }) => {
+      const { manifest, root } = release
       const series = await fetchSurfaceWaterAsset<import('../types').SurfaceWaterSeries>(
         new URL(root),
         entry.series,
@@ -245,7 +243,8 @@ export function useSurfaceWaterSeries(
       if (
         series.schemaVersion !== 1 ||
         series.version !== manifest.version ||
-        series.zoneVersion !== manifest.zoneVersion ||
+        series.zoneVersion !==
+          (entry.type === 'local' ? manifest.local?.zoneVersion : manifest.zoneVersion) ||
         series.id !== entry.id ||
         series.unit !== 'm2' ||
         series.areaCRS !== 'EPSG:6933'
@@ -254,5 +253,50 @@ export function useSurfaceWaterSeries(
       return series
     },
     retry: false,
+  }
+}
+
+/** Details share the selected immutable release; no request before a card opens. */
+export function useSurfaceWaterSeries(
+  release: MaybeRefOrGetter<SurfaceWaterRelease>,
+  body: MaybeRefOrGetter<SurfaceWaterBody>,
+) {
+  return useQuery(computed(() => seriesQuery(toValue(release), toValue(body))))
+}
+
+/** Local outlines for hit-testing; loaded once the map shows a release that has them. */
+export function useSurfaceWaterOutlines(
+  release: MaybeRefOrGetter<SurfaceWaterRelease | null | undefined>,
+) {
+  return useQuery(
+    computed(() => {
+      const value = toValue(release)
+      const asset = value?.manifest.local?.outlines
+      return {
+        queryKey: ['surface-water-outlines', value?.manifest.version],
+        queryFn: ({ signal }: { signal: AbortSignal }) =>
+          fetchSurfaceWaterAsset<import('geojson').FeatureCollection>(
+            new URL(value!.root),
+            asset!,
+            signal,
+          ),
+        enabled: !!asset,
+        retry: false,
+      }
+    }),
+  )
+}
+
+/** Every body's series for the comparison list; shares the card's cache, idle until enabled. */
+export function useSurfaceWaterSeriesList(
+  release: MaybeRefOrGetter<SurfaceWaterRelease | null | undefined>,
+  enabled: MaybeRefOrGetter<boolean>,
+) {
+  return useQueries({
+    queries: computed(() => {
+      const value = toValue(release)
+      if (!value || !toValue(enabled)) return []
+      return value.manifest.catalogue.map((entry) => seriesQuery(value, entry))
+    }),
   })
 }

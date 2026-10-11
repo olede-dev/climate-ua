@@ -26,7 +26,9 @@ def package(inputs, archive):
             raise ValueError('Immutable release reference changed before packaging')
         return inputs/relative
     for record in [manifest['analysisZones'], manifest['zoneReview'], manifest['registrationSensitivity'],
-                   *(b['series'] for b in manifest['catalogue'])]:
+                   *(b['series'] for b in manifest['catalogue']),
+                   *([manifest['local']['outlines'], *(b['series'] for b in manifest['local']['bodies'])]
+                     if 'local' in manifest else [])]:
         validate_ref(record)
     def frames(grid):
         if 'timeline' not in grid:

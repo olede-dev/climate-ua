@@ -20,7 +20,7 @@ from build_surface_water_national import encode, compact_json
 from prepare_surface_water_national import YEARS, sha256, write_json
 
 
-def build(inputs, boundary, output, factor=32):
+def build(inputs, boundary, output, factor=16):
     audit = json.loads((inputs/'inputs.json').read_text())
     if not audit['complete'] or audit['boundarySha256'] != sha256(boundary):
         raise ValueError('Complete pinned national audit required')
@@ -116,6 +116,7 @@ if __name__ == '__main__':
     root = Path(__file__).resolve().parent
     parser.add_argument('--inputs', type=Path, default=root/'data/raw/surface-water/national')
     parser.add_argument('--boundary', type=Path, default=root.parent/'public/data/oblasts.geojson')
-    parser.add_argument('--output', type=Path, default=root/'data/raw/surface-water/national-overview-v1')
+    parser.add_argument('--output', type=Path, default=root/'data/raw/surface-water/national-overview-v2')
+    parser.add_argument('--factor', type=int, default=16)
     args = parser.parse_args()
-    build(args.inputs, args.boundary, args.output)
+    build(args.inputs, args.boundary, args.output, args.factor)

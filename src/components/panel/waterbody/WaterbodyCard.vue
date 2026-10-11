@@ -2,22 +2,26 @@
 import { computed, onMounted, useTemplateRef } from 'vue'
 import { useSurfaceWaterSeries } from '../../../composables/useLayer'
 import { useLocale } from '../../../composables/useLocale'
-import { annualWaterArea, waterbodyDelta, waterbodyPair } from '../../../lib/waterbodyCard'
-import type {
-  SurfaceWaterCatalogueEntry,
-  SurfaceWaterManifest,
-  SurfaceWaterState,
-} from '../../../types'
+import { SURFACE_WATER_COLORS } from '../../../lib/surfaceWater'
+import {
+  annualWaterArea,
+  CHANGE_TONE_CLASSES,
+  changeTone,
+  waterbodyDelta,
+  waterbodyPair,
+} from '../../../lib/waterbodyCard'
+import { waterbodyName } from '../../../lib/localWaterbodies'
+import type { SurfaceWaterBodyEntry, SurfaceWaterManifest, SurfaceWaterState } from '../../../types'
 import LoadingIndicator from '../../ui/LoadingIndicator.vue'
 import WaterbodyChart from './WaterbodyChart.vue'
 const props = defineProps<{
-  body: SurfaceWaterCatalogueEntry
+  body: SurfaceWaterBodyEntry
   release: { manifest: SurfaceWaterManifest; root: string }
   state: SurfaceWaterState
 }>()
 const heading = useTemplateRef<HTMLHeadingElement>('heading')
 onMounted(() => heading.value?.focus())
-const emit = defineEmits<{ close: []; select: [year: number] }>()
+const emit = defineEmits<{ close: [] }>()
 const { locale, t } = useLocale()
 const copy = computed(() => t.value.surfaceWater)
 const query = useSurfaceWaterSeries(
@@ -33,9 +37,16 @@ const comparison = computed(() => (delta.value ? pair.value?.comparison : null))
 const number = (value: number) =>
   new Intl.NumberFormat(locale.value, { maximumFractionDigits: 2 }).format(value)
 const area = (value: number) => `${number(value / 1e6)} ${copy.value.km2}`
-const name = computed(
-  () => (locale.value === 'uk' ? props.body.nameUk : props.body.nameEn) || copy.value.unnamed,
-)
+const signed = (value: number) =>
+  new Intl.NumberFormat(locale.value, {
+    maximumFractionDigits: 2,
+    signDisplay: 'exceptZero',
+  })
+    .format(value)
+    .replace('-', '−')
+const percent = (value: number) => `${number(value * 100)}%`
+const caption = 'px-3 pb-1 text-[11px] font-semibold tracking-wide text-ink-muted uppercase'
+const name = computed(() => waterbodyName(props.body, locale.value, copy.value))
 </script>
 <template>
   <article class="text-[13px] text-ink" :aria-label="name" :aria-busy="query.isPending.value">
@@ -63,72 +74,172 @@ const name = computed(
     >
       {{ name }}
     </h2>
-    <p class="mt-1 text-xs text-ink-muted">{{ copy[body.type] }}</p>
-    <LoadingIndicator v-if="query.isPending.value" :label="t.home.loading" class="mt-3" />
-    <p v-else-if="query.isError.value" role="alert" class="mt-3">
-      {{ copy.error }}
-      <button class="rounded-lg bg-fill p-2 focus-ring" @click="query.refetch()">
-        {{ copy.retry }}
-      </button>
+    <p class="mt-1 text-[13px] text-ink-muted">{{ copy[body.type] }}</p>
+    <p v-if="body.type === 'local'" role="note" class="mt-2 text-xs leading-relaxed text-ink-muted">
+      {{ copy.localNote }}
     </p>
-    <template v-else-if="query.data.value">
-      <h3 class="mt-3 font-semibold">{{ copy.total }} · {{ year }}</h3>
-      <dl v-if="areas" class="mt-2 grid grid-cols-2 gap-2 rounded-xl bg-group p-3 tabular-nums">
-        <dt>{{ copy.total }}</dt>
-        <dd>{{ area(areas.unionM2) }}</dd>
-        <dt>{{ copy.permanent }}</dt>
-        <dd>{{ area(areas.permanentM2) }}</dd>
-        <dt>{{ copy.seasonal }}</dt>
-        <dd>{{ area(areas.seasonalM2) }}</dd>
-      </dl>
-      <p v-else>{{ copy.noArea }}</p>
-      <p v-if="annual" class="mt-2">
-        {{ copy[annual.spatialStatus] }} · {{ copy.coverage }}: {{ number(annual.coverage * 100) }}%
-      </p>
-      <section v-if="state.mode === 'comparison'" class="mt-3 rounded-lg bg-fill p-2">
-        <h3 class="font-semibold">
-          {{ copy.commonMask }} · {{ state.before }} → {{ state.after }}
-        </h3>
-        <template v-if="comparison && delta">
-          <p>{{ area(comparison.before.unionM2) }} → {{ area(comparison.after.unionM2) }}</p>
-          <p>
-            {{ copy.delta }}: {{ area(delta.deltaM2)
-            }}<span v-if="delta.percent !== null"> ({{ number(delta.percent) }}%)</span>
-          </p>
-          <p v-if="delta.percent === null" class="text-xs">{{ copy.zeroBaseline }}</p>
-        </template>
-        <p v-else>{{ copy.noComparison }}</p>
-        <p v-if="pair">
-          {{ copy[pair.spatialStatus] }} · {{ copy.coverage }}: {{ number(pair.coverage * 100) }}%
-        </p>
-      </section>
-      <h3 class="mt-3 font-semibold">{{ copy.history }}</h3>
-      <WaterbodyChart
-        :annual="query.data.value.annual"
-        :years="release.manifest.years"
-        :selected="year"
-        @select="emit('select', $event)"
-      />
-      <details class="mt-2">
-        <summary class="cursor-pointer rounded focus-ring">{{ copy.history }}</summary>
-        <p class="mt-2 text-xs text-ink-muted">{{ copy.qualityHelp }}</p>
-        <p class="mt-2 text-xs text-ink-muted">{{ copy.chartHelp }}</p>
-        <ul class="mt-2 space-y-1">
-          <li v-for="row in query.data.value.annual" :key="row.year">
-            {{ row.year }}:
-            {{ annualWaterArea(row) ? area(annualWaterArea(row)!.unionM2) : copy.noArea }} ·
-            {{ copy[row.spatialStatus] }}
-          </li>
-        </ul>
-      </details>
-    </template>
-    <p v-if="body.id.includes('kakhovka')" class="mt-3 rounded-lg bg-fill p-2 text-xs">
+    <p
+      v-if="body.id.includes('kakhovka')"
+      role="note"
+      class="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs leading-relaxed text-red-800 dark:text-red-200"
+    >
       {{ copy.kakhovka }}
       <a
-        class="underline focus-ring"
+        class="rounded font-medium text-red-800 underline dark:text-red-200 underline-offset-2 focus-ring"
+        target="_blank"
+        rel="noopener"
         href="https://www.unep.org/resources/report/rapid-environmental-assessment-kakhovka-dam-breach-ukraine-2023"
         >{{ copy.kakhovkaSource }}</a
       >
     </p>
+    <LoadingIndicator v-if="query.isPending.value" :label="t.home.loading" class="mt-4" />
+    <p v-else-if="query.isError.value" role="alert" class="mt-4 flex items-center gap-2">
+      {{ copy.error }}
+      <button
+        type="button"
+        class="rounded-full bg-fill px-3 py-1 font-medium transition-colors hover:bg-fill-strong focus-ring"
+        @click="query.refetch()"
+      >
+        {{ copy.retry }}
+      </button>
+    </p>
+    <template v-else-if="query.data.value">
+      <section v-if="state.mode === 'comparison'" class="mt-4">
+        <template v-if="comparison && delta">
+          <div class="flex items-baseline gap-2.5">
+            <p class="text-4xl leading-none font-semibold tabular-nums">
+              {{ signed(delta.deltaM2 / 1e6) }}
+              <span class="text-xl font-medium text-ink-muted">{{ copy.km2 }}</span>
+            </p>
+            <span
+              v-if="delta.percent !== null"
+              class="rounded-full px-2 py-0.5 text-sm font-semibold whitespace-nowrap tabular-nums"
+              :class="CHANGE_TONE_CLASSES[changeTone(delta.percent)].badge"
+              >{{ signed(delta.percent) }}%</span
+            >
+          </div>
+          <p class="mt-1.5 leading-snug text-ink-muted">
+            {{ copy.delta }} · {{ state.before }} → {{ state.after }}
+          </p>
+          <p v-if="delta.percent === null" class="mt-1 text-xs text-ink-muted">
+            {{ copy.zeroBaseline }}
+          </p>
+          <dl class="mt-3 divide-y divide-line overflow-hidden rounded-xl bg-group tabular-nums">
+            <div class="flex justify-between gap-3 px-3 py-2">
+              <dt>{{ state.before }}</dt>
+              <dd class="text-ink-muted">{{ area(comparison.before.unionM2) }}</dd>
+            </div>
+            <div class="flex justify-between gap-3 px-3 py-2">
+              <dt>{{ state.after }}</dt>
+              <dd class="text-ink-muted">{{ area(comparison.after.unionM2) }}</dd>
+            </div>
+          </dl>
+        </template>
+        <p v-else class="rounded-xl bg-group px-3 py-2 text-ink-muted">{{ copy.noComparison }}</p>
+        <p
+          v-if="pair && pair.spatialStatus !== 'complete'"
+          class="mt-1.5 px-3 text-xs text-warn-ink"
+        >
+          {{ copy.commonMask }} · {{ copy[pair.spatialStatus] }} ·
+          {{ percent(pair.coverage) }}
+        </p>
+      </section>
+      <section :class="state.mode === 'comparison' ? 'mt-5' : 'mt-4'">
+        <template v-if="state.mode === 'annual'">
+          <p class="text-4xl leading-none font-semibold tabular-nums">
+            <template v-if="areas"
+              >{{ number(areas.unionM2 / 1e6) }}
+              <span class="text-xl font-medium text-ink-muted">{{ copy.km2 }}</span></template
+            >
+            <template v-else>—</template>
+          </p>
+          <p class="mt-1.5 leading-snug text-ink-muted">{{ copy.total }} · {{ year }}</p>
+        </template>
+        <h3 v-else :class="caption">{{ copy.composition }} · {{ year }}</h3>
+        <dl
+          v-if="areas"
+          class="divide-y divide-line overflow-hidden rounded-xl bg-group tabular-nums"
+          :class="state.mode === 'annual' && 'mt-3'"
+        >
+          <div
+            v-for="key in ['permanent', 'seasonal'] as const"
+            :key="key"
+            class="flex items-center gap-2.5 px-3 py-2"
+          >
+            <span
+              class="size-2.5 shrink-0 rounded-full"
+              :style="{ background: SURFACE_WATER_COLORS[key] }"
+              aria-hidden="true"
+            />
+            <dt class="flex-1">{{ copy[key] }}</dt>
+            <dd class="text-ink-muted">
+              {{ area(key === 'permanent' ? areas.permanentM2 : areas.seasonalM2) }}
+            </dd>
+          </div>
+        </dl>
+        <p v-else class="rounded-xl bg-group px-3 py-2 text-ink-muted">{{ copy.noArea }}</p>
+        <p
+          v-if="annual && annual.spatialStatus !== 'complete'"
+          class="mt-1.5 px-3 text-xs text-warn-ink"
+        >
+          {{ copy[annual.spatialStatus] }} · {{ copy.coverage }}: {{ percent(annual.coverage) }}
+        </p>
+      </section>
+      <section class="mt-5">
+        <h3 :class="caption">{{ copy.history }}</h3>
+        <div class="rounded-xl bg-group p-2">
+          <WaterbodyChart
+            :annual="query.data.value.annual"
+            :years="release.manifest.years"
+            :selected="year"
+          />
+        </div>
+        <p class="mt-1.5 px-3 text-xs leading-relaxed text-ink-muted">{{ copy.chartHelp }}</p>
+        <details open class="group mt-3 overflow-hidden rounded-xl bg-group">
+          <summary
+            class="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 transition-colors hover:bg-fill focus-ring-inset [&::-webkit-details-marker]:hidden"
+          >
+            {{ copy.yearly }}
+            <svg
+              viewBox="0 0 16 16"
+              class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-90"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              aria-hidden="true"
+            >
+              <path d="m6 3.5 4.5 4.5L6 12.5" />
+            </svg>
+          </summary>
+          <ul
+            class="max-h-64 divide-y divide-line overflow-y-auto border-t border-line tabular-nums"
+          >
+            <li
+              v-for="row in query.data.value.annual"
+              :key="row.year"
+              class="flex items-center gap-3 px-3 py-1.5"
+            >
+              <span class="w-10 shrink-0">{{ row.year }}</span>
+              <span class="flex-1 text-right">{{
+                annualWaterArea(row) ? area(annualWaterArea(row)!.unionM2) : copy.noArea
+              }}</span>
+              <span
+                class="size-2 shrink-0 rounded-full"
+                :class="
+                  row.spatialStatus === 'complete'
+                    ? 'bg-accent'
+                    : row.spatialStatus === 'partial'
+                      ? 'bg-amber-500'
+                      : 'bg-ink-muted'
+                "
+                :title="copy[row.spatialStatus]"
+                role="img"
+                :aria-label="copy[row.spatialStatus]"
+              />
+            </li>
+          </ul>
+        </details>
+      </section>
+    </template>
   </article>
 </template>

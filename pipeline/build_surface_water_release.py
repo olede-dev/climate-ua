@@ -12,7 +12,9 @@ import math
 import os
 from pathlib import Path
 
-from shapely.geometry import shape
+from shapely import STRtree, distance, points
+from shapely.geometry import mapping, shape
+from shapely.ops import transform as project, unary_union
 
 from build_surface_water_national import compact_json
 from package_surface_water_tiles import inventory
@@ -83,7 +85,41 @@ def reference(root, path):
     return {'url': str(path.relative_to(root)), 'sha256': sha256(path), 'bytes': path.stat().st_size}
 
 
-def build(native, overview, zones, areas, review, output):
+def local_catalogue(zones, areas, places, reviewed_features):
+    """Validated automatic bodies, each labelled by its OSM name or nearest settlement."""
+    registry, numeric = json.loads(zones.read_text()), json.loads(areas.read_text())
+    bodies = {b['id']: b for b in numeric['bodies']}
+    ids = [f['properties']['id'] for f in registry['features']]
+    if (len(set(ids)) != len(ids) or set(bodies) != set(ids) or
+            numeric['zoneVersion'] != registry['zoneVersion'] or numeric['unit'] != 'm2' or
+            numeric['areaCRS'] != 'EPSG:6933'):
+        raise ValueError('Incoherent automatic local catalogue')
+    reviewed = unary_union([shape(f['geometry']) for f in reviewed_features])
+    geometries = [shape(f['geometry']) for f in registry['features']]
+    tree = STRtree(geometries)
+    for i, geometry in enumerate(geometries):
+        if geometry.is_empty or not geometry.is_valid or geometry.intersection(reviewed).area > 1e-12:
+            raise ValueError('Invalid or reviewed-overlapping local zone')
+        if any(j > i and geometry.intersection(geometries[j]).area > 1e-12
+               for j in tree.query(geometry, predicate='intersects')):
+            raise ValueError('Local zones overlap')
+    settlements = json.loads(places.read_text())
+    places_tree = STRtree(points([p['lon'] for p in settlements], [p['lat'] for p in settlements]))
+    result = []
+    for f in registry['features']:
+        p = f['properties']
+        validate_series(bodies[p['id']], p['zoneM2'])
+        marker = points(*p['markerCoordinates'])
+        near = settlements[int(places_tree.nearest(marker))]
+        result.append({'feature': f, 'series': bodies[p['id']], 'entry': {
+            'id': p['id'], 'osmId': p['osmId'], 'nameUk': p['nameUk'], 'nameEn': p['nameEn'],
+            'nearUk': near['nameUk'], 'nearEn': near['nameEn'] or near['nameUk'],
+            'zoneM2': p['zoneM2'], 'markerCoordinates': [round(c, 5) for c in p['markerCoordinates']],
+            'bounds': [round(c, 5) for c in geometries[ids.index(p['id'])].bounds]}})
+    return registry, result
+
+
+def build(native, overview, zones, areas, review, output, local=None):
     reviewed = json.loads(review.read_text())
     registry, numeric = json.loads(zones.read_text()), json.loads(areas.read_text())
     ids = [f['properties']['id'] for f in registry['features']]
@@ -134,6 +170,12 @@ def build(native, overview, zones, areas, review, output):
                 'areaMathSha256': sha256(Path(__file__).with_name('surface_water.py')),
                 'zoneBuilderSha256': sha256(Path(__file__).with_name('build_surface_water_catalogue.py')),
                 'processingSha256': sha256(Path(__file__))}
+    if local:
+        local_zones, local_areas, places = local
+        local_registry, local_bodies = local_catalogue(local_zones, local_areas, places, registry['features'])
+        identity.update({'localZonesSha256': sha256(local_zones), 'localAreasSha256': sha256(local_areas),
+                         'localPlacesSha256': sha256(places),
+                         'localZoneBuilderSha256': sha256(Path(__file__).with_name('build_surface_water_local_zones.py'))})
     import hashlib
     version = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()[:20]
     root = output/'versions'/version
@@ -213,6 +255,22 @@ def build(native, overview, zones, areas, review, output):
         manifest['catalogue'].append({**{k: p[k] for k in ('id', 'nameUk', 'nameEn', 'type', 'zoneM2', 'inclusionReason')},
                                       'bounds': list(shape(f['geometry']).bounds), 'series': reference(root, path),
                                       'review': reviewed['bodies'][p['id']]})
+    if local:
+        # Browser outlines are simplified for hit-testing and labels only; areas use native zones.
+        outlines = {'type': 'FeatureCollection', 'features': [
+            {'type': 'Feature', 'properties': {'id': b['entry']['id']},
+             'geometry': json.loads(json.dumps(mapping(shape(b['feature']['geometry']).simplify(.0003)),
+                                               default=float), parse_float=lambda v: round(float(v), 4))}
+            for b in local_bodies]}
+        compact_json(root/'local/outlines.geojson', outlines)
+        manifest['local'] = {'zoneVersion': local_registry['zoneVersion'], 'status': local_registry['status'],
+                             'outlines': reference(root, root/'local/outlines.geojson'), 'bodies': []}
+        for b in local_bodies:
+            path = root/'local/series'/f"{b['entry']['id']}.json"
+            compact_json(path, {'schemaVersion': 1, 'version': version, 'zoneVersion': local_registry['zoneVersion'],
+                                'unit': 'm2', 'areaCRS': 'EPSG:6933', 'id': b['entry']['id'],
+                                'annual': b['series']['annual'], 'pairs': b['series']['pairs']})
+            manifest['local']['bodies'].append({**b['entry'], 'series': reference(root, path)})
     credits = root/'CREDITS.txt'
     credits.write_text(registry['attribution']+'\nPekel et al. (2016), doi:10.1038/nature20584\nOSM derived geometry: https://www.openstreetmap.org/copyright\n')
     compact_json(root/'manifest.json', manifest)
@@ -224,6 +282,7 @@ def build(native, overview, zones, areas, review, output):
     write_json(output/'current.json', pointer)
     write_json(output/'release-build-report.json', {'version': version, 'featureBytes': feature_bytes,
                'featureStorageGate': True, 'annualRecords': len(ids)*41, 'pairRecords': len(ids)*820,
+               'localBodies': len(manifest.get('local', {}).get('bodies', [])),
                'status': 'validated local release; no external publication', **identity})
     print(version, feature_bytes, 'bytes', flush=True)
     return pointer
@@ -233,10 +292,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     root = Path(__file__).resolve().parent/'data/raw/surface-water'
     parser.add_argument('--native', type=Path, default=root/'national-packed4-v1')
-    parser.add_argument('--overview', type=Path, default=root/'national-overview-v1')
+    parser.add_argument('--overview', type=Path, default=root/'national-overview-v2')
     parser.add_argument('--zones', type=Path, default=root/'catalogue-full-history/analysis-zones.geojson')
     parser.add_argument('--areas', type=Path, default=root/'catalogue-full-history/zone-areas.json')
     parser.add_argument('--review', type=Path, default=root/'catalogue-full-history/review/acceptance.json')
     parser.add_argument('--output', type=Path, default=root/'release')
+    parser.add_argument('--local', type=Path, default=root/'local-catalogue',
+                        help='automatic local catalogue directory; pass an empty string to omit')
     args = parser.parse_args()
-    build(args.native, args.overview, args.zones, args.areas, args.review, args.output)
+    local = (args.local/'analysis-zones.geojson', args.local/'zone-areas.json', args.local/'osm-places.json') if args.local != Path('') else None
+    build(args.native, args.overview, args.zones, args.areas, args.review, args.output, local)

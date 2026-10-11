@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import type { MultiLineString } from 'geojson'
-import type { GeoJSONSource, Map as MaplibreMap, PaddingOptions } from 'maplibre-gl'
+import type {
+  ExpressionSpecification,
+  GeoJSONSource,
+  Map as MaplibreMap,
+  MapLayerMouseEvent,
+  PaddingOptions,
+} from 'maplibre-gl'
 import {
   computed,
   defineAsyncComponent,
@@ -15,7 +21,11 @@ import {
 import AppHeader from '../layout/AppHeader.vue'
 import LanguageMenu from '../layout/LanguageMenu.vue'
 import ThemeMenu from '../layout/ThemeMenu.vue'
-import { useSurfaceWaterManifest } from '../../composables/useLayer'
+import {
+  useSurfaceWaterManifest,
+  useSurfaceWaterOutlines,
+  useSurfaceWaterSeriesList,
+} from '../../composables/useLayer'
 import {
   useSurfaceWaterTiles,
   type SurfaceWaterRenderTile,
@@ -32,7 +42,8 @@ import {
   surfaceWaterExtent,
   type SurfaceWaterBounds,
 } from '../../lib/surfaceWater'
-import { selectWaterbodyYear } from '../../lib/waterbodyCard'
+import { selectWaterbodyYear, waterbodyChange } from '../../lib/waterbodyCard'
+import { LABEL_MIN_KM2, localLabelPoints, localWaterbodies } from '../../lib/localWaterbodies'
 import WaterTabs from './WaterTabs.vue'
 import TimeSlider from './TimeSlider.vue'
 import ZoomControl from '../ui/ZoomControl.vue'
@@ -40,8 +51,9 @@ import SelectMenu from '../ui/SelectMenu.vue'
 import type { TimeStep } from '../../lib/time'
 import LoadingIndicator from '../ui/LoadingIndicator.vue'
 import LoadingSkeleton from '../ui/LoadingSkeleton.vue'
+import WaterbodyList from '../panel/waterbody/WaterbodyList.vue'
 import { paintSurfaceWaterTile, surfaceWaterCorners } from '../../lib/surfaceWaterCanvas'
-import type { SurfaceWaterState } from '../../types'
+import type { SurfaceWaterBodyEntry, SurfaceWaterState } from '../../types'
 import { basemapStyle, applyLabelFilters, type LabelFilter, type BasemapKind } from './basemap'
 import { addLayer, addSource, NO_VALIDATE, styleLayers } from './mapStyle'
 
@@ -69,6 +81,8 @@ const copy = computed(() => t.value.surfaceWater)
 const query = useSurfaceWaterManifest()
 const loader = useSurfaceWaterTiles()
 const manifest = computed(() => query.data.value?.manifest)
+const locals = computed(() => (manifest.value ? localWaterbodies(manifest.value) : []))
+const outlines = useSurfaceWaterOutlines(() => query.data.value)
 const container = useTemplateRef<HTMLDivElement>('container')
 const fallbackCanvas = useTemplateRef<HTMLCanvasElement>('fallbackCanvas')
 const fallback = ref(false)
@@ -91,13 +105,34 @@ const state = computed(() =>
     ? normalizeSurfaceWaterState(
         ui.surfaceWater,
         manifest.value.years,
-        manifest.value.catalogue.map((body) => body.id),
+        [...manifest.value.catalogue, ...locals.value].map((body) => body.id),
       )
     : null,
 )
-const selected = computed(() =>
-  manifest.value?.catalogue.find((body) => body.id === ui.surfaceWater.waterbody),
+const selected = computed<SurfaceWaterBodyEntry | undefined>(() => {
+  const id = ui.surfaceWater.waterbody
+  return (
+    manifest.value?.catalogue.find((body) => body.id === id) ??
+    locals.value.find((body) => body.id === id)
+  )
+})
+const listSeries = useSurfaceWaterSeriesList(
+  () => query.data.value,
+  () => ui.surfaceWater.mode === 'comparison' && !selected.value,
 )
+// Settled series only: a body still loading has no key, a failed one shows a dash.
+const listComparison = computed(() => {
+  const catalogue = manifest.value?.catalogue
+  if (ui.surfaceWater.mode !== 'comparison' || !catalogue) return undefined
+  const { before, after } = ui.surfaceWater
+  const figures: Record<string, ReturnType<typeof waterbodyChange>> = {}
+  catalogue.forEach((body, index) => {
+    const result = listSeries.value[index]
+    if (result?.isSuccess) figures[body.id] = waterbodyChange(result.data, before, after)
+    else if (result?.isError) figures[body.id] = null
+  })
+  return { before, after, figures }
+})
 const legend = computed(() => {
   const mode = shown.value?.state.mode ?? ui.surfaceWater.mode
   const keys =
@@ -137,6 +172,9 @@ let labelFilters: LabelFilter[] = []
 let request: AbortController | undefined
 let generation = 0
 let installed: string[] = []
+// Replaced layers stay under the new ones until the map is idle: a canvas source reports loaded
+// before its tile exists, so removing them at once shows the bare basemap for a few frames.
+let retiring: string[] = []
 const waiting = new PendingSourceBatch()
 let rendered: { canvas: HTMLCanvasElement; bounds: SurfaceWaterBounds }[] = []
 let resize: ResizeObserver | undefined
@@ -170,16 +208,12 @@ const modes = computed(() =>
 const mode = computed({
   get: () => ui.surfaceWater.mode,
   set: (mode: SurfaceWaterState['mode']) => {
-    ui.surfaceWater = { ...ui.surfaceWater, mode }
+    const state = ui.surfaceWater
+    // The timeline disappears in comparison, so its year carries over as the "after" year.
+    const after = mode === 'comparison' && state.mode === 'annual' ? state.year : state.after
+    ui.surfaceWater = { ...state, mode, after }
   },
 })
-const bodyOptions = computed(
-  () =>
-    manifest.value?.catalogue.map((body) => ({
-      value: body.id,
-      label: (locale.value === 'uk' ? body.nameUk : body.nameEn) || copy.value.unnamed,
-    })) ?? [],
-)
 const bodyModel = computed({
   get: () => ui.surfaceWater.waterbody ?? '',
   set: (waterbody: string) => {
@@ -201,6 +235,18 @@ const timelineYear = computed<TimeStep>({
   },
 })
 const playing = ref(false)
+const comparing = computed(() => ui.surfaceWater.mode === 'comparison')
+const comparisonFrame = {
+  class: 'glass pointer-events-auto rounded-2xl px-2.5 py-2 shadow-float sm:px-3',
+}
+const sliderProps = computed(() => ({
+  modelValue: timelineYear.value,
+  'onUpdate:modelValue': (value: TimeStep) => (timelineYear.value = value),
+  playing: playing.value,
+  'onUpdate:playing': (value: boolean) => (playing.value = value),
+  axis: axis.value!,
+  allowPlayback: false,
+}))
 watch(mode, () => {
   playing.value = false
 })
@@ -223,6 +269,106 @@ function syncBorder() {
       'line-width': 1.5,
     },
   })
+}
+const LOCAL = 'surface-water-local'
+const LOCAL_LABELS = 'surface-water-local-labels'
+let hovered: string | null = null
+/** The basemap's own label font: an unknown font would leave the labels blank. */
+function labelFont() {
+  for (const layer of styleLayers(map!)) {
+    if (layer.type !== 'symbol' || layer.id === LOCAL_LABELS) continue
+    const font: unknown = map!.getLayoutProperty(layer.id, 'text-font')
+    if (Array.isArray(font) && font.every((part) => typeof part === 'string')) return font
+  }
+  return null
+}
+function syncLocal() {
+  const data = outlines.data.value
+  if (!map || !styleReady || !data || map.getSource(LOCAL)) return
+  const before = map.getLayer('surface-water-selection') ? 'surface-water-selection' : undefined
+  const dark = theme.value === 'dark'
+  addSource(map, LOCAL, { type: 'geojson', data, promoteId: 'id' })
+  // Hit-testing only: the raster already shows the water; the line marks hover and selection.
+  addLayer(
+    map,
+    {
+      id: `${LOCAL}-fill`,
+      type: 'fill',
+      source: LOCAL,
+      paint: { 'fill-color': '#000000', 'fill-opacity': 0 },
+    },
+    before,
+  )
+  addLayer(
+    map,
+    {
+      id: `${LOCAL}-line`,
+      type: 'line',
+      source: LOCAL,
+      paint: {
+        'line-color': dark ? '#ffffff' : '#1d1d1f',
+        'line-width': ['case', ['boolean', ['feature-state', 'selected'], false], 2, 1.25],
+        'line-opacity': [
+          'case',
+          ['boolean', ['feature-state', 'selected'], false],
+          1,
+          ['boolean', ['feature-state', 'hover'], false],
+          0.8,
+          0,
+        ],
+      },
+    },
+    before,
+  )
+  const font = labelFont()
+  if (font) {
+    addSource(map, LOCAL_LABELS, {
+      type: 'geojson',
+      data: localLabelPoints(locals.value, locale.value, copy.value),
+    })
+    addLayer(
+      map,
+      {
+        id: LOCAL_LABELS,
+        type: 'symbol',
+        source: LOCAL_LABELS,
+        filter: ['>=', ['get', 'km2'], LABEL_MIN_KM2 as unknown as ExpressionSpecification],
+        layout: {
+          'text-field': ['get', 'label'],
+          'text-font': font,
+          'text-size': ['interpolate', ['linear'], ['zoom'], 6, 10.5, 10, 12.5],
+          'text-max-width': 8,
+          'symbol-sort-key': ['-', ['get', 'km2']],
+          'text-padding': 4,
+        },
+        paint: {
+          'text-color': dark ? '#9fc3ff' : '#1453be',
+          'text-halo-color': dark ? 'rgba(10, 10, 12, 0.85)' : 'rgba(255, 255, 255, 0.9)',
+          'text-halo-width': 1.4,
+        },
+      },
+      before,
+    )
+  }
+  hovered = null
+  markLocalSelection(null, ui.surfaceWater.waterbody)
+}
+function markLocalSelection(previous: string | null | undefined, next: string | null | undefined) {
+  if (!map?.getSource(LOCAL)) return
+  if (previous) map.setFeatureState({ source: LOCAL, id: previous }, { selected: false })
+  if (next && locals.value.some((body) => body.id === next))
+    map.setFeatureState({ source: LOCAL, id: next }, { selected: true })
+}
+function hoverLocal(id: string | null) {
+  if (!map?.getSource(LOCAL) || id === hovered) return
+  if (hovered) map.setFeatureState({ source: LOCAL, id: hovered }, { hover: false })
+  hovered = id
+  if (id) map.setFeatureState({ source: LOCAL, id }, { hover: true })
+  map.getCanvas().style.cursor = id ? 'pointer' : ''
+}
+function pickLocal(event: MapLayerMouseEvent) {
+  const id = event.features?.[0]?.properties.id
+  if (typeof id === 'string') ui.surfaceWater = { ...ui.surfaceWater, waterbody: id }
 }
 function syncSelection() {
   if (!map || !styleReady || !manifest.value) return
@@ -262,7 +408,8 @@ function reveal() {
   installed = ready
   installedKey = pendingKey
   for (const id of ready) map.setPaintProperty(id, 'raster-opacity', 0.95, NO_VALIDATE)
-  clearLayers(previous)
+  retiring.push(...previous)
+  map.once('idle', () => clearLayers(retiring.splice(0)))
   shown.value = readyState
   pending.value = false
 }
@@ -286,7 +433,8 @@ function install() {
         source: id,
         paint: {
           'raster-opacity': 0,
-          'raster-resampling': 'nearest',
+          // Smooth the coarse overview; keep native 30 m cells crisp.
+          'raster-resampling': readyState?.native ? 'nearest' : 'linear',
           'raster-fade-duration': 0,
           'raster-opacity-transition': { duration: 0 },
         },
@@ -423,6 +571,7 @@ async function applyStyle() {
     const result = await basemapStyle(locale.value, theme.value)
     if (!map || destroyed || own !== styleGeneration) return
     installed = []
+    retiring = []
     installedKey = ''
     waiting.take()
     rendered = []
@@ -493,6 +642,7 @@ async function startMap() {
       const own = styleGeneration
       applyLabelFilters(map!, labelFilters, () => !destroyed && own === styleGeneration)
       syncBorder()
+      syncLocal()
       syncSelection()
       void render()
     })
@@ -511,6 +661,14 @@ async function startMap() {
     map.on('mouseleave', 'surface-water-selection', () => {
       if (map) map.getCanvas().style.cursor = ''
     })
+    for (const layer of [`${LOCAL}-fill`, LOCAL_LABELS]) {
+      map.on('click', layer, pickLocal)
+      map.on('mousemove', layer, (event) => {
+        const id = event.features?.[0]?.properties.id
+        hoverLocal(typeof id === 'string' ? id : null)
+      })
+      map.on('mouseleave', layer, () => hoverLocal(null))
+    }
     resize = new ResizeObserver(() => map?.resize())
     resize.observe(container.value)
     frameSelection(false)
@@ -542,10 +700,12 @@ watch(
     void render()
   },
 )
-watch(selected, () => {
+watch(selected, (next, previous) => {
   syncSelection()
+  markLocalSelection(previous?.id, next?.id)
   frameSelection()
 })
+watch(() => outlines.data.value, syncLocal)
 watch([locale, theme], () => {
   if (map) void applyStyle()
 })
@@ -617,48 +777,60 @@ onBeforeUnmount(() => {
           button-class="size-9 rounded-full focus-ring"
           icon-only
       /></AppHeader>
-      <div v-if="!selected" class="space-y-3">
-        <h1
-          ref="bodyPicker"
-          tabindex="-1"
-          class="text-[22px] font-bold tracking-tight focus-visible:outline-none"
-        >
-          {{ copy.name }}
-        </h1>
-        <WaterTabs v-model="mode" :views="modes" :label="copy.name" />
-        <SelectMenu
-          v-model="bodyModel"
-          :options="[{ value: '', label: copy.country }, ...bodyOptions]"
-          :label="copy.waterbody"
-          :disabled="!manifest"
-        />
-      </div>
-      <div v-if="ui.surfaceWater.mode === 'comparison'" class="mt-3 flex items-start gap-2">
-        <SelectMenu
-          v-model="ui.surfaceWater.before"
-          :options="yearOptions"
-          :label="copy.before"
-          class="min-w-0 flex-1"
-        />
-        <span class="pt-2 text-xs text-ink-muted" aria-hidden="true">→</span>
-        <SelectMenu
-          v-model="ui.surfaceWater.after"
-          :options="yearOptions"
-          :label="copy.after"
-          class="min-w-0 flex-1"
-        />
-      </div>
-      <label
-        v-if="ui.surfaceWater.mode === 'comparison' && !selected"
-        class="mt-3 flex cursor-pointer items-center gap-2.5 rounded-xl bg-group px-3 py-2 text-[13px]"
+      <h1
+        v-if="!selected"
+        ref="bodyPicker"
+        tabindex="-1"
+        class="text-[22px] font-bold tracking-tight focus-visible:outline-none"
       >
-        <input
-          v-model="transitions"
-          type="checkbox"
-          class="size-4 shrink-0 appearance-none rounded-[5px] border border-ink-muted bg-surface checked:border-accent checked:bg-accent focus-ring"
-        />
-        <span>{{ copy.transitions }}</span>
-      </label>
+        {{ copy.name }}
+      </h1>
+      <div v-if="!selected" class="mt-3">
+        <WaterTabs v-model="mode" :views="modes" :label="copy.name" />
+        <div
+          v-if="ui.surfaceWater.mode === 'comparison'"
+          class="mt-3 divide-y divide-line overflow-hidden rounded-xl bg-group"
+        >
+          <SelectMenu
+            v-model="ui.surfaceWater.before"
+            row
+            :options="yearOptions"
+            :label="copy.before"
+          />
+          <SelectMenu
+            v-model="ui.surfaceWater.after"
+            row
+            :options="yearOptions"
+            :label="copy.after"
+          />
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="transitions"
+            class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[13px] text-ink transition-colors hover:bg-fill focus-ring-inset"
+            @click="transitions = !transitions"
+          >
+            <span>{{ copy.transitions }}</span>
+            <span
+              class="relative h-[22px] w-9 shrink-0 rounded-full transition-colors"
+              :class="transitions ? 'bg-accent' : 'bg-fill-strong'"
+              aria-hidden="true"
+            >
+              <span
+                class="absolute top-0.5 left-0.5 size-[18px] rounded-full bg-white shadow-card transition-transform"
+                :class="transitions && 'translate-x-3.5'"
+              />
+            </span>
+          </button>
+        </div>
+      </div>
+      <WaterbodyList
+        v-if="!selected && manifest && query.data.value"
+        class="mt-4"
+        :bodies="manifest.catalogue"
+        :comparison="listComparison"
+        @select="bodyModel = $event"
+      />
       <p v-if="query.isError.value || failed" role="alert" class="mt-3 text-sm">
         {{ copy.error }}
         <button class="rounded-lg bg-fill p-2 focus-ring" @click="retry">{{ copy.retry }}</button>
@@ -672,20 +844,9 @@ onBeforeUnmount(() => {
           :release="query.data.value"
           :state="state"
           @close="closeBody"
-          @select="selectChartYear"
         />
         <template #fallback><LoadingSkeleton :label="copy.detailsLoading" class="h-48" /></template>
       </Suspense>
-      <details v-if="manifest && !selected" class="mt-4 text-xs text-ink-muted">
-        <summary class="cursor-pointer rounded focus-ring">{{ copy.methodology }}</summary>
-        <p class="mt-2">{{ copy.note }}</p>
-        <p class="mt-2">{{ manifest.attribution }}</p>
-        <a
-          class="mt-2 inline-block underline focus-ring"
-          href="https://global-surface-water.appspot.com/"
-          >JRC Global Surface Water</a
-        >
-      </details>
       <div v-if="fallback" class="mt-2">
         <p class="text-xs">{{ copy.fallback }}</p>
         <button class="mt-1 rounded-lg bg-fill p-2 text-sm focus-ring" @click="startMap">
@@ -704,11 +865,10 @@ onBeforeUnmount(() => {
       "
     >
       <span v-if="wide" class="w-9 shrink-0" aria-hidden="true" />
-      <TimeSlider
-        v-model="timelineYear"
-        v-model:playing="playing"
-        :axis="axis"
-        :allow-playback="false"
+      <!-- Comparison picks both years in its own selects, so the timeline would be a second, conflicting control. -->
+      <component
+        :is="comparing ? 'div' : TimeSlider"
+        v-bind="comparing ? comparisonFrame : sliderProps"
         class="max-w-xl min-w-0 flex-1"
       >
         <figure class="text-[11px] leading-tight text-ink">
@@ -744,7 +904,7 @@ onBeforeUnmount(() => {
             >{{ detail === 'loading' ? copy.detailLoading : copy[detail] }}</span
           >
         </div>
-      </TimeSlider>
+      </component>
       <ZoomControl v-if="wide" @in="map?.zoomIn()" @out="map?.zoomOut()" />
     </div>
   </div>

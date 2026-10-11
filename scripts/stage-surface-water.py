@@ -92,7 +92,9 @@ def stage(archive, checksum, site):
                 raise ValueError('Manifest reference differs from archive table')
             return feature_root/record['url']
         for record in [manifest['analysisZones'], manifest['zoneReview'], manifest['registrationSensitivity'],
-                       *(b['series'] for b in manifest['catalogue'])]:
+                       *(b['series'] for b in manifest['catalogue']),
+                       *([manifest['local']['outlines'], *(b['series'] for b in manifest['local']['bodies'])]
+                         if 'local' in manifest else [])]:
             ref(record)
         def frames(grid):
             # Schema 2 moves each chunk's year list into its own timeline.

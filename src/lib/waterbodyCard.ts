@@ -83,3 +83,37 @@ export function waterbodyPair(
       : null,
   }
 }
+
+/** List figures for the selected pair: end-year area and change on the common mask. */
+export function waterbodyChange(
+  series: import('../types').SurfaceWaterSeries | undefined,
+  beforeYear: number,
+  afterYear: number,
+) {
+  const pair = waterbodyPair(series, beforeYear, afterYear)
+  const delta = waterbodyDelta(pair)
+  return delta && pair?.comparison
+    ? { m2: pair.comparison.after.unionM2, percent: delta.percent }
+    : null
+}
+
+export type ChangeTone = 'critical' | 'decline' | 'stable' | 'growth'
+
+/** Severity of a common-mask change for list colouring: losses of 15% or more are critical. */
+export function changeTone(percent: number): ChangeTone {
+  if (percent <= -15) return 'critical'
+  if (percent <= -5) return 'decline'
+  if (percent >= 5) return 'growth'
+  return 'stable'
+}
+
+/** Badge and marker classes per tone, shared by the waterbody list and card. */
+export const CHANGE_TONE_CLASSES: Record<ChangeTone, { badge: string; dot: string }> = {
+  critical: { badge: 'bg-red-500/15 text-red-700 dark:text-red-300', dot: 'bg-red-500' },
+  decline: { badge: 'bg-warn-fill text-warn-ink', dot: 'bg-warn' },
+  stable: { badge: 'bg-fill text-ink-muted', dot: 'bg-ink-muted/40' },
+  growth: {
+    badge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+    dot: 'bg-emerald-500',
+  },
+}

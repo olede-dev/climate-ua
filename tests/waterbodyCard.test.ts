@@ -1,11 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
+  changeTone,
   annualWaterArea,
   selectWaterbodyYear,
   waterbodyDelta,
   waterbodyPair,
+  waterbodyChange,
 } from '../src/lib/waterbodyCard'
-import type { SurfaceWaterAnnual, SurfaceWaterPair, SurfaceWaterState } from '../src/types'
+import type {
+  SurfaceWaterAnnual,
+  SurfaceWaterPair,
+  SurfaceWaterSeries,
+  SurfaceWaterState,
+} from '../src/types'
 const quality = {
   zoneM2: 100,
   validM2: 100,
@@ -94,4 +101,27 @@ it('equal years compare the same annual valid mask without inventing missing wat
     waterbodyPair({ ...series, annual: [{ ...annual, areas: null }] }, 1984, 1984)?.comparison,
   ).toBeNull()
   expect(waterbodyPair(series, 1990, 2024)).toBeUndefined()
+})
+
+describe('waterbodyChange', () => {
+  const series = { annual: [annual], pairs: [pair] } as unknown as SurfaceWaterSeries
+  it('reports the end-year area and change for the selected pair in either direction', () => {
+    expect(waterbodyChange(series, 1984, 2024)).toEqual({ m2: 75, percent: -25 })
+    expect(waterbodyChange(series, 2024, 1984)?.m2).toBe(100)
+  })
+  it('is null without a measurable pair', () => {
+    expect(waterbodyChange(series, 1984, 2000)).toBeNull()
+    expect(waterbodyChange(undefined, 1984, 2024)).toBeNull()
+  })
+})
+
+describe('changeTone', () => {
+  it('grades loss severity and growth', () => {
+    expect(changeTone(-40)).toBe('critical')
+    expect(changeTone(-15)).toBe('critical')
+    expect(changeTone(-8)).toBe('decline')
+    expect(changeTone(-2)).toBe('stable')
+    expect(changeTone(4.9)).toBe('stable')
+    expect(changeTone(12)).toBe('growth')
+  })
 })

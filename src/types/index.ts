@@ -314,6 +314,23 @@ export interface SurfaceWaterCatalogueEntry {
   series: SurfaceWaterAsset
   review: { status: 'accepted'; extentReview: string; inclusionReason: string; limitations: string }
 }
+/** An automatic zone from an OSM standing-water polygon ≥ 1 km²; not manually reviewed. */
+export interface SurfaceWaterLocalEntry {
+  id: string
+  osmId: string
+  nameUk: string | null
+  nameEn: string | null
+  /** Nearest OSM city, town or village, named when the body itself is not. */
+  nearUk: string
+  nearEn: string | null
+  zoneM2: number
+  markerCoordinates: [number, number]
+  bounds: [number, number, number, number]
+  series: SurfaceWaterAsset
+}
+/** What the card and series queries need from a curated or a local body. */
+export type SurfaceWaterBodyEntry =
+  SurfaceWaterCatalogueEntry | (SurfaceWaterLocalEntry & { type: 'local' })
 export interface SurfaceWaterManifest {
   schemaVersion: 1 | 2
   version: string
@@ -345,6 +362,12 @@ export interface SurfaceWaterManifest {
   analysisZones: SurfaceWaterAsset
   zoneReview: SurfaceWaterAsset
   registrationSensitivity: SurfaceWaterAsset
+  local?: {
+    zoneVersion: string
+    status: string
+    outlines: SurfaceWaterAsset
+    bodies: SurfaceWaterLocalEntry[]
+  }
 }
 export interface SurfaceWaterCatalogueFile extends Pick<
   SurfaceWaterManifest,
@@ -366,8 +389,6 @@ export interface SurfaceWaterCatalogueFile extends Pick<
   nativeChunkCount: number
   catalogue: (SurfaceWaterCatalogueEntry & {
     markerCoordinates: [number, number]
-    annualReference: SurfaceWaterAnnual[]
-    pairReference: SurfaceWaterPair
   })[]
 }
 export type ProjectionBound = 'min' | 'median' | 'max'

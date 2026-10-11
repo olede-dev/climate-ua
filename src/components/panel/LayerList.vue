@@ -2,6 +2,7 @@
 import type { LayerId } from '../../types'
 import { computed } from 'vue'
 import IconTile from '../ui/IconTile.vue'
+import { LAYER_ICONS as ICONS, LAYER_TONES as TONES } from '../../config/layerIcons'
 
 type LayerChoice = { id: LayerId; group: string; name: string; description: string }
 
@@ -21,26 +22,6 @@ const groups = computed(() =>
   }, []),
 )
 const model = defineModel<LayerId>({ required: true })
-
-const ICONS: Record<LayerId, string> = {
-  waterbodies: 'M3 8c3-4 6 4 9 0s6 4 9 0M3 16c3-4 6 4 9 0s6 4 9 0',
-  water: 'M12 3s-6 6.5-6 11a6 6 0 0 0 12 0c0-4.5-6-11-6-11z',
-  temp: 'M14 14.76V4a2 2 0 0 0-4 0v10.76a4 4 0 1 0 4 0zM12 9v8',
-  heat: 'M12 3v2M12 19v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M3 12h2M19 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
-  frost: 'M12 2v20M4.93 7l14.14 10M4.93 17L19.07 7M9 4l3 3 3-3M9 20l3-3 3 3',
-  drought: 'M3 21h18M5 17l3-4 3 2 3-5 2 3 3-2M12 3v3M7 5l1.5 2M17 5l-1.5 2',
-  rivers:
-    'M2 6c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2M2 12c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2M2 18c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2',
-}
-const TONES: Record<LayerId, string> = {
-  waterbodies: 'bg-sky-600',
-  water: 'bg-blue-500',
-  temp: 'bg-red-500',
-  heat: 'bg-orange-500',
-  frost: 'bg-cyan-500',
-  drought: 'bg-amber-500',
-  rivers: 'bg-teal-500',
-}
 </script>
 
 <template>

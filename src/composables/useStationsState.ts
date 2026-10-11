@@ -66,7 +66,11 @@ export function useStationsState(
   const historyEnd = addDays(today, -DISCHARGE_WINDOW.pastDays - 1)
   const historyStart = computed(() => addDays(today, -toValue(historyDays)))
   const history = useQuery({
-    queryKey: computed(() => ['discharge-history', points.value.map((p) => p.id), historyStart.value]),
+    queryKey: computed(() => [
+      'discharge-history',
+      points.value.map((p) => p.id),
+      historyStart.value,
+    ]),
     queryFn: ({ signal }) =>
       fetchDischargeHistories(
         points.value,

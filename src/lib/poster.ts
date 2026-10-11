@@ -26,8 +26,10 @@ export function posterPaths(
   const top = mercatorY(north)
   const height = Math.round((top - mercatorY(south)) * k)
   const point = ([lon, lat]: Position) =>
-    `${(((lon! - west) * Math.PI) / 180) * k},${(top - mercatorY(lat!)) * k}`
-    .replace(/(\.\d)\d+/g, '$1')
+    `${(((lon! - west) * Math.PI) / 180) * k},${(top - mercatorY(lat!)) * k}`.replace(
+      /(\.\d)\d+/g,
+      '$1',
+    )
   const ring = (positions: Position[]) => `M${positions.map(point).join('L')}Z`
   const paths = features.map(({ id, geometry }) => {
     const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.coordinates

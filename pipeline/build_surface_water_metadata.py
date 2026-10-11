@@ -1,8 +1,8 @@
 """Generate small committed catalogue evidence from a validated release.
 
 The full immutable manifest and numerical series are deployment assets. This
-small file lets ordinary CI validate real production reference records without
-acquiring heavy assets or generating satellite products.
+small file carries the catalogue, marker positions and pinned asset hashes, so
+the map and ordinary CI need no heavy assets or satellite products.
 """
 import argparse
 import json
@@ -49,9 +49,7 @@ def build(inputs, output):
         path = root/item['series']['url']
         if sha256(path) != item['series']['sha256']:
             raise ValueError('Series changed')
-        data = json.loads(path.read_text())
-        entry = {**item, 'markerCoordinates': marker_coordinates(zones[item['id']]), 'annualReference': [a for a in data['annual'] if a['year'] in {1984, 1992, 2021, 2024}],
-                 'pairReference': next(p for p in data['pairs'] if p['beforeYear'] == 2021 and p['afterYear'] == 2024)}
+        entry = {**item, 'markerCoordinates': marker_coordinates(zones[item['id']])}
         entry['series'] = {**item['series'], 'url': f"surface-water/versions/{manifest['version']}/"+item['series']['url']}
         result['catalogue'].append(entry)
     compact_json(output, result)

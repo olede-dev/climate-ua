@@ -61,44 +61,4 @@ describe('Generated national surface-water catalogue', () => {
     expect(point[1]).toBeGreaterThan(48.15)
     expect(point[1]).toBeLessThan(48.25)
   })
-
-  it('keeps real missing years null and verifies common-mask partitions and transitions', () => {
-    for (const body of data.catalogue) {
-      expect(body.annualReference.map((a) => a.year)).toEqual([1984, 1992, 2021, 2024])
-      for (const row of [...body.annualReference, body.pairReference]) {
-        expect(Math.abs(row.zoneM2 - body.zoneM2)).toBeLessThan(body.zoneM2 * 1e-9)
-        expect(row.validM2).toBeGreaterThanOrEqual(0)
-        expect(row.validM2).toBeLessThanOrEqual(body.zoneM2 * (1 + 1e-9))
-        expect(row.coverage).toBeCloseTo(row.validM2 / row.zoneM2, 9)
-        expect(row.temporalCompleteness).toBe('unknown')
-      }
-      expect(body.annualReference.find((a) => a.year === 1992)?.areas).toBeNull()
-      const pair = body.pairReference
-      expect(pair.beforeYear).toBe(2021)
-      expect(pair.afterYear).toBe(2024)
-      const before = body.annualReference.find((a) => a.year === 2021)!
-      const after = body.annualReference.find((a) => a.year === 2024)!
-      expect(pair.validM2).toBeLessThanOrEqual(
-        Math.min(before.validM2, after.validM2) + body.zoneM2 * 1e-9,
-      )
-      expect(pair.comparison).not.toBeNull()
-      const comparison = pair.comparison!
-      const tolerance = body.zoneM2 * 1e-9
-      expect(
-        Math.abs(comparison.before.unionM2 - comparison.persistentM2 - comparison.lostM2),
-      ).toBeLessThan(tolerance)
-      expect(
-        Math.abs(comparison.after.unionM2 - comparison.persistentM2 - comparison.gainedM2),
-      ).toBeLessThan(tolerance)
-      expect(Math.abs(comparison.deltaM2 - comparison.gainedM2 + comparison.lostM2)).toBeLessThan(
-        tolerance,
-      )
-      expect(
-        comparison.permanentToSeasonalM2 + comparison.seasonalToPermanentM2,
-      ).toBeLessThanOrEqual(comparison.persistentM2 + tolerance)
-    }
-    const kakhovka = data.catalogue.find((b) => b.id === 'kakhovka')!.pairReference.comparison!
-    expect(kakhovka.after.unionM2).toBeLessThan(kakhovka.before.unionM2)
-    expect(kakhovka.lostM2).toBeGreaterThan(kakhovka.gainedM2)
-  })
 })

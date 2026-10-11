@@ -6,6 +6,8 @@ const props = defineProps<{
   options: readonly { value: T; label: string }[]
   label: string
   disabled?: boolean
+  /** Renders as a row of a grouped list: the label on the left, the value on the right. */
+  row?: boolean
 }>()
 const model = defineModel<T>({ required: true })
 const open = ref(false)
@@ -76,11 +78,17 @@ function keydown(event: KeyboardEvent) {
       aria-haspopup="listbox"
       :aria-expanded="open"
       :aria-controls="id"
-      class="flex w-full items-center justify-between gap-2 rounded-xl bg-group px-3 py-2 text-left text-[13px] text-ink transition-colors hover:bg-fill-strong focus-ring disabled:opacity-50"
+      class="flex w-full items-center justify-between gap-2 text-left text-[13px] text-ink transition-colors disabled:opacity-50"
+      :class="
+        row
+          ? 'px-3 py-2.5 hover:bg-fill focus-ring-inset'
+          : 'rounded-xl bg-group px-3 py-2 hover:bg-fill-strong focus-ring'
+      "
       @click="toggle"
       @keydown.down.prevent="!open && toggle()"
     >
-      <span class="truncate">{{
+      <span v-if="row" class="shrink-0">{{ label }}</span>
+      <span class="truncate" :class="row && 'ml-auto text-ink-muted'">{{
         options.find((option) => option.value === model)?.label ?? label
       }}</span>
       <svg
@@ -102,7 +110,8 @@ function keydown(event: KeyboardEvent) {
       tabindex="-1"
       :aria-label="label"
       :aria-activedescendant="`${id}-${active}`"
-      class="mt-1 max-h-56 overflow-y-auto overscroll-contain rounded-xl bg-surface p-1 text-[13px] text-ink shadow-card focus-ring"
+      class="max-h-56 overflow-y-auto overscroll-contain rounded-xl bg-surface p-1 text-[13px] text-ink shadow-card focus-ring"
+      :class="row ? 'mx-1.5 mb-1.5' : 'mt-1'"
       @keydown="keydown"
     >
       <li

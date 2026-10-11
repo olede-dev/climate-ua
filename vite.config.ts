@@ -27,7 +27,7 @@ function serveSurfaceWaterBytes(server: ViteDevServer | PreviewServer) {
   })
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   base: '/climate-ua/',
   plugins: [
     vue(),
@@ -39,6 +39,8 @@ export default defineConfig({
     },
   ],
   build: {
+    // `npm run build:check` verifies the bundle without copying ~800 MB of public/data.
+    copyPublicDir: mode !== 'check',
     rolldownOptions: {
       output: {
         // MapLibre in a file of its own: it changes far less often than the app, so a returning
@@ -51,4 +53,4 @@ export default defineConfig({
     include: ['tests/**/*.test.ts'],
     environment: 'node',
   },
-})
+}))

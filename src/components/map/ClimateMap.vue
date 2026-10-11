@@ -10,6 +10,7 @@ import type {
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 
 import { useLocale } from '../../composables/useLocale'
+import LoadingIndicator from '../ui/LoadingIndicator.vue'
 import { firstPaint } from '../../lib/firstPaint'
 import { geometryBounds, type Bounds } from '../../lib/geometry'
 import { gridCorners, paintGrid } from '../../lib/grid'
@@ -80,7 +81,8 @@ const props = defineProps<{
   countryBorder?: MultiLineString | null
   projection?: boolean
   insets?: Required<PaddingOptions>
-  controls?: { right: number }
+  /** The wide layout floats panels over the map's sides. */
+  wide?: boolean
   /** The parent's data for the current layer is still loading. */
   loading?: boolean
 }>()
@@ -466,7 +468,6 @@ async function startMap() {
   })
   map.touchZoomRotate.disableRotation()
   map.keyboard.disableRotation()
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right')
   animator = createStationAnimator(map, maplibregl.Marker, () => reducedMotion.matches)
   map.on('style.load', () => {
     styleReady = true
@@ -593,6 +594,10 @@ watch(
     if (!viewTouched) frameSelection(false)
   },
 )
+defineExpose({
+  zoomIn: () => map?.zoomIn(),
+  zoomOut: () => map?.zoomOut(),
+})
 watch(
   () => props.selectedId,
   (id, previous) => {
@@ -605,25 +610,14 @@ watch(
 </script>
 
 <template>
-  <div
-    class="relative size-full"
-    :style="
-      controls && {
-        '--controls-right': `${controls.right}px`,
-      }
-    "
-  >
+  <div class="relative size-full">
     <div ref="container" class="size-full bg-canvas" role="region" :aria-label="t.home.map"></div>
     <div
       v-if="!poster && (loading || (regions && !rivers && !regionsLoaded))"
-      role="status"
-      class="pointer-events-none absolute inset-0 grid place-items-center"
+      class="pointer-events-none absolute top-3 z-10 flex justify-center"
+      :class="wide ? 'right-20 left-[24rem]' : 'inset-x-3'"
     >
-      <span class="sr-only">{{ t.home.loadingMap }}</span>
-      <span
-        class="spinner size-9 rounded-full border-[3px] border-fill border-t-accent"
-        aria-hidden="true"
-      ></span>
+      <LoadingIndicator floating :label="t.home.loadingMap" />
     </div>
     <div v-if="poster" class="absolute inset-0 grid place-items-center bg-canvas">
       <svg
@@ -654,38 +648,3 @@ watch(
     <slot />
   </div>
 </template>
-
-<style scoped>
-/* Fast loads finish before it appears, so the spinner never just flashes. */
-.spinner {
-  opacity: 0;
-  animation:
-    spinner-turn 1s linear infinite,
-    spinner-in 200ms ease-out 300ms forwards;
-}
-@keyframes spinner-turn {
-  to {
-    transform: rotate(1turn);
-  }
-}
-@keyframes spinner-in {
-  to {
-    opacity: 1;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation: spinner-in 0s 300ms forwards;
-  }
-}
-:deep(.maplibregl-ctrl-bottom-right) {
-  bottom: 14px;
-  right: var(--controls-right, 0);
-}
-/* Narrow layouts lay the timeline over the map's bottom edge, which would cover the zoom buttons; touch has pinch. */
-@media (max-width: 63.999rem) {
-  :deep(.maplibregl-ctrl-bottom-right) {
-    display: none;
-  }
-}
-</style>

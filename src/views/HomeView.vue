@@ -20,7 +20,6 @@ import ThemeMenu from '../components/layout/ThemeMenu.vue'
 import type { BasemapKind } from '../components/map/basemap'
 import ClimateMap, { type RegionHover, type RiverMapData } from '../components/map/ClimateMap.vue'
 import MapLegend from '../components/map/MapLegend.vue'
-import WaterTabs from '../components/map/WaterTabs.vue'
 import MapTooltip from '../components/map/MapTooltip.vue'
 import RegionTable, { type RegionRow } from '../components/map/RegionTable.vue'
 import RiverTimeline from '../components/map/RiverTimeline.vue'
@@ -29,7 +28,8 @@ import LayerList from '../components/panel/LayerList.vue'
 import StationsPanel from '../components/panel/river/StationsPanel.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
 import LoadingSkeleton from '../components/ui/LoadingSkeleton.vue'
-import { LAYER_IDS, layerConfig, waterUseConfig } from '../config/layers'
+import ZoomControl from '../components/ui/ZoomControl.vue'
+import { LAYER_IDS, WATER_LAYER_IDS, layerConfig, waterUseConfig } from '../config/layers'
 import {
   useBasins,
   useGrid,
@@ -47,7 +47,7 @@ import { useUrlSync } from '../composables/useUrlSync'
 import { formatDayMonth, formatNumber, formatPeriod, valueFormat } from '../lib/format'
 import { basinLabel, oblastLabel, oblastName, stationLabel, type RegionLabel } from '../lib/regions'
 import { addDays, todayKyiv } from '../lib/river/dates'
-import { isDailyView, RIVER_VIEWS, riverLegend, riverMarks } from '../lib/river/marks'
+import { isDailyView, riverLegend, riverMarks } from '../lib/river/marks'
 import { dischargeErrorMessage, snapshotNotice } from '../lib/river/messages'
 import { cssGradient, scalePosition } from '../lib/scale'
 import { anomaly, atBound, valueAt, type StepValue } from '../lib/series'
@@ -163,6 +163,10 @@ const selectedStation = computed(() =>
     ? (stations.mapStates.value.find((s) => s.station.id === ui.regionId) ?? null)
     : null,
 )
+// Trend and low flow belong to the station card; without a station the map shows the state.
+watch(selectedStation, (station) => {
+  if (!station && (ui.riverView === 'trend' || ui.riverView === 'lowFlow')) ui.riverView = 'state'
+})
 // Each view opens on today; the timelapse belongs to the state and forecast views.
 watch([isRivers, () => ui.riverView], () => (mapDate.value = stations.today))
 /** A day picked on the station chart; only the daily views have a timeline to move. */
@@ -275,12 +279,6 @@ const riverMap = computed<RiverMapData | null>(() => {
   return { stations: shownStations.value, lines: riverLinesQuery.data.value ?? null, marks }
 })
 // The forecast view opens from the side panel's future button, as the other layers' projections do.
-const riverViews = computed(() =>
-  RIVER_VIEWS.filter((id) => id !== 'forecast').map((id) => ({
-    id,
-    label: t.value.river.views[id],
-  })),
-)
 function setRiverForecast(on: boolean) {
   ui.riverView = on ? 'forecast' : 'state'
 }
@@ -349,6 +347,9 @@ const format = (value: number, withSign = signed.value) =>
 const layerChoices = computed(() =>
   LAYER_IDS.map((id) => ({
     id,
+    group: WATER_LAYER_IDS.includes(id)
+      ? t.value.home.layerGroups.water
+      : t.value.home.layerGroups.climate,
     name: id === 'waterbodies' ? t.value.surfaceWater.name : t.value.layers[id].name,
     description:
       id === 'waterbodies'
@@ -469,11 +470,9 @@ const isWide = useMediaQuery('(min-width: 64rem)')
 
 const panelCard = useTemplateRef<HTMLElement>('panelCard')
 const controlsColumn = useTemplateRef<HTMLElement>('controlsColumn')
+const climateMap = useTemplateRef<InstanceType<typeof ClimateMap>>('climateMap')
 const bottomBar = useTemplateRef<HTMLElement>('bottomBar')
 const insets = ref<Required<PaddingOptions>>({ top: 0, bottom: 0, left: 0, right: 0 })
-/** The zoom buttons line up with the control column's right edge; MapLibre adds its own 10px margin. */
-const controls = ref({ right: 0 })
-const CONTROL_MARGIN = 10
 const barHeight = ref(0)
 
 function measureInsets() {
@@ -486,10 +485,6 @@ function measureInsets() {
     left: Math.round(rect(panelCard.value)?.right ?? 0),
     right: Math.round(width - (column?.left ?? width)),
     bottom: Math.round(height - (rect(bottomBar.value)?.top ?? height)),
-  }
-  if (column) {
-    const right = Math.round(width - column.right - CONTROL_MARGIN)
-    if (right !== controls.value.right) controls.value = { right }
   }
   // A loading layer drops its timeline for a moment; the bar keeps its height so the map holds still.
   if (!mapLoading.value && bottomBar.value) barHeight.value = bottomBar.value.offsetHeight
@@ -737,6 +732,7 @@ const tooltip = computed(() => {
         />
         <ClimateMap
           v-else
+          ref="climateMap"
           :regions="regionsFile"
           :rivers="riverMap"
           :values="mapValues"
@@ -749,7 +745,7 @@ const tooltip = computed(() => {
           :projection="waterFuture || riverForecast || (step !== null && isFuture(step))"
           :focus-outlines="config.geometry === 'stations' ? null : oblastsQuery.data.value"
           :insets="isWide ? insets : undefined"
-          :controls="isWide ? controls : undefined"
+          :wide="isWide"
           @basemap="basemap = $event"
           @hover="hover = $event"
           @select="ui.regionId = $event"
@@ -797,12 +793,6 @@ const tooltip = computed(() => {
         v-bind="legendProps"
         class="rounded-2xl bg-surface px-3 py-2 shadow-card"
       >
-        <WaterTabs
-          v-if="isRivers && !riverForecast && !selectedStation"
-          v-model="ui.riverView"
-          :views="riverViews"
-          :label="t.river.viewsLabel"
-        />
       </MapLegend>
       <div
         v-if="isWide && !isSurfaceWater"
@@ -870,50 +860,38 @@ const tooltip = computed(() => {
           class="relative z-10 flex flex-col items-center gap-2"
           :style="mapLoading && barHeight ? { minHeight: `${barHeight}px` } : undefined"
         >
-          <RiverTimeline
-            v-if="isRivers && isDailyView(ui.riverView)"
-            v-model="mapDate"
-            class="w-full max-w-xl min-w-0"
-            :today="stations.today"
-            :window="riverTimeline"
-          >
-            <MapLegend v-bind="legendProps">
-              <WaterTabs
-                v-if="isRivers && !riverForecast && !selectedStation"
-                v-model="ui.riverView"
-                :views="riverViews"
-                :label="t.river.viewsLabel"
-              />
+          <div class="flex w-full items-end justify-center gap-2">
+            <span v-if="!isSurfaceWater" class="w-9 shrink-0" aria-hidden="true" />
+            <RiverTimeline
+              v-if="isRivers && isDailyView(ui.riverView)"
+              v-model="mapDate"
+              class="max-w-xl min-w-0 flex-1"
+              :today="stations.today"
+              :window="riverTimeline"
+            >
+              <MapLegend v-bind="legendProps"> </MapLegend>
+            </RiverTimeline>
+            <MapLegend
+              v-else-if="isRivers && ui.riverView === 'trend'"
+              v-bind="legendProps"
+              class="glass pointer-events-auto max-w-xl min-w-0 flex-1 rounded-2xl px-3 py-2.5 shadow-float"
+            >
             </MapLegend>
-          </RiverTimeline>
-          <MapLegend
-            v-else-if="isRivers && ui.riverView === 'trend'"
-            v-bind="legendProps"
-            class="glass pointer-events-auto w-full max-w-xl min-w-0 rounded-2xl px-3 py-2.5 shadow-float"
-          >
-            <WaterTabs
-              v-if="isRivers && !selectedStation"
-              v-model="ui.riverView"
-              :views="riverViews"
-              :label="t.river.viewsLabel"
+            <TimeSlider
+              v-else-if="sliderAxis && layer"
+              v-model="timeModel"
+              v-model:playing="ui.playing"
+              class="max-w-xl min-w-0 flex-1"
+              :axis="sliderAxis"
+            >
+              <MapLegend v-bind="legendProps"> </MapLegend>
+            </TimeSlider>
+            <ZoomControl
+              v-if="!isSurfaceWater"
+              @in="climateMap?.zoomIn()"
+              @out="climateMap?.zoomOut()"
             />
-          </MapLegend>
-          <TimeSlider
-            v-else-if="sliderAxis && layer"
-            v-model="timeModel"
-            v-model:playing="ui.playing"
-            class="w-full max-w-xl min-w-0"
-            :axis="sliderAxis"
-          >
-            <MapLegend v-bind="legendProps">
-              <WaterTabs
-                v-if="isRivers && !riverForecast && !selectedStation"
-                v-model="ui.riverView"
-                :views="riverViews"
-                :label="t.river.viewsLabel"
-              />
-            </MapLegend>
-          </TimeSlider>
+          </div>
         </div>
       </div>
       <div

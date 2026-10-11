@@ -35,8 +35,10 @@ import {
 import { selectWaterbodyYear } from '../../lib/waterbodyCard'
 import WaterTabs from './WaterTabs.vue'
 import TimeSlider from './TimeSlider.vue'
+import ZoomControl from '../ui/ZoomControl.vue'
 import SelectMenu from '../ui/SelectMenu.vue'
 import type { TimeStep } from '../../lib/time'
+import LoadingIndicator from '../ui/LoadingIndicator.vue'
 import LoadingSkeleton from '../ui/LoadingSkeleton.vue'
 import { paintSurfaceWaterTile, surfaceWaterCorners } from '../../lib/surfaceWaterCanvas'
 import type { SurfaceWaterState } from '../../types'
@@ -111,6 +113,17 @@ const legend = computed(() => {
       rows.push({ label: copy.value[key], color: SURFACE_WATER_COLORS[key] })
   }
   return rows
+})
+// Native tiles are requested from this zoom; above it the loader may still fall back to the
+// overview when the viewport exceeds its tile budget.
+const NATIVE_ZOOM = 10
+const zoom = ref(0)
+const detail = computed(() => {
+  if (fallback.value) return null
+  if (pending.value) return 'loading'
+  if (!shown.value) return null
+  if (shown.value.native) return 'native'
+  return zoom.value < NATIVE_ZOOM ? 'overview' : 'overviewMore'
 })
 const shownYears = computed(() => {
   const s = shown.value?.state
@@ -351,7 +364,7 @@ async function render() {
       new URL(data.root),
       { ...current },
       viewport,
-      !fallback.value && (map?.getZoom() ?? 0) >= 10,
+      !fallback.value && (map?.getZoom() ?? 0) >= NATIVE_ZOOM,
       own.signal,
     )
     own.signal.throwIfAborted()
@@ -473,7 +486,6 @@ async function startMap() {
       pitchWithRotate: false,
       dragRotate: false,
     })
-    map.addControl(new maplibre.NavigationControl({ showCompass: false }), 'bottom-right')
     map.touchZoomRotate.disableRotation()
     map.keyboard.disableRotation()
     map.on('style.load', () => {
@@ -486,6 +498,7 @@ async function startMap() {
     })
     map.on('sourcedata', reveal)
     map.on('moveend', () => {
+      zoom.value = map?.getZoom() ?? 0
       void render()
     })
     map.on('click', 'surface-water-selection', (event) => {
@@ -574,19 +587,10 @@ onBeforeUnmount(() => {
     />
     <div
       v-if="pending && !query.isError.value && !failed"
-      role="status"
-      class="map-loading pointer-events-none absolute top-3 z-10 flex justify-center"
+      class="pointer-events-none absolute top-3 z-10 flex justify-center"
       :class="wide ? 'right-20 left-[24rem]' : 'inset-x-3'"
     >
-      <div
-        class="glass flex items-center gap-2 rounded-full px-3 py-2 text-xs text-ink shadow-float"
-      >
-        <span
-          class="map-loading-spinner size-4 shrink-0 rounded-full border-2 border-fill border-t-accent"
-          aria-hidden="true"
-        />
-        <span>{{ copy.loading }}</span>
-      </div>
+      <LoadingIndicator floating :label="t.home.loadingMap" />
     </div>
     <div
       v-if="fallback"
@@ -603,7 +607,7 @@ onBeforeUnmount(() => {
     <section
       class="glass pointer-events-auto z-10 overflow-y-auto rounded-2xl p-4 text-ink shadow-float"
       :class="
-        wide ? 'absolute top-3 bottom-10 left-3 w-[22rem]' : 'relative order-2 shrink-0 text-sm'
+        wide ? 'absolute top-3 bottom-3 left-3 w-[22rem]' : 'relative order-2 shrink-0 text-sm'
       "
       :aria-label="copy.name"
       @keydown.esc="selected && closeBody()"
@@ -692,18 +696,20 @@ onBeforeUnmount(() => {
     <div
       v-if="axis"
       class="pointer-events-none z-10"
+      :style="wide ? { right: `${insets.right + 12}px` } : undefined"
       :class="
         wide
-          ? 'absolute right-20 bottom-10 left-[24rem] flex justify-center'
+          ? 'absolute bottom-3 left-[23.5rem] flex items-end justify-center gap-2'
           : 'order-1 shrink-0 px-3 py-2'
       "
     >
+      <span v-if="wide" class="w-9 shrink-0" aria-hidden="true" />
       <TimeSlider
         v-model="timelineYear"
         v-model:playing="playing"
         :axis="axis"
         :allow-playback="false"
-        class="w-full max-w-xl"
+        class="max-w-xl min-w-0 flex-1"
       >
         <figure class="text-[11px] leading-tight text-ink">
           <figcaption class="sr-only">{{ copy.name }} {{ shownYears }}</figcaption>
@@ -715,23 +721,38 @@ onBeforeUnmount(() => {
             </li>
           </ul>
         </figure>
+        <div
+          v-if="detail"
+          class="mt-2 flex items-center gap-2 border-t border-line pt-2 text-[11px] leading-tight"
+          role="status"
+        >
+          <span
+            v-if="detail === 'loading'"
+            class="map-loading-spinner size-3 shrink-0 rounded-full border-2 border-fill border-t-accent"
+            aria-hidden="true"
+          />
+          <span
+            v-else
+            class="size-2 shrink-0 rounded-full"
+            :class="detail === 'native' ? 'bg-accent' : 'bg-ink-muted'"
+            aria-hidden="true"
+          />
+          <span
+            class="min-w-0 flex-1"
+            :title="detail === 'native' ? copy.nativeHint : copy.overviewHint"
+            :class="detail === 'native' ? 'text-ink' : 'text-ink-muted'"
+            >{{ detail === 'loading' ? copy.detailLoading : copy[detail] }}</span
+          >
+        </div>
       </TimeSlider>
+      <ZoomControl v-if="wide" @in="map?.zoomIn()" @out="map?.zoomOut()" />
     </div>
   </div>
 </template>
 
 <style scoped>
-.map-loading {
-  opacity: 0;
-  animation: map-loading-in 200ms ease-out 300ms forwards;
-}
 .map-loading-spinner {
   animation: map-loading-turn 1s linear infinite;
-}
-@keyframes map-loading-in {
-  to {
-    opacity: 1;
-  }
 }
 @keyframes map-loading-turn {
   to {
@@ -739,9 +760,6 @@ onBeforeUnmount(() => {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .map-loading {
-    animation: map-loading-in 0s 300ms forwards;
-  }
   .map-loading-spinner {
     animation: none;
   }

@@ -8,6 +8,7 @@ import type {
   SurfaceWaterManifest,
   SurfaceWaterState,
 } from '../../../types'
+import LoadingIndicator from '../../ui/LoadingIndicator.vue'
 import WaterbodyChart from './WaterbodyChart.vue'
 const props = defineProps<{
   body: SurfaceWaterCatalogueEntry
@@ -63,7 +64,7 @@ const name = computed(
       {{ name }}
     </h2>
     <p class="mt-1 text-xs text-ink-muted">{{ copy[body.type] }}</p>
-    <p v-if="query.isPending.value" role="status" class="mt-3">{{ copy.detailsLoading }}</p>
+    <LoadingIndicator v-if="query.isPending.value" :label="t.home.loading" class="mt-3" />
     <p v-else-if="query.isError.value" role="alert" class="mt-3">
       {{ copy.error }}
       <button class="rounded-lg bg-fill p-2 focus-ring" @click="query.refetch()">

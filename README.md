@@ -6,7 +6,7 @@ An interactive map of changes in Ukraine's climate and water resources: observat
 
 **Live demo:** https://olede-dev.github.io/climate-ua/
 
-![Kakhovka Reservoir surface-water change, 1984 vs 2024](.github/screenshot.png)
+![Water gap map of Ukraine by sub-basin](.github/screenshot.png)
 
 ## Features
 

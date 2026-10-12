@@ -25,6 +25,7 @@ import RiverTimeline from '../components/map/RiverTimeline.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
 import LayerList from '../components/panel/LayerList.vue'
 import StationsPanel from '../components/panel/river/StationsPanel.vue'
+import RegionRanking from '../components/panel/RegionRanking.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
 import LoadingSkeleton from '../components/ui/LoadingSkeleton.vue'
 import ZoomControl from '../components/ui/ZoomControl.vue'
@@ -423,6 +424,10 @@ const labels = computed<Record<string, RegionLabel>>(() => {
 function regionLabel(id: string): RegionLabel {
   return labels.value[id] ?? { name: id, where: id, subtitle: null, note: null }
 }
+
+const regionNames = computed(() =>
+  Object.fromEntries(Object.entries(labels.value).map(([id, label]) => [id, label.name])),
+)
 
 const selected = computed(() =>
   ui.regionId === null ? null : { id: ui.regionId, ...regionLabel(ui.regionId) },
@@ -840,6 +845,18 @@ const tooltip = computed(() => {
               @retry="stations.discharge.refetch()"
             />
           </template>
+          <template v-else-if="panel.file.geometry === 'oblasts'" #overview>
+            <RegionRanking
+              v-model:sort="ui.rankSort"
+              :file="panel.file"
+              :config="panel.config"
+              :step="panel.step"
+              :format="panel.format"
+              :names="regionNames"
+              :selected-id="ui.regionId"
+              @select="ui.regionId = $event"
+            />
+          </template>
         </SidePanel>
       </MapSidebar>
       <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
@@ -973,6 +990,18 @@ const tooltip = computed(() => {
             @basin="ui.basin = $event"
             @select="ui.regionId = $event"
             @retry="stations.discharge.refetch()"
+          />
+        </template>
+        <template v-else-if="panel.file.geometry === 'oblasts'" #overview>
+          <RegionRanking
+            v-model:sort="ui.rankSort"
+            :file="panel.file"
+            :config="panel.config"
+            :step="panel.step"
+            :format="panel.format"
+            :names="regionNames"
+            :selected-id="ui.regionId"
+            @select="ui.regionId = $event"
           />
         </template>
       </SidePanel>

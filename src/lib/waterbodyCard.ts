@@ -1,6 +1,11 @@
+import type { Tone } from './tones'
 import type {
   SurfaceWaterAnnual,
-  SurfaceWaterComparisonSummary, SurfaceWaterPair, SurfaceWaterRows, SurfaceWaterState } from '../types'
+  SurfaceWaterComparisonSummary,
+  SurfaceWaterPair,
+  SurfaceWaterRows,
+  SurfaceWaterState,
+} from '../types'
 import { normalizeSurfaceWaterState } from './surfaceWater'
 
 export function annualWaterArea(row: SurfaceWaterAnnual | undefined) {
@@ -134,13 +139,10 @@ export function changeTone(percent: number): ChangeTone {
   return 'stable'
 }
 
-/** Badge and marker classes per tone, shared by the waterbody list and card. */
-export const CHANGE_TONE_CLASSES: Record<ChangeTone, { badge: string; dot: string }> = {
-  critical: { badge: 'bg-red-500/15 text-red-700 dark:text-red-300', dot: 'bg-red-500' },
-  decline: { badge: 'bg-warn-fill text-warn-ink', dot: 'bg-warn' },
-  stable: { badge: 'bg-fill text-ink-muted', dot: 'bg-ink-muted/40' },
-  growth: {
-    badge: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-    dot: 'bg-emerald-500',
-  },
+/** The shared list tone of each change severity. */
+export const CHANGE_TONES: Record<ChangeTone, Tone> = {
+  critical: 'bad',
+  decline: 'warn',
+  stable: 'neutral',
+  growth: 'good',
 }

@@ -1,3 +1,4 @@
+import type { RankRule } from '../lib/regionRanking'
 import type { ColorScale } from '../lib/scale'
 import type { FuturePeriod, LayerFile, LayerId } from '../types'
 
@@ -11,6 +12,8 @@ export interface LayerConfig {
   headlinePeriod: FuturePeriod | null
   gridPath?: string
   scale: ColorScale
+  /** Grades the region list's change from the norm; absent, the list shows no grade. */
+  rank?: RankRule
 }
 
 const CLIMATE_PERIODS: readonly FuturePeriod[] = ['2021-2040', '2041-2060', '2081-2100']
@@ -140,6 +143,8 @@ function snowLayer(
     decimals: 0,
     headlinePeriod: null,
     scale: snowScale(stops),
+    // Less snow than usual is the signal: a quarter below the norm warns, half is severe.
+    rank: { worse: 'less', warn: 25, bad: 50, relative: true },
   }
 }
 
@@ -164,6 +169,7 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     decimals: 1,
     headlinePeriod: '2041-2060',
     scale: TEMP_SCALE,
+    rank: { worse: 'more', warn: 1, bad: 2 },
   },
   heat: {
     id: 'heat',
@@ -176,6 +182,7 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     decimals: 1,
     headlinePeriod: '2041-2060',
     scale: HEAT_SCALE,
+    rank: { worse: 'more', warn: 2, bad: 5 },
   },
   frost: {
     id: 'frost',
@@ -187,6 +194,7 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     decimals: 0,
     headlinePeriod: '2041-2060',
     scale: FROST_SCALE,
+    rank: { worse: 'less', warn: 15, bad: 30, relative: true },
   },
   drought: {
     id: 'drought',
@@ -198,6 +206,7 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     decimals: 1,
     headlinePeriod: '2041-2060',
     scale: DROUGHT_SCALE,
+    rank: { worse: 'more', warn: 1, bad: 2 },
   },
   // ERA5-Land winters, history only: no projection has snow indices (plan 002).
   'snow-days': snowLayer('snow-days', [0, 30, 60, 90, 120]),

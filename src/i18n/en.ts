@@ -172,7 +172,7 @@ export const en: Messages = {
             id: 'temp',
             name: 'Temperature',
             paragraphs: [
-              'Mean annual temperature; the map shows its departure from the 1991–2020 norm. Data and projection as for every climate layer, see “Climate layers: how they are computed”.',
+              'Mean annual temperature; the map shows its departure from the {period} norm. Data and projection as for every climate layer, see “Climate layers: how they are computed”.',
             ],
             topics: [],
             sources: [
@@ -324,6 +324,12 @@ export const en: Messages = {
     layerGroups: { water: 'Water', climate: 'Climate' },
     hideLayers: 'Hide layers',
     showLayers: 'Show layers',
+  },
+  ranking: {
+    heading: 'Oblasts',
+    sortLabel: 'Sort',
+    sorts: { desc: 'Highest first', asc: 'Lowest first', name: 'By name' },
+    deltaHint: 'The badge is the difference from the oblast’s {period} norm.',
   },
   table: {
     oblasts: 'Oblast',

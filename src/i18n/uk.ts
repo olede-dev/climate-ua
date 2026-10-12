@@ -322,6 +322,12 @@ export const uk = {
     hideLayers: 'Сховати шари',
     showLayers: 'Показати шари',
   },
+  ranking: {
+    heading: 'Області',
+    sortLabel: 'Сортування',
+    sorts: { desc: 'Від більшого', asc: 'Від меншого', name: 'За назвою' },
+    deltaHint: 'Бейдж — різниця з нормою області за {period} роки.',
+  },
   table: {
     oblasts: 'Область',
     basins: 'Суббасейн',

@@ -4,7 +4,9 @@ import { computed, type MaybeRefOrGetter, toValue } from 'vue'
 import { layerConfig } from '../config/layers'
 import { rememberUrl } from '../lib/fileUrls'
 import { firstPaint } from '../lib/firstPaint'
-import { surfaceWaterAssetUrl } from '../lib/surfaceWaterAssets'
+import { readSurfaceWaterBytes, surfaceWaterAssetUrl } from '../lib/surfaceWaterAssets'
+
+export { readSurfaceWaterBytes }
 import type {
   SurfaceWaterAsset,
   SurfaceWaterCatalogueFile,
@@ -142,38 +144,6 @@ export async function fetchSurfaceWaterAsset<T>(
   signal.throwIfAborted()
   if (hash !== asset.sha256) throw new Error('Surface-water checksum mismatch')
   return binary ? bytes : (JSON.parse(new TextDecoder().decode(bytes)) as T)
-}
-
-export async function readSurfaceWaterBytes(
-  stream: ReadableStream<Uint8Array> | null,
-  limit: number,
-  signal: AbortSignal,
-): Promise<ArrayBuffer> {
-  if (!stream) throw new Error('Empty surface-water response')
-  const reader = stream.getReader()
-  const output = new Uint8Array(limit)
-  let offset = 0
-  const abort = () => {
-    void reader.cancel(signal.reason)
-  }
-  signal.addEventListener('abort', abort, { once: true })
-  try {
-    while (true) {
-      signal.throwIfAborted()
-      const { done, value } = await reader.read()
-      if (done) break
-      if (offset + value.length > limit)
-        throw new Error('Surface-water payload exceeds declared size')
-      output.set(value, offset)
-      offset += value.length
-    }
-    signal.throwIfAborted()
-    return output.buffer.slice(0, offset)
-  } finally {
-    signal.removeEventListener('abort', abort)
-    await reader.cancel()
-    reader.releaseLock()
-  }
 }
 
 export function useSurfaceWaterManifest() {

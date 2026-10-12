@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/vue-query'
-import { fetchSurfaceWaterAsset, readSurfaceWaterBytes } from './useLayer'
+import { fetchSurfaceWaterAsset } from './useLayer'
 import {
-  decodeSurfaceWaterTile,
   intersectsSurfaceWater,
   surfaceWaterExtent,
   validateSurfaceWaterFrame,
@@ -9,6 +8,7 @@ import {
   type SurfaceWaterBounds,
 } from '../lib/surfaceWater'
 import { SurfaceWaterTileCache } from '../lib/surfaceWaterCache'
+import { decodeSurfaceWaterBytes } from '../lib/surfaceWaterWorker'
 import type {
   SurfaceWaterChunk,
   SurfaceWaterFrame,
@@ -41,12 +41,7 @@ export function useSurfaceWaterTiles() {
     const hit = cache.get(tile.sha256)
     if (hit) return hit
     const bytes = await fetchSurfaceWaterAsset(root, tile, signal, true)
-    const packed = await readSurfaceWaterBytes(
-      new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip')),
-      Math.ceil((tile.width * tile.height) / 2),
-      signal,
-    )
-    const decoded = decodeSurfaceWaterTile(new Uint8Array(packed), tile.width * tile.height)
+    const decoded = await decodeSurfaceWaterBytes(bytes, tile.width, tile.height, signal)
     signal.throwIfAborted()
     cache.set(tile.sha256, decoded)
     return decoded

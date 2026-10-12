@@ -50,7 +50,8 @@ import type { TimeStep } from '../../lib/time'
 import LoadingIndicator from '../ui/LoadingIndicator.vue'
 import LoadingSkeleton from '../ui/LoadingSkeleton.vue'
 import WaterbodyList from '../panel/waterbody/WaterbodyList.vue'
-import { paintSurfaceWaterTile, surfaceWaterCorners } from '../../lib/surfaceWaterCanvas'
+import { surfaceWaterCorners } from '../../lib/surfaceWaterCanvas'
+import { paintSurfaceWaterCanvas } from '../../lib/surfaceWaterWorker'
 import type { SurfaceWaterBodyEntry, SurfaceWaterState } from '../../types'
 import { basemapStyle, applyLabelFilters, type LabelFilter, type BasemapKind } from './basemap'
 import { addLayer, addSource, NO_VALIDATE, styleLayers } from './mapStyle'
@@ -485,7 +486,7 @@ function install() {
   reveal()
   map.triggerRepaint()
 }
-function drawFallback(tiles: SurfaceWaterRenderTile[]) {
+function drawFallback(tiles: SurfaceWaterRenderTile[], canvases: HTMLCanvasElement[]) {
   const canvas = fallbackCanvas.value
   const grid = manifest.value?.overview
   if (!canvas || !grid) return
@@ -498,8 +499,8 @@ function drawFallback(tiles: SurfaceWaterRenderTile[]) {
   )
   const ctx = canvas.getContext('2d')!
   ctx.imageSmoothingEnabled = false
-  for (const data of tiles) {
-    const c = paintSurfaceWaterTile(data, transitions.value)
+  for (const [i, data] of tiles.entries()) {
+    const c = canvases[i]!
     const [w, s, e, n] = data.bounds
     ctx.drawImage(
       c,
@@ -555,26 +556,35 @@ async function render() {
     own.signal.throwIfAborted()
     readyState = { state: { ...current }, native: result.native, transitions: transitions.value }
     if (fallback.value) {
+      const canvases = await Promise.all(
+        result.tiles.map((tile) => paintSurfaceWaterCanvas(tile, transitions.value, own.signal)),
+      )
       await nextTick()
       own.signal.throwIfAborted()
-      drawFallback(result.tiles)
+      drawFallback(result.tiles, canvases)
       shown.value = readyState
       pending.value = false
     } else {
       pendingState = JSON.stringify([readyState.state, readyState.transitions, result.native])
       const same = pendingState === installedState
-      next = new Map()
+      const keep = new Map<string, string>()
+      const missing: { key: string; tile: SurfaceWaterRenderTile }[] = []
       for (const tile of result.tiles) {
         const key = `${tile.tile.sha256}|${tile.bounds.join(',')}`
         const id = same ? installed.get(key) : undefined
-        if (id) next.set(key, id)
-        else
-          rendered.push({
-            key,
-            canvas: paintSurfaceWaterTile(tile, transitions.value),
-            bounds: tile.bounds,
-          })
+        if (id) keep.set(key, id)
+        else missing.push({ key, tile })
       }
+      const painted = await Promise.all(
+        missing.map(async ({ key, tile }) => ({
+          key,
+          canvas: await paintSurfaceWaterCanvas(tile, transitions.value, own.signal),
+          bounds: tile.bounds,
+        })),
+      )
+      own.signal.throwIfAborted()
+      next = keep
+      rendered = painted
       if (rendered.length) install()
       else {
         if (next.size !== installed.size) commit()

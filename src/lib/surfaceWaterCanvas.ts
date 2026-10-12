@@ -20,15 +20,13 @@ export function surfaceWaterNativeRow(
   )
 }
 
+export type SurfaceWaterPaintInput = Pick<SurfaceWaterRenderTile, 'bounds' | 'before' | 'after'> & {
+  tile: { width: number; height: number }
+}
+
 /** Reproject display rows with nearest native sampling; numerical areas never use this canvas. */
-export function paintSurfaceWaterTile(
-  data: SurfaceWaterRenderTile,
-  transitions: boolean,
-): HTMLCanvasElement {
-  const canvas = document.createElement('canvas')
+export function surfaceWaterImage(data: SurfaceWaterPaintInput, transitions: boolean): ImageData {
   const { tile, bounds, before, after } = data
-  canvas.width = tile.width
-  canvas.height = tile.height
   const image = new ImageData(tile.width, tile.height)
   // Packed RGBA lookup by before * 16 + after; written as one 32-bit store per pixel.
   const colors = new Uint32Array(256)
@@ -55,7 +53,18 @@ export function paintSurfaceWaterTile(
       for (let x = 0; x < tile.width; x++) out[target + x] = colors[before[row + x]! * 16]!
     }
   }
-  canvas.getContext('2d')!.putImageData(image, 0, 0)
+  return image
+}
+
+/** Main-thread paint: the fallback when the tile worker is unavailable. */
+export function paintSurfaceWaterTile(
+  data: SurfaceWaterPaintInput,
+  transitions: boolean,
+): HTMLCanvasElement {
+  const canvas = document.createElement('canvas')
+  canvas.width = data.tile.width
+  canvas.height = data.tile.height
+  canvas.getContext('2d')!.putImageData(surfaceWaterImage(data, transitions), 0, 0)
   return canvas
 }
 

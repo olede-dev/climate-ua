@@ -1,4 +1,4 @@
-"""Build a local native-class tile renderer for phase-01 evidence, never publish."""
+"""Build a local native-class tile renderer for prototype evidence, never publish."""
 import argparse
 import hashlib
 import gzip

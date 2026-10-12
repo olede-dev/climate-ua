@@ -8,7 +8,7 @@ body{font:16px system-ui;margin:24px;color:#172b39;background:#f4f7f9}h1{font-si
 <nav><label>Водойма <select id="body"></select></label><label>Рік <select id="before"></select></label><label><input type="checkbox" id="pair"> Порівняти з <select id="after"></select></label><button id="out">−</button><button id="in">+</button><button id="reset">Повний вигляд</button><button id="reload">Повторити вимір</button></nav>
 <small>Перевірена фіксована історична зона прототипу. Показано лише завантажені роки. EPSG:4326; кольори не є супутниковим знімком. Площі визначаються окремо на вихідній сітці.</small>
 <div class="legend" id="legend"></div><canvas id="map" width="1120" height="700" aria-label="Карта річних класів води"></canvas><p id="status" role="status"></p><section id="areas" aria-label="Площі та якість спостережень"></section><section id="history" aria-label="Річна історія"></section>
-<footer>Source: EC JRC/Google · Pekel et al. (2016), doi:10.1038/nature20584. Natural Earth: public domain. Контур Кременчуцького: © OpenStreetMap contributors, ODbL-1.0. Прототип фази 01 перевірено. Національне покриття потребує окремої підготовки та перевірки.</footer>
+<footer>Source: EC JRC/Google · Pekel et al. (2016), doi:10.1038/nature20584. Natural Earth: public domain. Контур Кременчуцького: © OpenStreetMap contributors, ODbL-1.0.</footer>
 <script type="module">
 const el=id=>document.getElementById(id),canvas=el('map'),ctx=canvas.getContext('2d');
 const manifest=await(await fetch('demo.json')).json();const numeric=manifest.areasUrl?await(await fetch(manifest.areasUrl)).json():null;let zoom=1,pan=[0,0],generation=0;

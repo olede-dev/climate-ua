@@ -90,6 +90,8 @@ cd pipeline
 uv run python build_oblasts.py     # oblast boundaries → public/data/oblasts.geojson
 uv run python fetch_atlas.py       # ERA5 and CMIP6 → pipeline/data/raw
 uv run python build_climate.py     # → public/data/layers/{temp,heat,frost,drought}.json
+uv run python fetch_snow.py        # ERA5-Land daily SWE, one CDS request a month (backfill: days)
+uv run python build_snow.py        # → public/data/{layers,grids}/snow-{days,max,march}.json
 uv run python fetch_wwm_basins.py  # World Water Map basins and projections (ArcGIS)
 uv run python build_basins.py      # → public/data/basins.geojson
 uv run python build_water_use.py   # → public/data/water-use.json

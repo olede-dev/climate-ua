@@ -96,6 +96,18 @@ const DROUGHT_SCALE: ColorScale = {
 }
 
 /**
+ * One periwinkle hue, at hue 270° in OKLCH and the same lightness steps as `HEAT_SCALE` (chroma
+ * falls towards white), checked with the `dataviz` validator (`--ordinal --mode dark`); kept off
+ * `FROST_SCALE`'s 235° so the snow and frost maps do not read as one. The three snow layers share
+ * the colours with their own stops; brighter means more snow.
+ */
+const SNOW_COLOURS = ['#3e52a1', '#5970c2', '#7890de', '#9db2ee', '#c7d3f6'] as const
+
+function snowScale(values: readonly [number, number, number, number, number]): ColorScale {
+  return { stops: values.map((v, i) => [v, SNOW_COLOURS[i]!]), noData: '#26262a' }
+}
+
+/**
  * Low-flow days a year, in five classes (none, 1–14, 15–44, 45–89, 90 and more).
  * One brown hue, the dry arm of the rivers layer's water-state scale, at hue 55–76° in OKLCH
  * with even lightness steps from L 0.76 to 0.45, checked with the `dataviz` validator
@@ -112,6 +124,23 @@ const RIVERS_SCALE: ColorScale = {
   ],
   noData: '#6e6e73',
   stepped: true,
+}
+
+function snowLayer(
+  id: LayerId,
+  stops: readonly [number, number, number, number, number],
+): LayerConfig {
+  return {
+    id,
+    geometry: 'oblasts',
+    path: `data/layers/${id}.json`,
+    gridPath: `data/grids/${id}.json`,
+    futurePeriods: [],
+    display: 'value',
+    decimals: 0,
+    headlinePeriod: null,
+    scale: snowScale(stops),
+  }
 }
 
 export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
@@ -170,6 +199,10 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
     headlinePeriod: '2041-2060',
     scale: DROUGHT_SCALE,
   },
+  // ERA5-Land winters, history only: no projection has snow indices (plan 002).
+  'snow-days': snowLayer('snow-days', [0, 30, 60, 90, 120]),
+  'snow-max': snowLayer('snow-max', [0, 20, 40, 70, 120]),
+  'snow-march': snowLayer('snow-march', [0, 10, 25, 50, 100]),
   rivers: {
     id: 'rivers',
     geometry: 'stations',

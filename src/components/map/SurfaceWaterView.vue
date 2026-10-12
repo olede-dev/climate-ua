@@ -165,6 +165,8 @@ let map: MaplibreMap | undefined
 let destroyed = false
 let styleReady = false
 let styleGeneration = 0
+// Generation whose basemap was handed to setStyle; the empty placeholder style never counts.
+let appliedGeneration = 0
 let labelFilters: LabelFilter[] = []
 let request: AbortController | undefined
 let generation = 0
@@ -600,6 +602,7 @@ async function applyStyle() {
     waiting.take()
     rendered = []
     labelFilters = result.labelFilters
+    appliedGeneration = own
     map.setStyle(result.style, { diff: false })
     emit('basemap', result.kind)
   } catch {
@@ -662,6 +665,7 @@ async function startMap() {
     map.touchZoomRotate.disableRotation()
     map.keyboard.disableRotation()
     map.on('style.load', () => {
+      if (appliedGeneration !== styleGeneration) return
       styleReady = true
       const own = styleGeneration
       applyLabelFilters(map!, labelFilters, () => !destroyed && own === styleGeneration)

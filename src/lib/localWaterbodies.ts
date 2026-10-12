@@ -1,11 +1,14 @@
 import type { FeatureCollection, Point } from 'geojson'
 import type { Locale } from '../i18n'
-import type { SurfaceWaterBodyEntry, SurfaceWaterManifest } from '../types'
+import type { SurfaceWaterBodyEntry, SurfaceWaterLocalEntry, SurfaceWaterManifest } from '../types'
 
 /** Local bodies in card shape; curated ids win if a release ever repeated one. */
-export function localWaterbodies(manifest: SurfaceWaterManifest): SurfaceWaterBodyEntry[] {
+export function localWaterbodies(
+  manifest: SurfaceWaterManifest,
+  bodies: readonly SurfaceWaterLocalEntry[],
+): SurfaceWaterBodyEntry[] {
   const curated = new Set(manifest.catalogue.map((body) => body.id))
-  return (manifest.local?.bodies ?? [])
+  return bodies
     .filter((body) => !curated.has(body.id))
     .map((body) => ({ ...body, type: 'local' as const }))
 }

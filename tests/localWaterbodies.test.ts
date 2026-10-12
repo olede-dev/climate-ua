@@ -15,28 +15,17 @@ const local = (id: string, nameUk: string | null, nameEn: string | null) => ({
   bounds: [38.3, 48.8, 38.5, 49] as [number, number, number, number],
   series: asset,
 })
-const manifest = {
-  catalogue: [{ id: 'way-1' }],
-  local: {
-    zoneVersion: 'v',
-    status: 'automatic',
-    outlines: asset,
-    bodies: [
-      local('way-1', 'Дубль', null),
-      local('way-2', null, null),
-      local('way-3', 'Озеро', null),
-    ],
-  },
-} as unknown as SurfaceWaterManifest
+const manifest = { catalogue: [{ id: 'way-1' }] } as unknown as SurfaceWaterManifest
+const bodies = [local('way-1', 'Дубль', null), local('way-2', null, null), local('way-3', 'Озеро', null)]
 const copy = { unnamed: 'Без назви', nearby: 'Водойма біля {place}' }
 
 describe('local waterbodies', () => {
   it('drops ids the curated catalogue already owns', () => {
-    expect(localWaterbodies(manifest).map((body) => body.id)).toEqual(['way-2', 'way-3'])
+    expect(localWaterbodies(manifest, bodies).map((body) => body.id)).toEqual(['way-2', 'way-3'])
   })
 
   it('names an unnamed body after the nearest settlement in the reader’s language', () => {
-    const [unnamed, named] = localWaterbodies(manifest)
+    const [unnamed, named] = localWaterbodies(manifest, bodies)
     expect(waterbodyName(unnamed!, 'uk', copy)).toBe('Водойма біля Лисичанськ')
     expect(waterbodyName(unnamed!, 'en', { ...copy, nearby: 'Near {place}' })).toBe(
       'Near Lysychansk',
@@ -46,7 +35,7 @@ describe('local waterbodies', () => {
   })
 
   it('places one label point per local body with its area in km²', () => {
-    const points = localLabelPoints(localWaterbodies(manifest), 'uk', copy)
+    const points = localLabelPoints(localWaterbodies(manifest, bodies), 'uk', copy)
     expect(points.features.map((f) => f.properties)).toEqual([
       { id: 'way-2', label: 'Водойма біля Лисичанськ', km2: 2.5 },
       { id: 'way-3', label: 'Озеро', km2: 2.5 },

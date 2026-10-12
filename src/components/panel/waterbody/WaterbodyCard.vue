@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, useTemplateRef } from 'vue'
-import { useSurfaceWaterSeries } from '../../../composables/useLayer'
+import { useSurfaceWaterPairs, useSurfaceWaterSeries } from '../../../composables/useLayer'
 import { useLocale } from '../../../composables/useLocale'
 import { SURFACE_WATER_COLORS } from '../../../lib/surfaceWater'
 import {
@@ -31,7 +31,24 @@ const query = useSurfaceWaterSeries(
 const year = computed(() => (props.state.mode === 'annual' ? props.state.year : props.state.after))
 const annual = computed(() => query.data.value?.annual.find((row) => row.year === year.value))
 const areas = computed(() => annualWaterArea(annual.value))
-const pair = computed(() => waterbodyPair(query.data.value, props.state.before, props.state.after))
+// Pairs are stored once with before < after, in one file per earlier year.
+const pairs = useSurfaceWaterPairs(
+  () => props.release,
+  () => query.data.value,
+  () =>
+    props.state.mode === 'comparison' && props.state.before !== props.state.after
+      ? Math.min(props.state.before, props.state.after)
+      : null,
+)
+const pair = computed(() =>
+  query.data.value
+    ? waterbodyPair(
+        { annual: query.data.value.annual, pairs: pairs.data.value ?? [] },
+        props.state.before,
+        props.state.after,
+      )
+    : undefined,
+)
 const delta = computed(() => waterbodyDelta(pair.value))
 const comparison = computed(() => (delta.value ? pair.value?.comparison : null))
 const number = (value: number) =>
@@ -125,7 +142,21 @@ const coordinates = computed(() => waterbodyCoordinates(props.body))
     </p>
     <template v-else-if="query.data.value">
       <section v-if="state.mode === 'comparison'" class="mt-4">
-        <template v-if="comparison && delta">
+        <LoadingIndicator
+          v-if="pairs.isFetching.value && !pairs.data.value"
+          :label="t.home.loading"
+        />
+        <p v-else-if="pairs.isError.value" role="alert" class="flex items-center gap-2">
+          {{ copy.error }}
+          <button
+            type="button"
+            class="rounded-full bg-fill px-3 py-1 font-medium transition-colors hover:bg-fill-strong focus-ring"
+            @click="pairs.refetch()"
+          >
+            {{ copy.retry }}
+          </button>
+        </p>
+        <template v-else-if="comparison && delta">
           <div class="flex items-baseline gap-2.5">
             <p class="text-4xl leading-none font-semibold tabular-nums">
               {{ signed(delta.deltaM2 / 1e6) }}

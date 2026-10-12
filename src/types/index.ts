@@ -262,15 +262,35 @@ export interface SurfaceWaterPair extends SurfaceWaterQuality {
     deltaPercent: number | null
   } | null
 }
+/** A body's annual rows plus one pair file per before-year; a card fetches only the pair it shows. */
 export interface SurfaceWaterSeries {
-  schemaVersion: 1
+  schemaVersion: 2
   version: string
   zoneVersion: string
   unit: 'm2'
   areaCRS: 'EPSG:6933'
   id: string
   annual: SurfaceWaterAnnual[]
+  pairs: (SurfaceWaterAsset & { beforeYear: number })[]
+}
+/** Stored pairs with this `beforeYear` (each distinct pair once, before < after). */
+export interface SurfaceWaterPairFile {
+  schemaVersion: 2
+  version: string
+  id: string
+  beforeYear: number
   pairs: SurfaceWaterPair[]
+}
+/** What `waterbodyPair` reads: annual rows and whichever stored pairs are loaded. */
+export interface SurfaceWaterRows {
+  annual: SurfaceWaterAnnual[]
+  pairs: SurfaceWaterPair[]
+}
+export interface SurfaceWaterLocalBodies {
+  schemaVersion: 1
+  version: string
+  zoneVersion: string
+  bodies: SurfaceWaterLocalEntry[]
 }
 export interface SurfaceWaterTile extends SurfaceWaterAsset {
   x: number
@@ -332,7 +352,8 @@ export interface SurfaceWaterLocalEntry {
 export type SurfaceWaterBodyEntry =
   SurfaceWaterCatalogueEntry | (SurfaceWaterLocalEntry & { type: 'local' })
 export interface SurfaceWaterManifest {
-  schemaVersion: 1 | 2
+  /** The page loads only schema 3; tile loader fixtures still use the older chunk shapes. */
+  schemaVersion: 1 | 2 | 3
   version: string
   processingVersion: string
   sourceVersion: string
@@ -368,7 +389,8 @@ export interface SurfaceWaterManifest {
     zoneVersion: string
     status: string
     outlines: SurfaceWaterAsset
-    bodies: SurfaceWaterLocalEntry[]
+    /** `SurfaceWaterLocalBodies`, loaded after the overview paints. */
+    bodies: SurfaceWaterAsset
   }
 }
 /** Rounded union areas (m²): `annual` per year, `pairs` per ordered year pair (before < after). */

@@ -25,12 +25,26 @@ def package(inputs, archive):
         if relative not in files or any(files[relative][k] != record[k] for k in ('bytes', 'sha256')):
             raise ValueError('Immutable release reference changed before packaging')
         return inputs/relative
+    def nested(record):
+        data = json.loads(validate_ref(record).read_text())
+        if data['version'] != pointer['version']:
+            raise ValueError('Mixed release asset version')
+        return data
+    # Schema 3 moves local bodies into their own asset and each body's pairs into per-year files.
+    local = manifest.get('local')
+    local_bodies = (nested(local['bodies'])['bodies'] if isinstance(local['bodies'], dict)
+                    else local['bodies']) if local else []
     for record in [manifest['analysisZones'], manifest['zoneReview'], manifest['registrationSensitivity'],
-                   *(b['series'] for b in manifest['catalogue']),
                    *([manifest['comparison']] if 'comparison' in manifest else []),
-                   *([manifest['local']['outlines'], *(b['series'] for b in manifest['local']['bodies'])]
-                     if 'local' in manifest else [])]:
+                   *([local['outlines']] if local else [])]:
         validate_ref(record)
+    for body in [*manifest['catalogue'], *local_bodies]:
+        series = nested(body['series'])
+        if series['schemaVersion'] == 2:
+            if [p['beforeYear'] for p in series['pairs']] != list(range(1984, 2024)):
+                raise ValueError('Incomplete release pair files')
+            for pair in series['pairs']:
+                nested(pair)
     def frames(grid):
         if 'timeline' not in grid:
             return grid['frames']

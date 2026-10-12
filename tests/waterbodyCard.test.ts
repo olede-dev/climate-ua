@@ -11,7 +11,7 @@ import {
 import type {
   SurfaceWaterAnnual,
   SurfaceWaterPair,
-  SurfaceWaterSeries,
+  SurfaceWaterRows,
   SurfaceWaterState,
 } from '../src/types'
 const quality = {
@@ -80,16 +80,7 @@ describe('waterbody card metrics', () => {
   })
 })
 
-const series = {
-  schemaVersion: 1 as const,
-  version: 'release',
-  zoneVersion: 'zone',
-  unit: 'm2' as const,
-  areaCRS: 'EPSG:6933' as const,
-  id: 'lake',
-  annual: [annual],
-  pairs: [pair],
-}
+const series = { annual: [annual], pairs: [pair] }
 it('reverses stored common-mask pairs and recalculates percent from the new baseline', () => {
   const reversed = waterbodyPair(series, 2024, 1984)
   expect(waterbodyDelta(reversed)).toEqual({ deltaM2: 25, percent: (25 / 75) * 100 })
@@ -105,7 +96,7 @@ it('equal years compare the same annual valid mask without inventing missing wat
 })
 
 describe('waterbodyChange', () => {
-  const series = { annual: [annual], pairs: [pair] } as unknown as SurfaceWaterSeries
+  const series = { annual: [annual], pairs: [pair] } as unknown as SurfaceWaterRows
   it('reports the end-year area and change for the selected pair in either direction', () => {
     expect(waterbodyChange(series, 1984, 2024)).toEqual({ m2: 75, percent: -25 })
     expect(waterbodyChange(series, 2024, 1984)?.m2).toBe(100)
@@ -149,7 +140,7 @@ describe('summaryChange', () => {
         after: { ...areas, unionM2: union(after) },
       },
     })),
-  } as unknown as SurfaceWaterSeries
+  } as unknown as SurfaceWaterRows
   const body = {
     id: 'x',
     annual: series.annual.map((row) => row.areas?.unionM2 ?? null),

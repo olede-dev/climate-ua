@@ -23,6 +23,7 @@ import {
   useSurfaceWaterManifest,
   useSurfaceWaterOutlines,
   useSurfaceWaterComparison,
+  useSurfaceWaterLocalBodies,
 } from '../../composables/useLayer'
 import {
   useSurfaceWaterTiles,
@@ -82,9 +83,8 @@ const query = useSurfaceWaterManifest()
 const oblasts = useOblasts()
 const loader = useSurfaceWaterTiles()
 const manifest = computed(() => query.data.value?.manifest)
-const locals = computed(() => (manifest.value ? localWaterbodies(manifest.value) : []))
 // Local outlines (~0.6 MB) only matter once single waterbodies are a few pixels wide;
-// labels come from the manifest, so the overview never waits for them.
+// labels come from the local bodies file, so they never wait for outlines.
 const OUTLINE_ZOOM = 8
 const outlinesWanted = ref(false)
 const outlines = useSurfaceWaterOutlines(() => query.data.value, outlinesWanted)
@@ -105,12 +105,35 @@ const shown = shallowRef<{
   native: boolean
   transitions: boolean
 } | null>(null)
+// The local bodies file (~260 KB) loads after the overview paints, or at once for a shared link
+// that selects a body outside the curated catalogue.
+const localBodies = useSurfaceWaterLocalBodies(
+  () => query.data.value,
+  () =>
+    !!shown.value ||
+    (!!ui.surfaceWater.waterbody &&
+      !manifest.value?.catalogue.some((body) => body.id === ui.surfaceWater.waterbody)),
+)
+const locals = computed(() =>
+  manifest.value && localBodies.data.value
+    ? localWaterbodies(manifest.value, localBodies.data.value)
+    : [],
+)
+// Until local bodies settle, a selected id that may be local stays selected rather than dropped.
+const localsPending = computed(
+  () => !!manifest.value?.local && !localBodies.data.value && !localBodies.isError.value,
+)
 const state = computed(() =>
   manifest.value
     ? normalizeSurfaceWaterState(
         ui.surfaceWater,
         manifest.value.years,
-        [...manifest.value.catalogue, ...locals.value].map((body) => body.id),
+        [
+          ...manifest.value.catalogue.map((body) => body.id),
+          ...(localsPending.value && ui.surfaceWater.waterbody
+            ? [ui.surfaceWater.waterbody]
+            : locals.value.map((body) => body.id)),
+        ],
       )
     : null,
 )
@@ -764,7 +787,11 @@ watch(selected, (next, previous) => {
   frameSelection()
 })
 watch(() => outlines.data.value, syncLocal)
-watch(locals, syncLocalLabels)
+watch(locals, () => {
+  syncLocalLabels()
+  // Outlines can arrive before the bodies file; mark a local selection once its id is known.
+  markLocalSelection(null, ui.surfaceWater.waterbody)
+})
 watch([locale, theme], () => {
   if (map) void applyStyle()
 })

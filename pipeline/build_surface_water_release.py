@@ -20,7 +20,7 @@ from build_surface_water_national import compact_json
 from package_surface_water_tiles import inventory
 from prepare_surface_water_national import YEARS, collection, sha256, write_json
 
-PROCESSING_VERSION = 'surface-water-release-1'
+PROCESSING_VERSION = 'surface-water-release-2'
 
 
 def close(a, b):
@@ -83,6 +83,21 @@ def validate_series(body, zone_m2):
 
 def reference(root, path):
     return {'url': str(path.relative_to(root)), 'sha256': sha256(path), 'bytes': path.stat().st_size}
+
+
+def write_series(root, base, version, zone_version, body_id, series):
+    """Annual rows plus one checksummed pair file per before-year: a card reads one pair, not 820."""
+    refs = []
+    for before in YEARS[:-1]:
+        path = root/base/body_id/f'{before}.json'
+        compact_json(path, {'schemaVersion': 2, 'version': version, 'id': body_id, 'beforeYear': before,
+                            'pairs': [p for p in series['pairs'] if p['beforeYear'] == before]})
+        refs.append({'beforeYear': before, **reference(root, path)})
+    path = root/base/f'{body_id}.json'
+    compact_json(path, {'schemaVersion': 2, 'version': version, 'zoneVersion': zone_version,
+                        'unit': 'm2', 'areaCRS': 'EPSG:6933', 'id': body_id,
+                        'annual': series['annual'], 'pairs': refs})
+    return reference(root, path)
 
 
 def local_catalogue(zones, areas, places, reviewed_features):
@@ -194,7 +209,7 @@ def build(native, overview, zones, areas, review, output, local=None):
         # twice during linking; packaging verifies every referenced file again
         # and refuses mutations before replacing the accepted archive.
         return {'url': str(target.relative_to(root)), 'sha256': checksum, 'bytes': target.stat().st_size}
-    manifest = {'schemaVersion': 2, 'version': version, 'processingVersion': PROCESSING_VERSION,
+    manifest = {'schemaVersion': 3, 'version': version, 'processingVersion': PROCESSING_VERSION,
                 'zoneVersion': registry['zoneVersion'], 'sourceVersion': native_manifest['sourceVersion'],
                 'years': list(YEARS), 'unit': 'm2', 'areaCRS': 'EPSG:6933', 'rasterCRS': 'EPSG:4326',
                 'areaMethod': numeric['method'], 'encoding': 'packed4-gzip', 'tileSize': 512,
@@ -248,12 +263,9 @@ def build(native, overview, zones, areas, review, output, local=None):
     manifest['registrationSensitivity'] = reference(root, root/'registration-sensitivity.json')
     for f in registry['features']:
         p, body = f['properties'], bodies[f['properties']['id']]
-        path = root/'series'/f"{p['id']}.json"
-        compact_json(path, {'schemaVersion': 1, 'version': version, 'zoneVersion': registry['zoneVersion'],
-                            'unit': 'm2', 'areaCRS': 'EPSG:6933', 'id': p['id'],
-                            'annual': body['annual'], 'pairs': body['pairs']})
+        series = write_series(root, 'series', version, registry['zoneVersion'], p['id'], body)
         manifest['catalogue'].append({**{k: p[k] for k in ('id', 'nameUk', 'nameEn', 'type', 'zoneM2', 'inclusionReason')},
-                                      'bounds': list(shape(f['geometry']).bounds), 'series': reference(root, path),
+                                      'bounds': list(shape(f['geometry']).bounds), 'series': series,
                                       'review': reviewed['bodies'][p['id']]})
     # The comparison list needs two union areas per year pair, not each body's full series.
     def usable(row):
@@ -285,14 +297,14 @@ def build(native, overview, zones, areas, review, output, local=None):
                                                default=float), parse_float=lambda v: round(float(v), 4))}
             for b in local_bodies]}
         compact_json(root/'local/outlines.geojson', outlines)
+        # Bodies are their own asset: the overview must not wait for 569 labels and series links.
+        entries = [{**b['entry'], 'series': write_series(root, 'local/series', version,
+                    local_registry['zoneVersion'], b['entry']['id'], b['series'])} for b in local_bodies]
+        compact_json(root/'local/bodies.json', {'schemaVersion': 1, 'version': version,
+                     'zoneVersion': local_registry['zoneVersion'], 'bodies': entries})
         manifest['local'] = {'zoneVersion': local_registry['zoneVersion'], 'status': local_registry['status'],
-                             'outlines': reference(root, root/'local/outlines.geojson'), 'bodies': []}
-        for b in local_bodies:
-            path = root/'local/series'/f"{b['entry']['id']}.json"
-            compact_json(path, {'schemaVersion': 1, 'version': version, 'zoneVersion': local_registry['zoneVersion'],
-                                'unit': 'm2', 'areaCRS': 'EPSG:6933', 'id': b['entry']['id'],
-                                'annual': b['series']['annual'], 'pairs': b['series']['pairs']})
-            manifest['local']['bodies'].append({**b['entry'], 'series': reference(root, path)})
+                             'outlines': reference(root, root/'local/outlines.geojson'),
+                             'bodies': reference(root, root/'local/bodies.json')}
     credits = root/'CREDITS.txt'
     credits.write_text(registry['attribution']+'\nPekel et al. (2016), doi:10.1038/nature20584\nOSM derived geometry: https://www.openstreetmap.org/copyright\n')
     compact_json(root/'manifest.json', manifest)
@@ -304,7 +316,7 @@ def build(native, overview, zones, areas, review, output, local=None):
     write_json(output/'current.json', pointer)
     write_json(output/'release-build-report.json', {'version': version, 'featureBytes': feature_bytes,
                'featureStorageGate': True, 'annualRecords': len(ids)*41, 'pairRecords': len(ids)*820,
-               'localBodies': len(manifest.get('local', {}).get('bodies', [])),
+               'localBodies': len(local_bodies) if local else 0,
                'status': 'validated local release; no external publication', **identity})
     print(version, feature_bytes, 'bytes', flush=True)
     return pointer

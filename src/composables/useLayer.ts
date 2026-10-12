@@ -151,6 +151,11 @@ export function useSurfaceWaterManifest() {
     queryKey: ['surface-water-release'],
     queryFn: async ({ signal }) => {
       const root = new URL(`${import.meta.env.BASE_URL}data/surface-water/`, location.href)
+      // The marker catalogue does not depend on the pointer; fetch both at once, check it later.
+      const cataloguePromise = fetchStatic<SurfaceWaterCatalogueFile>(
+        'data/surface-water-catalogue.json',
+      )
+      cataloguePromise.catch(() => {})
       const response = await fetch(new URL('current.json', root), { signal })
       if (!response.ok) throw new Error(`Surface-water pointer HTTP ${response.status}`)
       const pointer = JSON.parse(
@@ -164,7 +169,7 @@ export function useSurfaceWaterManifest() {
         throw new Error('Invalid surface-water pointer')
       const manifest = await fetchSurfaceWaterAsset<SurfaceWaterManifest>(root, pointer, signal)
       if (
-        (manifest.schemaVersion !== 1 && manifest.schemaVersion !== 2) ||
+        manifest.schemaVersion !== 3 ||
         manifest.version !== pointer.version ||
         manifest.encoding !== 'packed4-gzip' ||
         manifest.rasterCRS !== 'EPSG:4326' ||
@@ -175,9 +180,7 @@ export function useSurfaceWaterManifest() {
         new Set(manifest.catalogue.map((body) => body.id)).size !== manifest.catalogue.length
       )
         throw new Error('Invalid surface-water manifest')
-      const catalogue = await fetchStatic<SurfaceWaterCatalogueFile>(
-        'data/surface-water-catalogue.json',
-      )
+      const catalogue = await cataloguePromise
       if (catalogue.version !== manifest.version || catalogue.zoneVersion !== manifest.zoneVersion)
         throw new Error('Surface-water marker catalogue does not match selected release')
       const markers = Object.fromEntries(
@@ -212,8 +215,9 @@ function seriesQuery(release: SurfaceWaterRelease, entry: SurfaceWaterBody) {
         signal,
       )
       if (
-        series.schemaVersion !== 1 ||
+        series.schemaVersion !== 2 ||
         series.version !== manifest.version ||
+        series.pairs.map((ref) => ref.beforeYear).join() !== manifest.years.slice(0, -1).join() ||
         series.zoneVersion !==
           (entry.type === 'local' ? manifest.local?.zoneVersion : manifest.zoneVersion) ||
         series.id !== entry.id ||
@@ -233,6 +237,78 @@ export function useSurfaceWaterSeries(
   body: MaybeRefOrGetter<SurfaceWaterBody>,
 ) {
   return useQuery(computed(() => seriesQuery(toValue(release), toValue(body))))
+}
+
+/**
+ * Stored pairs with one `beforeYear` for the open card; a reversed or equal-year view is derived
+ * by `waterbodyPair`. Idle without a distinct pair.
+ */
+export function useSurfaceWaterPairs(
+  release: MaybeRefOrGetter<SurfaceWaterRelease>,
+  series: MaybeRefOrGetter<import('../types').SurfaceWaterSeries | undefined>,
+  beforeYear: MaybeRefOrGetter<number | null>,
+) {
+  return useQuery(
+    computed(() => {
+      const { manifest, root } = toValue(release)
+      const value = toValue(series)
+      const year = toValue(beforeYear)
+      const asset = value?.pairs.find((ref) => ref.beforeYear === year)
+      return {
+        queryKey: ['surface-water-pairs', manifest.version, value?.id, year],
+        queryFn: async ({ signal }: { signal: AbortSignal }) => {
+          const file = await fetchSurfaceWaterAsset<import('../types').SurfaceWaterPairFile>(
+            new URL(root),
+            asset!,
+            signal,
+          )
+          if (
+            file.schemaVersion !== 2 ||
+            file.version !== manifest.version ||
+            file.id !== value!.id ||
+            file.beforeYear !== year ||
+            file.pairs.some((row) => row.beforeYear !== year)
+          )
+            throw new Error('Invalid surface-water pair file')
+          return file.pairs
+        },
+        enabled: !!asset,
+        retry: false,
+      }
+    }),
+  )
+}
+
+/** Automatic local bodies (labels, card entries); idle until enabled after the overview paints. */
+export function useSurfaceWaterLocalBodies(
+  release: MaybeRefOrGetter<SurfaceWaterRelease | null | undefined>,
+  enabled: MaybeRefOrGetter<boolean>,
+) {
+  return useQuery(
+    computed(() => {
+      const value = toValue(release)
+      const local = value?.manifest.local
+      return {
+        queryKey: ['surface-water-local-bodies', value?.manifest.version],
+        queryFn: async ({ signal }: { signal: AbortSignal }) => {
+          const file = await fetchSurfaceWaterAsset<import('../types').SurfaceWaterLocalBodies>(
+            new URL(value!.root),
+            local!.bodies,
+            signal,
+          )
+          if (
+            file.schemaVersion !== 1 ||
+            file.version !== value!.manifest.version ||
+            file.zoneVersion !== local!.zoneVersion
+          )
+            throw new Error('Invalid surface-water local bodies')
+          return file.bodies
+        },
+        enabled: !!local && toValue(enabled),
+        retry: false,
+      }
+    }),
+  )
 }
 
 /** Local outlines for hit-testing; idle until enabled (the map is zoomed in far enough). */

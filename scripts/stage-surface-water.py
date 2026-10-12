@@ -81,7 +81,7 @@ def stage(archive, checksum, site):
         if (pointer['version'] != version or manifest['version'] != version or
                 pointer['url'] != f'versions/{version}/manifest.json' or
                 pointer['sha256'] != digest(manifest_path) or pointer['bytes'] != manifest_path.stat().st_size or
-                manifest['schemaVersion'] not in (1, 2) or manifest['years'] != list(range(1984, 2025))):
+                manifest['schemaVersion'] not in (1, 2, 3) or manifest['years'] != list(range(1984, 2025))):
             raise ValueError('Incoherent release pointer/manifest')
         feature_root = manifest_path.parent
         def ref(record):
@@ -91,12 +91,26 @@ def stage(archive, checksum, site):
                     expected[name]['bytes'] != record['bytes']):
                 raise ValueError('Manifest reference differs from archive table')
             return feature_root/record['url']
+        def nested(record):
+            data = json.loads(ref(record).read_text())
+            if data['version'] != version:
+                raise ValueError('Incoherent asset version')
+            return data
+        # Schema 3 moves local bodies into their own asset and each body's pairs into per-year files.
+        local = manifest.get('local')
+        local_bodies = (nested(local['bodies'])['bodies'] if isinstance(local['bodies'], dict)
+                        else local['bodies']) if local else []
         for record in [manifest['analysisZones'], manifest['zoneReview'], manifest['registrationSensitivity'],
-                       *(b['series'] for b in manifest['catalogue']),
                        *([manifest['comparison']] if 'comparison' in manifest else []),
-                       *([manifest['local']['outlines'], *(b['series'] for b in manifest['local']['bodies'])]
-                         if 'local' in manifest else [])]:
+                       *([local['outlines']] if local else [])]:
             ref(record)
+        for body in [*manifest['catalogue'], *local_bodies]:
+            series = nested(body['series'])
+            if series['schemaVersion'] == 2:
+                if [p['beforeYear'] for p in series['pairs']] != list(range(1984, 2024)):
+                    raise ValueError('Incomplete pair files')
+                for pair in series['pairs']:
+                    nested(pair)
         def frames(grid):
             # Schema 2 moves each chunk's year list into its own timeline.
             if manifest['schemaVersion'] == 1:

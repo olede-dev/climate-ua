@@ -1,6 +1,6 @@
 import type {
   SurfaceWaterAnnual,
-  SurfaceWaterComparisonSummary, SurfaceWaterPair, SurfaceWaterState } from '../types'
+  SurfaceWaterComparisonSummary, SurfaceWaterPair, SurfaceWaterRows, SurfaceWaterState } from '../types'
 import { normalizeSurfaceWaterState } from './surfaceWater'
 
 export function annualWaterArea(row: SurfaceWaterAnnual | undefined) {
@@ -29,7 +29,7 @@ export function selectWaterbodyYear(state: SurfaceWaterState, year: number, year
 
 /** Payloads store unordered distinct pairs once; preserve the user's direction. */
 export function waterbodyPair(
-  series: import('../types').SurfaceWaterSeries | undefined,
+  series: SurfaceWaterRows | undefined,
   beforeYear: number,
   afterYear: number,
 ): SurfaceWaterPair | undefined {
@@ -88,7 +88,7 @@ export function waterbodyPair(
 
 /** List figures for the selected pair: end-year area and change on the common mask. */
 export function waterbodyChange(
-  series: import('../types').SurfaceWaterSeries | undefined,
+  series: SurfaceWaterRows | undefined,
   beforeYear: number,
   afterYear: number,
 ) {

@@ -119,8 +119,18 @@ class ReleaseTests(unittest.TestCase):
                 path = target/f'{year}.json'
                 write_json(path, {'version': version, 'year': year, 'tiles': []})
                 frames.append({'year': year, 'url': path.name, 'sha256': sha256(path), 'bytes': path.stat().st_size})
-            manifest = {'schemaVersion': 1, 'version': version, 'years': list(YEARS),
-                        'catalogue': [{'id': str(i), 'series': ref} for i in range(10)],
+            def asset(name, value):
+                path = target/name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                write_json(path, {'version': version, **value})
+                return {'url': name, 'sha256': sha256(path), 'bytes': path.stat().st_size}
+            def series(body):
+                pairs = [{'beforeYear': y, **asset(f'series/{body}/{y}.json', {'pairs': []})} for y in YEARS[:-1]]
+                return asset(f'series/{body}.json', {'schemaVersion': 2, 'annual': [], 'pairs': pairs})
+            bodies = asset('local/bodies.json', {'bodies': [{'id': 'way-1', 'series': series('way-1')}]})
+            manifest = {'schemaVersion': 3, 'version': version, 'years': list(YEARS),
+                        'catalogue': [{'id': str(i), 'series': series(str(i))} for i in range(10)],
+                        'local': {'outlines': ref, 'bodies': bodies},
                         'chunks': [{'frames': frames}], 'overview': {'frames': frames},
                         'analysisZones': ref, 'zoneReview': ref, 'registrationSensitivity': ref}
             write_json(target/'manifest.json', manifest)
@@ -139,6 +149,12 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual(json.loads((site/'data/surface-water/current.json').read_text())['version'], version)
             previous = (site/'data/surface-water/current.json').read_bytes()
             previous_archive = archive.read_bytes()
+            pair = target/'series/0/1990.json'
+            saved = pair.read_bytes()
+            pair.write_bytes(b'corrupt pair file')
+            with self.assertRaisesRegex(ValueError, 'Immutable release reference'):
+                package(inputs, archive)
+            pair.write_bytes(saved)
             data.write_bytes(b'corrupt immutable payload')
             with self.assertRaisesRegex(ValueError, 'Immutable release reference'):
                 package(inputs, archive)

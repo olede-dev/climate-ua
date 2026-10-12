@@ -152,7 +152,9 @@ describe.each(Object.entries(grids))('%s', (path, grid) => {
 })
 
 // ERA5-Land winters (plan 002): history only, one value per winter labelled by its January.
-describe('snow layers', () => {
+// Skipped until the full 1950–2025 backfill lands: the files are not committed before then.
+const snowBuilt = '../public/data/layers/snow-days.json' in layers
+describe.skipIf(!snowBuilt)('snow layers', () => {
   const snow = (id: string) => layers[`../public/data/layers/${id}.json`]
   const ids = ['snow-days', 'snow-max', 'snow-march'] as const
   const series = (file: LayerFile) => [file.country, ...Object.values(file.regions)]

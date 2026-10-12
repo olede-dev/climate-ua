@@ -170,17 +170,21 @@ let appliedGeneration = 0
 let labelFilters: LabelFilter[] = []
 let request: AbortController | undefined
 let generation = 0
-let installed: string[] = []
+// Visible layers by tile key (tile checksum and bounds) under `installedState`.
+let installed = new Map<string, string>()
 // Replaced layers stay under the new ones until the map is idle: a canvas source reports loaded
 // before its tile exists, so removing them at once shows the bare basemap for a few frames.
 let retiring: string[] = []
 const waiting = new PendingSourceBatch()
-let rendered: { canvas: HTMLCanvasElement; bounds: SurfaceWaterBounds }[] = []
+// Tiles painted by the last render that still need layers; `next` is the full set they join.
+let rendered: { key: string; canvas: HTMLCanvasElement; bounds: SurfaceWaterBounds }[] = []
+let next = new Map<string, string>()
 let resize: ResizeObserver | undefined
 let readyState: typeof shown.value = null
-// Installed layers' content key: an unchanged view (e.g. overview while panning) is not repainted.
-let installedKey = ''
-let pendingKey = ''
+// State, transitions and resolution of the installed layers; a pan under the same key repaints
+// only tiles that entered the view, any other change replaces every tile.
+let installedState = ''
+let pendingState = ''
 
 watch(
   state,
@@ -429,14 +433,20 @@ function reveal() {
   if (!map || !styleReady) return
   const ready = waiting.takeReady((id) => !!map!.getSource(id) && map!.isSourceLoaded(id))
   if (!ready.length) return
-  const previous = installed
-  installed = ready
-  installedKey = pendingKey
   for (const id of ready) map.setPaintProperty(id, 'raster-opacity', 0.95, NO_VALIDATE)
-  retiring.push(...previous)
-  map.once('idle', () => clearLayers(retiring.splice(0)))
+  commit()
   shown.value = readyState
   pending.value = false
+}
+// Make `next` the installed set; layers it dropped retire once the map is idle.
+function commit() {
+  if (!map) return
+  const kept = new Set(next.values())
+  retiring.push(...[...installed.values()].filter((id) => !kept.has(id)))
+  installed = next
+  next = new Map()
+  installedState = pendingState
+  map.once('idle', () => clearLayers(retiring.splice(0)))
 }
 function install() {
   if (!map || !styleReady || !rendered.length) return
@@ -444,6 +454,7 @@ function install() {
   const token = ++generation
   for (const [i, tile] of rendered.entries()) {
     const id = `surface-water-${token}-${i}`
+    next.set(tile.key, id)
     addSource(map, id, {
       type: 'canvas',
       canvas: tile.canvas,
@@ -524,6 +535,7 @@ async function render() {
   if (!data || !current || (!fallback.value && (!map || !styleReady))) return
   const own = new AbortController()
   request = own
+  rendered = []
   pending.value = true
   failed.value = false
   const started = performance.now()
@@ -549,22 +561,26 @@ async function render() {
       shown.value = readyState
       pending.value = false
     } else {
-      const key = JSON.stringify([
-        readyState.state,
-        readyState.transitions,
-        result.tiles.map((tile) => [tile.tile.sha256, tile.bounds]),
-      ])
-      if (key === installedKey) {
+      pendingState = JSON.stringify([readyState.state, readyState.transitions, result.native])
+      const same = pendingState === installedState
+      next = new Map()
+      for (const tile of result.tiles) {
+        const key = `${tile.tile.sha256}|${tile.bounds.join(',')}`
+        const id = same ? installed.get(key) : undefined
+        if (id) next.set(key, id)
+        else
+          rendered.push({
+            key,
+            canvas: paintSurfaceWaterTile(tile, transitions.value),
+            bounds: tile.bounds,
+          })
+      }
+      if (rendered.length) install()
+      else {
+        if (next.size !== installed.size) commit()
         shown.value = readyState
         pending.value = false
-        return
       }
-      pendingKey = key
-      rendered = result.tiles.map((tile) => ({
-        canvas: paintSurfaceWaterTile(tile, transitions.value),
-        bounds: tile.bounds,
-      }))
-      install()
     }
     // Read-only diagnostics for repeatable browser acceptance; no URLs or data values are logged.
     container.value?.setAttribute(
@@ -576,6 +592,7 @@ async function render() {
         cacheBytes: result.cacheBytes,
         compositionMs: performance.now() - started,
         tiles: result.tiles.length,
+        painted: fallback.value ? result.tiles.length : rendered.length,
       }),
     )
   } catch (error) {
@@ -596,9 +613,10 @@ async function applyStyle() {
   try {
     const result = await basemapStyle(locale.value, theme.value)
     if (!map || destroyed || own !== styleGeneration) return
-    installed = []
+    installed = new Map()
+    next = new Map()
     retiring = []
-    installedKey = ''
+    installedState = ''
     waiting.take()
     rendered = []
     labelFilters = result.labelFilters

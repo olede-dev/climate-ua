@@ -111,12 +111,18 @@ function observedYear(input: StoryInput): number {
   return isFuture(input.step) ? input.file.history.to : input.step
 }
 
+/** A winter labelled by its January year, as the snow layers store it: 2010 → «2009/10». */
+export function winterLabel(year: number): string {
+  return `${year - 1}/${String(year).slice(-2)}`
+}
+
 function observedSentence(input: StoryInput): Rich {
   const year = observedYear(input)
   const value = valueAt(input.series, input.file.history, year)
   if (!value) return fill(input.copy.missingYear, { year: String(year) })
   return fill(input.layerCopy.observed, {
     year: String(year),
+    winter: winterLabel(year),
     where: input.where,
     value: strong(input.format(value.median)),
     delta: deltaPhrase(value.median, input.series.norm, input),

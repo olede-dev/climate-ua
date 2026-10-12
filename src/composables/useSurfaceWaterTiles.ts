@@ -8,6 +8,7 @@ import {
   validateSurfaceWaterPair,
   type SurfaceWaterBounds,
 } from '../lib/surfaceWater'
+import { SurfaceWaterTileCache } from '../lib/surfaceWaterCache'
 import type {
   SurfaceWaterChunk,
   SurfaceWaterFrame,
@@ -18,7 +19,8 @@ import type {
   SurfaceWaterTimeline,
 } from '../types'
 
-const CACHE_LIMIT = 16 * 1024 * 1024
+/** Two overview comparison pairs (4 × ~7.15 MB decoded) so returning to a pair decodes nothing. */
+const CACHE_LIMIT = 32 * 1024 * 1024
 export const SURFACE_WATER_VIEWPORT_LIMIT = 2_000_000
 export interface SurfaceWaterRenderTile {
   bounds: SurfaceWaterBounds
@@ -30,19 +32,14 @@ export interface SurfaceWaterRenderTile {
 /** Component-local decoded cache is released on leaving the feature. JSON remains query state. */
 export function useSurfaceWaterTiles() {
   const client = useQueryClient()
-  const cache = new Map<string, Uint8Array>()
-  let cacheBytes = 0
+  const cache = new SurfaceWaterTileCache(CACHE_LIMIT)
   async function pixels(
     root: URL,
     tile: SurfaceWaterTile,
     signal: AbortSignal,
   ): Promise<Uint8Array> {
     const hit = cache.get(tile.sha256)
-    if (hit) {
-      cache.delete(tile.sha256)
-      cache.set(tile.sha256, hit)
-      return hit
-    }
+    if (hit) return hit
     const bytes = await fetchSurfaceWaterAsset(root, tile, signal, true)
     const packed = await readSurfaceWaterBytes(
       new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip')),
@@ -51,13 +48,7 @@ export function useSurfaceWaterTiles() {
     )
     const decoded = decodeSurfaceWaterTile(new Uint8Array(packed), tile.width * tile.height)
     signal.throwIfAborted()
-    while (cacheBytes + decoded.length > CACHE_LIMIT && cache.size) {
-      const key = cache.keys().next().value!
-      cacheBytes -= cache.get(key)!.length
-      cache.delete(key)
-    }
     cache.set(tile.sha256, decoded)
-    cacheBytes += decoded.length
     return decoded
   }
   async function frame(
@@ -114,15 +105,21 @@ export function useSurfaceWaterTiles() {
         other: SurfaceWaterTile | null
         bounds: SurfaceWaterBounds
       }[] = []
-      for (const grid of grids) {
-        const frames = []
+      // Check every frame index against the budget before fetching any, then fetch them together.
+      for (const grid of grids)
         for (const year of years) {
           const bytes = grid.frames.find((item) => item.year === year)?.bytes ?? 0
           frameBytes += bytes
           encodedBytes += bytes
           if (encodedBytes > SURFACE_WATER_VIEWPORT_LIMIT) return null
-          frames.push(await frame(root, grid, year, manifest.version, signal))
         }
+      const indexes = await Promise.all(
+        grids.map((grid) =>
+          Promise.all(years.map((year) => frame(root, grid, year, manifest.version, signal))),
+        ),
+      )
+      for (const [g, grid] of grids.entries()) {
+        const frames = indexes[g]!
         const before = frames[0]!
         const after = state.mode === 'comparison' ? frames.at(-1)! : null
         if (after) validateSurfaceWaterPair(before, after)
@@ -191,7 +188,7 @@ export function useSurfaceWaterTiles() {
     }
     await Promise.all(Array.from({ length: Math.min(4, tasks.length) }, worker))
     signal.throwIfAborted()
-    return { tiles, native, encodedBytes, cacheBytes }
+    return { tiles, native, encodedBytes, cacheBytes: cache.bytes }
   }
   return { load }
 }

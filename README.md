@@ -6,11 +6,12 @@ An interactive map of changes in Ukraine's climate and water resources: observat
 
 **Live demo:** https://olede-dev.github.io/climate-ua/
 
-![Water gap map of Ukraine by sub-basin](.github/screenshot.png)
+![Map of the winter's peak snow water equivalent by oblast, dark theme](.github/screenshot.png)
 
 ## Features
 
 - Ten thematic layers at the level of oblasts, sub-basins, river gauging stations and waterbodies.
+- Country summary with every oblast ranked by the current value and its difference from the norm.
 - A single timeline covering both the historical period and the projections.
 - Region card: a past–present–projection comparison, a chart for the full period, and the Köppen–Geiger climate type today and in the future.
 - River mode: 10 GloFAS stations coloured by today's water state, the long-term flow trend or yearly low-flow days, with a daily timelapse; a sortable station list with a basin filter; a station card with the discharge chart, the 7-month ensemble forecast, a forecast badge and precipitation.
@@ -126,6 +127,7 @@ The digest pins the release documented in the runbook. The staging script verifi
 
 - **Water resources:** PCR-GLOBWB 2 model, Utrecht University (Sutanudjaja et al., 2018), as published in [World Water Map](https://worldwatermap.nationalgeographic.org/) (National Geographic Society); HydroBASINS level 7 sub-basins. Data: [doi:10.24416/UU01-0Q6SU6](https://doi.org/10.24416/UU01-0Q6SU6), CC BY 4.0.
 - **Climate:** [Copernicus Interactive Climate Atlas](https://atlas.climate.copernicus.eu/) (C3S / ECMWF; ERA5, CMIP6), CC BY 4.0.
+- **Snow:** [ERA5-Land hourly data](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land) (C3S / ECMWF), snow water equivalent.
 - **Köppen–Geiger classification:** [Beck et al. (2023)](https://doi.org/10.1038/s41597-023-02549-6), *Scientific Data* 10, 724, CC BY 4.0.
 - **River discharge:** GloFAS v4 reanalysis and ensemble forecast (Copernicus Emergency Management Service) via the [Open-Meteo Flood API](https://open-meteo.com/en/docs/flood-api).
 - **Precipitation at river stations:** [Open-Meteo Forecast API](https://open-meteo.com/en/docs).

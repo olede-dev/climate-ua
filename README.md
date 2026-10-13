@@ -10,7 +10,7 @@ An interactive map of changes in Ukraine's climate and water resources: observat
 
 ## Features
 
-- Seven thematic layers at the level of oblasts, sub-basins, river gauging stations and waterbodies.
+- Ten thematic layers at the level of oblasts, sub-basins, river gauging stations and waterbodies.
 - A single timeline covering both the historical period and the projections.
 - Region card: a past–present–projection comparison, a chart for the full period, and the Köppen–Geiger climate type today and in the future.
 - River mode: 10 GloFAS stations coloured by today's water state, the long-term flow trend or yearly low-flow days, with a daily timelapse; a sortable station list with a basin filter; a station card with the discharge chart, the 7-month ensemble forecast, a forecast badge and precipitation.
@@ -27,12 +27,17 @@ An interactive map of changes in Ukraine's climate and water resources: observat
 | Days with maximum above 35 °C | 25 oblasts | 1950–2025 | 2021–2040, 2041–2060, 2081–2100 (SSP2-4.5) |
 | Days with minimum below 0 °C | 25 oblasts | 1950–2025 | 2021–2040, 2041–2060, 2081–2100 (SSP2-4.5) |
 | Drought: months with SPEI-6 below −1 | 25 oblasts | 1950–2025 | 2021–2040, 2041–2060, 2081–2100 (SSP2-4.5) |
+| Snow: days with snow water equivalent ≥ 1 mm per winter | 25 oblasts; 0.2° grid | Winters 1950/51–2024/25 | — |
+| Snow: the winter's maximum snow water equivalent, mm | 25 oblasts; 0.2° grid | Winters 1950/51–2024/25 | — |
+| Snow: snow water equivalent on 1 March, mm | 25 oblasts; 0.2° grid | Winters 1950/51–2024/25 | — |
 | River low flow relative to the 1997–2020 norm | 10 gauging stations | 1997–2025 | — |
 | Surface water: annual map and two-year comparison | 30 m raster; catalogue waterbodies and local waterbodies ≥ 1 km² | 1984–2024 | — |
 
 ## Methodology
 
 Projections use the delta method: the change derived from the CMIP6 model ensemble is added to the observed climatology. Climate indicators are averaged over 20-year periods and water indicators over 15-year periods. The map shows the ensemble median by default (the mean for water layers); the lower and upper bounds of the model range are also available.
+
+Snow layers have no projections: they come from ERA5-Land snow water equivalent read once a day at 00:00 Kyiv time, and the C3S Atlas has no snow indices (`docs/adr/snow-era5-land.md`). A snow day holds at least 1 mm of water in snow; a winter runs July–June and is labelled by the year of its January.
 
 ### River mode
 

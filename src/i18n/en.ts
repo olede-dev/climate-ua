@@ -873,6 +873,8 @@ export const en: Messages = {
     label: 'Year or period',
     play: 'Play the changes over time',
     pause: 'Pause',
+    prev: 'Back',
+    next: 'Forward',
     forecast: 'projection',
   },
 }

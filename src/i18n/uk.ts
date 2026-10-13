@@ -863,6 +863,8 @@ export const uk = {
     label: 'Рік або період',
     play: 'Програти зміни в часі',
     pause: 'Пауза',
+    prev: 'Назад',
+    next: 'Далі',
     forecast: 'прогноз',
   },
 }

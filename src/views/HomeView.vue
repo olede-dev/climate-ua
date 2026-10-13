@@ -875,7 +875,7 @@ const tooltip = computed(() => {
           :style="mapLoading && barHeight ? { minHeight: `${barHeight}px` } : undefined"
         >
           <div class="flex w-full items-end justify-center gap-2">
-            <span v-if="!isSurfaceWater" class="w-9 shrink-0" aria-hidden="true" />
+            <span v-if="!isSurfaceWater" class="w-12 shrink-0 sm:w-11" aria-hidden="true" />
             <RiverTimeline
               v-if="isRivers && isDailyView(ui.riverView)"
               v-model="mapDate"
@@ -902,6 +902,7 @@ const tooltip = computed(() => {
             </TimeSlider>
             <ZoomControl
               v-if="!isSurfaceWater"
+              class="self-start"
               @in="climateMap?.zoomIn()"
               @out="climateMap?.zoomOut()"
             />

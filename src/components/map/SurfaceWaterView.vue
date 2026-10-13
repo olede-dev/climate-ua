@@ -125,16 +125,12 @@ const localsPending = computed(
 )
 const state = computed(() =>
   manifest.value
-    ? normalizeSurfaceWaterState(
-        ui.surfaceWater,
-        manifest.value.years,
-        [
-          ...manifest.value.catalogue.map((body) => body.id),
-          ...(localsPending.value && ui.surfaceWater.waterbody
-            ? [ui.surfaceWater.waterbody]
-            : locals.value.map((body) => body.id)),
-        ],
-      )
+    ? normalizeSurfaceWaterState(ui.surfaceWater, manifest.value.years, [
+        ...manifest.value.catalogue.map((body) => body.id),
+        ...(localsPending.value && ui.surfaceWater.waterbody
+          ? [ui.surfaceWater.waterbody]
+          : locals.value.map((body) => body.id)),
+      ])
     : null,
 )
 const selected = computed<SurfaceWaterBodyEntry | undefined>(() => {
@@ -264,7 +260,7 @@ const timelineYear = computed<TimeStep>({
 const playing = ref(false)
 const comparing = computed(() => ui.surfaceWater.mode === 'comparison')
 const comparisonFrame = {
-  class: 'glass pointer-events-auto rounded-2xl px-2.5 py-2 shadow-float sm:px-3',
+  class: 'glass pointer-events-auto rounded-2xl p-2.5 shadow-float sm:px-3.5 sm:py-3',
 }
 const sliderProps = computed(() => ({
   modelValue: timelineYear.value,
@@ -952,7 +948,7 @@ onBeforeUnmount(() => {
           : 'order-1 shrink-0 px-3 py-2'
       "
     >
-      <span v-if="wide" class="w-9 shrink-0" aria-hidden="true" />
+      <span v-if="wide" class="w-12 shrink-0 sm:w-11" aria-hidden="true" />
       <!-- Comparison picks both years in its own selects, so the timeline would be a second, conflicting control. -->
       <component
         :is="comparing ? 'div' : TimeSlider"
@@ -970,7 +966,7 @@ onBeforeUnmount(() => {
           </ul>
         </figure>
       </component>
-      <ZoomControl v-if="wide" @in="map?.zoomIn()" @out="map?.zoomOut()" />
+      <ZoomControl v-if="wide" class="self-start" @in="map?.zoomIn()" @out="map?.zoomOut()" />
     </div>
   </div>
 </template>

@@ -6,7 +6,7 @@ An interactive map of changes in Ukraine's climate and water resources: observat
 
 **Live demo:** https://olede-dev.github.io/climate-ua/
 
-![Map of the winter's peak snow water equivalent by oblast, dark theme](.github/screenshot.png)
+![Water gap map of Ukraine by sub-basin](.github/screenshot.png)
 
 ## Features
 

@@ -13,7 +13,7 @@ import xarray as xr
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "pipeline"))
 from build_snow import winter_indicators
-from fetch_snow import winter_months
+from fetch_snow import winter_years
 
 
 def cube(winter: int, swe_mm) -> xr.DataArray:
@@ -25,11 +25,8 @@ def cube(winter: int, swe_mm) -> xr.DataArray:
 
 
 class WinterTest(unittest.TestCase):
-    def test_winter_runs_july_to_june_labelled_by_january(self):
-        months = winter_months(1951)
-        self.assertEqual(months[0], (1950, 7))
-        self.assertEqual(months[-1], (1951, 6))
-        self.assertEqual(len(months), 12)
+    def test_winter_spans_the_year_before_its_label(self):
+        self.assertEqual(winter_years(1951), (1950, 1951))
 
     def test_indicators(self):
         # 10 mm through January, 0.5 mm (below the threshold) in February, 40 mm peak on 1 March.

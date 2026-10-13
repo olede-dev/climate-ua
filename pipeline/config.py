@@ -143,11 +143,13 @@ CLIMATE_LAYERS = {
 
 GRID_DECIMALS = 1
 
-#: ERA5-Land post-processed daily statistics (0.1°, 1950–present, CC BY 4.0): daily mean snow
-#: water equivalent, m of water (NetCDF `sd`). Single-month requests: multi-month ones queue
-#: for hours in the CDS.
-ERA5LAND_DATASET = "derived-era5-land-daily-statistics"
+#: ERA5-Land hourly (0.1°, 1950–present, CC BY 4.0): snow water equivalent, m of water (NetCDF
+#: `sd`), one value a day at ERA5LAND_TIME UTC, i.e. 00:00 Kyiv winter time. Its daily-mean
+#: product (`derived-era5-land-daily-statistics`) queued for days; on winter 2009/10 the snapshot
+#: differs from the daily mean by 0.6 snow days per cell on average.
+ERA5LAND_DATASET = "reanalysis-era5-land"
 ERA5LAND_VARIABLE = "snow_depth_water_equivalent"
+ERA5LAND_TIME = "22:00"
 ERA5LAND_NC_NAME = "sd"
 ERA5LAND_DIR = RAW_DIR / "era5land"
 #: The CDS rejects a request outright while too many of the user's requests for this dataset
@@ -156,12 +158,12 @@ ERA5LAND_RETRY_SECONDS = 600
 #: A winter runs July–June and is labelled by the year of its January: 1950/51 is 1951.
 SNOW_SEASON_START_MONTH = 7
 SNOW_FROM = 1951
-#: A snow day has a daily mean SWE of at least this many mm (phase 01 of the snow plan: it
+#: A snow day has a daily SWE of at least this many mm (phase 01 of the snow plan: it
 #: separates Lviv from Odesa as expected and needs no second variable).
 SNOW_DAY_MM = 1.0
 #: The stored snow water read on this (month, day).
 SNOW_STORE_DAY = (3, 1)
-SNOW_SOURCE = "ERA5-Land daily statistics (C3S / ECMWF)"
+SNOW_SOURCE = "ERA5-Land (C3S / ECMWF)"
 
 
 @dataclass(frozen=True)

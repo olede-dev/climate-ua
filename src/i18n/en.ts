@@ -232,16 +232,16 @@ export const en: Messages = {
             id: 'snow-days',
             name: 'Snow',
             paragraphs: [
-              'Three layers: days with snow in a winter, the winter’s highest snow water storage, and the storage on 1 March. All come from ERA5-Land daily snow water equivalent (0.1° grid, about 9 km): a snow day is a day when a cell holds at least 1 mm of water in snow. A region’s value is the mean over its area; the map shows 0.2° cells (the mean of four). The norm is 1991–2020.',
+              'Three layers: days with snow in a winter, the winter’s highest snow water storage, and the storage on 1 March. All come from ERA5-Land snow water equivalent, read once a day at 00:00 Kyiv time (0.1° grid, about 9 km): a snow day is a day when a cell holds at least 1 mm of water in snow. A region’s value is the mean over its area; the map shows 0.2° cells (the mean of four). The norm is 1991–2020.',
               'A winter runs from July to June and is labelled by the year of its January: “2010” is winter 2009/10. The first complete winter is 1950/51. A winter with missing days stays empty rather than being counted in part.',
               'Limits: this is a model estimate (a reanalysis), not a station measurement; in the mountains the grid averages peaks with valleys, so the Carpathians come out less snowy than at altitude. Snow water storage does not by itself set the rivers’ spring flow. There are no projections: the C3S climate atlas has no snow indices.',
             ],
             topics: [],
             sources: [
               {
-                name: 'ERA5-Land daily statistics',
+                name: 'ERA5-Land hourly data',
                 detail: 'C3S / ECMWF; CC BY 4.0',
-                url: 'https://cds.climate.copernicus.eu/datasets/derived-era5-land-daily-statistics',
+                url: 'https://cds.climate.copernicus.eu/datasets/reanalysis-era5-land',
               },
             ],
           },

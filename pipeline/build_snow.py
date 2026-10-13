@@ -16,20 +16,22 @@ import xarray as xr
 import config
 from build_climate import COUNTRY_ID, period_mean, regional_mean
 from common import cell_weights, land_regions, write_json
-from fetch_snow import last_complete_winter, month_file, winter_months
+from fetch_snow import last_complete_winter, winter_years, year_file
 
 
 def on_disk(winter: int) -> bool:
-    return all(month_file(*m).exists() for m in winter_months(winter))
+    return all(year_file(y).exists() for y in winter_years(winter))
 
 
 def open_winter(winter: int) -> xr.DataArray:
-    """Daily SWE in mm, dims (time, lat, lon), lat south to north."""
-    files = [month_file(*m) for m in winter_months(winter)]
-    months = [xr.open_dataset(f)[config.ERA5LAND_NC_NAME].load() for f in files]
-    swe = xr.concat(months, dim="valid_time").drop_vars("number", errors="ignore")
+    """Daily SWE in mm, dims (time, lat, lon), lat south to north, time at the UTC date."""
+    years = [xr.open_dataset(year_file(y))[config.ERA5LAND_NC_NAME] for y in winter_years(winter)]
+    swe = xr.concat(years, dim="valid_time").drop_vars(["number", "expver"], errors="ignore")
     swe = swe.rename(valid_time="time", latitude="lat", longitude="lon").sortby("lat")
-    return swe * 1000
+    swe = swe.assign_coords(time=swe["time"].dt.floor("D"))
+    start = datetime.date(winter - 1, config.SNOW_SEASON_START_MONTH, 1)
+    end = datetime.date(winter, config.SNOW_SEASON_START_MONTH, 1) - datetime.timedelta(days=1)
+    return swe.sel(time=slice(str(start), str(end))).load() * 1000
 
 
 def winter_indicators(swe: xr.DataArray, winter: int) -> dict[str, xr.DataArray]:
@@ -130,7 +132,7 @@ def main() -> None:
     template = next(iter(found.values()))["max"] * np.nan
     winters = range(config.SNOW_FROM, max(found) + 1)
     for winter in sorted(set(winters) - set(found)):
-        print(f"  {winter}: months missing, null")
+        print(f"  {winter}: years missing, null")
     cubes = {
         key: xr.concat([found.get(w, {}).get(key, template).expand_dims(year=[w]) for w in winters], dim="year")
         for key in ("days", "max", "store")

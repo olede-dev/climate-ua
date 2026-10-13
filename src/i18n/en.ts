@@ -359,6 +359,7 @@ export const en: Messages = {
       note: 'The norm is the {norm} average, the WMO standard. The ends of the bar are the lowest and highest values over {record}, or the projection where it reaches past them.',
     },
     headline: '{title} in {when}: {delta}.',
+    headlineWinter: '{title} in winter {when}: {delta}.',
     normNote: 'The norm is the {period} average: {value}.',
     moreThanUsual: '{delta} above the norm',
     lessThanUsual: '{delta} below the norm',

@@ -6,6 +6,7 @@ import type { LayerConfig } from '../../config/layers'
 import type { LayerCopy } from '../../i18n'
 import { formatPeriod, type ValueFormat } from '../../lib/format'
 import { colorAt } from '../../lib/scale'
+import { winterLabel } from '../../lib/narrative'
 import type { SummaryRow } from '../../lib/summary'
 import type { LayerFile } from '../../types'
 
@@ -61,9 +62,13 @@ const normNote = computed(() =>
 const caption = computed(() => {
   const when = focused.value?.when
   if (!props.headline || !delta.value || when == null) return props.copy.legendTitle
-  return t.value.panel.headline
+  const winter = props.config.winters && typeof when === 'number'
+  return (winter ? t.value.panel.headlineWinter : t.value.panel.headline)
     .replace('{title}', props.copy.legendTitle)
-    .replace('{when}', typeof when === 'number' ? String(when) : formatPeriod(when))
+    .replace(
+      '{when}',
+      winter ? winterLabel(when) : typeof when === 'number' ? String(when) : formatPeriod(when),
+    )
     .replace('{delta}', delta.value.sentence)
 })
 

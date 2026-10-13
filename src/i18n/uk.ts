@@ -356,6 +356,7 @@ export const uk = {
       note: 'Норма — середнє за {norm}, за стандартом ВМО. Краї шкали — найменше і найбільше значення за {record} або прогноз, якщо він виходить за них.',
     },
     headline: '{title} у {when} — {delta}.',
+    headlineWinter: '{title} зимою {when} — {delta}.',
     normNote: 'Норма — середнє за {period}: {value}.',
     moreThanUsual: 'на {delta} більше за норму',
     lessThanUsual: 'на {delta} менше за норму',

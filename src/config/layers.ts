@@ -14,6 +14,8 @@ export interface LayerConfig {
   scale: ColorScale
   /** Grades the region list's change from the norm; absent, the list shows no grade. */
   rank?: RankRule
+  /** History years are winters labelled by their January year (2010 → «2009/10»). */
+  winters?: true
 }
 
 const CLIMATE_PERIODS: readonly FuturePeriod[] = ['2021-2040', '2041-2060', '2081-2100']
@@ -145,6 +147,7 @@ function snowLayer(
     scale: snowScale(stops),
     // Less snow than usual is the signal: a quarter below the norm warns, half is severe.
     rank: { worse: 'less', warn: 25, bad: 50, relative: true },
+    winters: true,
   }
 }
 

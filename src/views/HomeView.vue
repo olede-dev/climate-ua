@@ -25,6 +25,7 @@ import RiverTimeline from '../components/map/RiverTimeline.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
 import LayerList from '../components/panel/LayerList.vue'
 import StationsPanel from '../components/panel/river/StationsPanel.vue'
+import RegionRanking from '../components/panel/RegionRanking.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
 import LoadingSkeleton from '../components/ui/LoadingSkeleton.vue'
 import ZoomControl from '../components/ui/ZoomControl.vue'
@@ -424,6 +425,10 @@ function regionLabel(id: string): RegionLabel {
   return labels.value[id] ?? { name: id, where: id, subtitle: null, note: null }
 }
 
+const regionNames = computed(() =>
+  Object.fromEntries(Object.entries(labels.value).map(([id, label]) => [id, label.name])),
+)
+
 const selected = computed(() =>
   ui.regionId === null ? null : { id: ui.regionId, ...regionLabel(ui.regionId) },
 )
@@ -473,17 +478,22 @@ const climateMap = useTemplateRef<InstanceType<typeof ClimateMap>>('climateMap')
 const bottomBar = useTemplateRef<HTMLElement>('bottomBar')
 const insets = ref<Required<PaddingOptions>>({ top: 0, bottom: 0, left: 0, right: 0 })
 const barHeight = ref(0)
+// The tallest bar seen at this window size. Layers briefly render a shorter bar while they load;
+// framing against the live height would zoom the map in and back out on every switch.
+let barReserve = 0
 
 function measureInsets() {
   const rect = (el: unknown) => (el instanceof HTMLElement ? el.getBoundingClientRect() : null)
   const width = window.innerWidth
   const height = window.innerHeight
   const column = rect(controlsColumn.value)
+  const bar = rect(bottomBar.value)
+  if (bar) barReserve = Math.max(barReserve, bar.height)
   const next = {
     top: 0,
     left: Math.round(rect(panelCard.value?.$el)?.right ?? 0),
     right: Math.round(width - (column?.left ?? width)),
-    bottom: Math.round(height - (rect(bottomBar.value)?.top ?? height)),
+    bottom: bar ? Math.round(height - bar.bottom + barReserve) : 0,
   }
   // A loading layer drops its timeline for a moment; the bar keeps its height so the map holds still.
   if (!mapLoading.value && bottomBar.value) barHeight.value = bottomBar.value.offsetHeight
@@ -493,14 +503,18 @@ function measureInsets() {
     insets.value = next
   }
 }
+function onWindowResize() {
+  barReserve = 0
+  measureInsets()
+}
 const insetObserver = new ResizeObserver(measureInsets)
 watchEffect((onCleanup) => {
   const els = [panelCard.value?.$el, controlsColumn.value, bottomBar.value]
   for (const el of els) if (el instanceof HTMLElement) insetObserver.observe(el)
-  window.addEventListener('resize', measureInsets)
+  window.addEventListener('resize', onWindowResize)
   onCleanup(() => {
     insetObserver.disconnect()
-    window.removeEventListener('resize', measureInsets)
+    window.removeEventListener('resize', onWindowResize)
   })
 })
 onBeforeUnmount(() => insetObserver.disconnect())
@@ -840,6 +854,18 @@ const tooltip = computed(() => {
               @retry="stations.discharge.refetch()"
             />
           </template>
+          <template v-else-if="panel.file.geometry === 'oblasts'" #overview>
+            <RegionRanking
+              v-model:sort="ui.rankSort"
+              :file="panel.file"
+              :config="panel.config"
+              :step="panel.step"
+              :format="panel.format"
+              :names="regionNames"
+              :selected-id="ui.regionId"
+              @select="ui.regionId = $event"
+            />
+          </template>
         </SidePanel>
       </MapSidebar>
       <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
@@ -973,6 +999,18 @@ const tooltip = computed(() => {
             @basin="ui.basin = $event"
             @select="ui.regionId = $event"
             @retry="stations.discharge.refetch()"
+          />
+        </template>
+        <template v-else-if="panel.file.geometry === 'oblasts'" #overview>
+          <RegionRanking
+            v-model:sort="ui.rankSort"
+            :file="panel.file"
+            :config="panel.config"
+            :step="panel.step"
+            :format="panel.format"
+            :names="regionNames"
+            :selected-id="ui.regionId"
+            @select="ui.regionId = $event"
           />
         </template>
       </SidePanel>

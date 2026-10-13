@@ -196,7 +196,7 @@ export interface LegendContent {
   /** One name per step, left to right, shown on hover over the bar. */
   steps: string[]
   /** Small print under the bar: what the scale measures, e.g. the periods compared. */
-  note: string
+  note?: string
   /** Label of the outline swatch for stations without data; `null` hides it. */
   noData: string | null
 }
@@ -249,7 +249,6 @@ export function riverLegend(
     min: copy.stateLow,
     max: copy.stateHigh,
     steps: scaleClasses(ANOMALY_CLASSES).map((c) => copy.anomalyClasses[c.id]),
-    note: copy.stateLegend,
     noData,
   }
 }

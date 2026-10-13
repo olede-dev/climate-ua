@@ -86,12 +86,15 @@ function story(where: string, series: StoryInput['series']): StoryInput {
     bound: props.projectionRange?.bound ?? 'median',
     where,
     layerCopy: props.copy.story,
-    // Demand and the gap have no projection; the future view's range is of single years.
+    // Demand and the gap have no projection; the future view's range is of single years. A
+    // history-only climate layer (snow) says why it has none in its own `future` sentence.
     copy: waterHistory.value
       ? { ...t.value.story, noForecast: t.value.waterUse.noForecast }
       : props.water
         ? { ...t.value.story, range: t.value.waterUse.range }
-        : t.value.story,
+        : !props.river && props.file.futurePeriods.length === 0
+          ? { ...t.value.story, noForecast: props.copy.story.future }
+          : t.value.story,
     format: props.format,
     decimals: props.config.decimals,
   }

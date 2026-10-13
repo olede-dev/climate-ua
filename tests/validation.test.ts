@@ -8,7 +8,8 @@ const layers = import.meta.glob<LayerFile>('../public/data/layers/*.json', {
   eager: true,
   import: 'default',
 })
-const climate = Object.values(layers)
+// History-only layers (snow) have no projection to check the record against.
+const climate = Object.values(layers).filter((file) => file.futurePeriods.length > 0)
 const temp = climate.find((file) => file.layer === 'temp')!
 const [waterUse] = Object.values(
   import.meta.glob<WaterUseFile>('../public/data/water-use.json', {

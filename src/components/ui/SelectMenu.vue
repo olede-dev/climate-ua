@@ -65,6 +65,7 @@ function keydown(event: KeyboardEvent) {
 
 <template>
   <div
+    :class="!row && 'relative'"
     @focusout="
       !($event.currentTarget as HTMLElement).contains($event.relatedTarget as Node) &&
       (open = false)
@@ -111,7 +112,7 @@ function keydown(event: KeyboardEvent) {
       :aria-label="label"
       :aria-activedescendant="`${id}-${active}`"
       class="max-h-56 overflow-y-auto overscroll-contain rounded-xl bg-surface p-1 text-[13px] text-ink shadow-card focus-ring"
-      :class="row ? 'mx-1.5 mb-1.5' : 'mt-1'"
+      :class="row ? 'mx-1.5 mb-1.5' : 'absolute top-full right-0 z-20 mt-1 w-max min-w-full'"
       @keydown="keydown"
     >
       <li

@@ -38,6 +38,14 @@ describe('parseUrlState', () => {
     expect(parseUrlState({ layer: 'temp', t: '2041-2070' }).time).toBeNull()
   })
 
+  it('opens each snow layer by id, years only: snow has no projection periods', () => {
+    for (const layer of ['snow-days', 'snow-max', 'snow-march'] as const) {
+      expect(parseUrlState({ layer, t: '1987' })).toMatchObject({ layer, time: 1987 })
+      expect(parseUrlState({ layer, t: '2041-2060' }).time).toBeNull()
+      expect(toUrlQuery({ ...DEFAULT_URL_STATE, layer, time: 1987 })).toEqual({ layer, t: '1987' })
+    }
+  })
+
   it('takes the first value when a key is repeated', () => {
     expect(parseUrlState({ t: ['1990', '2000'] }).time).toBe(1990)
   })

@@ -151,6 +151,62 @@ describe.each(Object.entries(grids))('%s', (path, grid) => {
   })
 })
 
+// ERA5-Land winters (plan 002): history only, one value per winter labelled by its January.
+describe('snow layers', () => {
+  const snow = (id: string) => layers[`../public/data/layers/${id}.json`]
+  const ids = ['snow-days', 'snow-max', 'snow-march'] as const
+  const series = (file: LayerFile) => [file.country, ...Object.values(file.regions)]
+
+  it.each(ids)(
+    '%s: every winter from 1950/51 to 2024/25 against 1991–2020, no projections',
+    (id) => {
+      const file = snow(id)
+      expect(file, id).toBeDefined()
+      expect(file!.layer).toBe(id)
+      expect(file!.history.from).toBe(1951)
+      expect(file!.history.to).toBeGreaterThanOrEqual(2025)
+      expect(file!.norm).toEqual({ from: 1991, to: 2020 })
+      expect(file!.scenario).toBeNull()
+      expect(file!.futurePeriods).toEqual([])
+      // A fully fetched record has no missing winter; a null would mean a gap in the download.
+      for (const region of series(file!)) expect(region.history).not.toContain(null)
+      const grid = grids[`../public/data/grids/${id}.json`]
+      expect(grid?.step).toBeCloseTo(0.2)
+    },
+  )
+
+  it('stays within a winter and below a plausible snow water bound', () => {
+    for (const region of series(snow('snow-days')!))
+      for (const days of [region.norm, ...region.history]) {
+        expect(days).toBeGreaterThanOrEqual(0)
+        expect(days).toBeLessThanOrEqual(366)
+      }
+    for (const id of ['snow-max', 'snow-march'])
+      for (const region of series(snow(id)!))
+        for (const mm of [region.norm, ...region.history]) {
+          expect(mm, id).toBeGreaterThanOrEqual(0)
+          // Oblast means average the Carpathian peaks with the valleys: hundreds of mm at most.
+          expect(mm, id).toBeLessThan(500)
+        }
+  })
+
+  it('never stores more water on 1 March than the winter peak', () => {
+    const peak = snow('snow-max')!
+    const march = snow('snow-march')!
+    for (const [id, region] of Object.entries(march.regions))
+      region.history.forEach((mm, i) => {
+        expect(mm!, `${id} ${march.history.from + i}`).toBeLessThanOrEqual(
+          peak.regions[id]!.history[i]! + 0.1,
+        )
+      })
+  })
+
+  it('gives Lviv Oblast more snow days than Odesa Oblast in the norm', () => {
+    const { regions } = snow('snow-days')!
+    expect(regions.lviv!.norm).toBeGreaterThan(regions.odesa!.norm + 10)
+  })
+})
+
 describe('rivers.json', () => {
   it('has named stations inside Ukraine with one count per year', () => {
     expect(rivers).toBeDefined()

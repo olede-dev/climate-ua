@@ -113,3 +113,22 @@ describe('summaryStory', () => {
     expect(story).toMatch(/У 2041–2060 верхня межа прогнозу — 11,4 °C, на 2,7 °C вище за норму\.$/)
   })
 })
+
+describe('snow stories', () => {
+  it('names the winter by its January year and gives no projection', () => {
+    const snow: StoryInput = {
+      ...input(2025),
+      file: { ...file, layer: 'snow-days', scenario: null, futurePeriods: [] },
+      series: { norm: 80, history: [70, null, 60], future: {} },
+      headline: null,
+      layerCopy: uk.layers['snow-days'].story,
+      copy: { ...uk.story, noForecast: uk.layers['snow-days'].story.future },
+      format: valueFormat('uk', { one: 'день', few: 'дні', many: 'днів', other: 'дня' }, 0),
+      decimals: 0,
+    }
+    const text = plain(summaryStory(snow))
+    expect(text).toContain('Зимою 2024/25')
+    expect(text).toContain('на 20 днів менше')
+    expect(text).toContain(uk.layers['snow-days'].story.future)
+  })
+})

@@ -5,11 +5,12 @@ import { useLocale } from '../../../composables/useLocale'
 import { SURFACE_WATER_COLORS } from '../../../lib/surfaceWater'
 import {
   annualWaterArea,
-  CHANGE_TONE_CLASSES,
+  CHANGE_TONES,
   changeTone,
   waterbodyDelta,
   waterbodyPair,
 } from '../../../lib/waterbodyCard'
+import { TONE_CLASSES } from '../../../lib/tones'
 import { ownWaterbodyName, waterbodyCoordinates } from '../../../lib/localWaterbodies'
 import type { SurfaceWaterBodyEntry, SurfaceWaterManifest, SurfaceWaterState } from '../../../types'
 import LoadingIndicator from '../../ui/LoadingIndicator.vue'
@@ -165,7 +166,7 @@ const coordinates = computed(() => waterbodyCoordinates(props.body))
             <span
               v-if="delta.percent !== null"
               class="rounded-full px-2 py-0.5 text-sm font-semibold whitespace-nowrap tabular-nums"
-              :class="CHANGE_TONE_CLASSES[changeTone(delta.percent)].badge"
+              :class="TONE_CLASSES[CHANGE_TONES[changeTone(delta.percent)]].badge"
               >{{ signed(delta.percent) }}%</span
             >
           </div>

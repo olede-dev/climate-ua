@@ -143,6 +143,48 @@ CLIMATE_LAYERS = {
 
 GRID_DECIMALS = 1
 
+#: ERA5-Land hourly (0.1°, 1950–present, CC BY 4.0): snow water equivalent, m of water (NetCDF
+#: `sd`), one value a day at ERA5LAND_TIME UTC, i.e. 00:00 Kyiv winter time. Its daily-mean
+#: product (`derived-era5-land-daily-statistics`) queued for days; on winter 2009/10 the snapshot
+#: differs from the daily mean by 0.6 snow days per cell on average.
+ERA5LAND_DATASET = "reanalysis-era5-land"
+ERA5LAND_VARIABLE = "snow_depth_water_equivalent"
+ERA5LAND_TIME = "22:00"
+ERA5LAND_NC_NAME = "sd"
+ERA5LAND_DIR = RAW_DIR / "era5land"
+#: The CDS rejects a request outright while too many of the user's requests for this dataset
+#: are queued (four in parallel were rejected): one at a time, and wait this long after a refusal.
+ERA5LAND_RETRY_SECONDS = 600
+#: A winter runs July–June and is labelled by the year of its January: 1950/51 is 1951.
+SNOW_SEASON_START_MONTH = 7
+SNOW_FROM = 1951
+#: A snow day has a daily SWE of at least this many mm (phase 01 of the snow plan: it
+#: separates Lviv from Odesa as expected and needs no second variable).
+SNOW_DAY_MM = 1.0
+#: The stored snow water read on this (month, day).
+SNOW_STORE_DAY = (3, 1)
+SNOW_SOURCE = "ERA5-Land (C3S / ECMWF)"
+
+
+@dataclass(frozen=True)
+class SnowLayer:
+    id: str
+    unit: str
+    #: Days with SWE ≥ SNOW_DAY_MM, the winter's highest daily SWE, or the SWE on SNOW_STORE_DAY.
+    indicator: Literal["days", "max", "store"]
+    decimals: int
+
+
+SNOW_LAYERS = {
+    "snow-days": SnowLayer("snow-days", "днів", "days", 1),
+    "snow-max": SnowLayer("snow-max", "мм", "max", 1),
+    "snow-march": SnowLayer("snow-march", "мм", "store", 1),
+}
+SNOW_GRID_DECIMALS = 0
+#: The map grid averages 2×2 ERA5-Land cells (0.2°): at 0.1° a layer's 75 winters weigh ≈5 MB,
+#: against ≈1 MB for the other climate grids. Region values use the 0.1° cells.
+SNOW_GRID_COARSEN = 2
+
 #: Days added to both norms before scaling a delta: where a model or the observations have
 #: almost no such days, the ratio is unstable, and the change falls back to being added.
 SCALE_PSEUDO_DAYS = 1.0

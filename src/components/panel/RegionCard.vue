@@ -205,6 +205,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       />
     </figure>
 
-    <ClimateAnalog v-if="climate" :region-id="id" />
+    <!-- A history-only layer (snow) shows no Köppen projection. -->
+    <ClimateAnalog v-if="climate && file.futurePeriods.length > 0" :region-id="id" />
   </article>
 </template>

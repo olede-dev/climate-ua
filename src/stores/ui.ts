@@ -3,6 +3,7 @@ import { ref } from 'vue'
 
 import { DEFAULT_URL_STATE, type BasinFilter, type UrlState } from '../lib/urlState'
 import type { RiverSpan } from '../config/discharge'
+import type { RankSort } from '../lib/regionRanking'
 import type { RiverView } from '../lib/river/marks'
 import type { TimeStep } from '../lib/time'
 import type { LayerId, ProjectionBound, WaterScenario, WaterSector, WaterView } from '../types'
@@ -19,6 +20,8 @@ export const useUiStore = defineStore('ui', () => {
   const riverView = ref<RiverView>(DEFAULT_URL_STATE.riverView)
   const basin = ref<BasinFilter>(DEFAULT_URL_STATE.basin)
   const riverSpan = ref<RiverSpan>(DEFAULT_URL_STATE.riverSpan)
+  // Not in the URL: a viewing preference kept across layers.
+  const rankSort = ref<RankSort>('desc')
 
   const surfaceWaterTransitions = ref(DEFAULT_URL_STATE.surfaceWaterTransitions)
   const surfaceWater = ref({ ...DEFAULT_URL_STATE.surfaceWater })
@@ -56,6 +59,7 @@ export const useUiStore = defineStore('ui', () => {
   }
 
   return {
+    rankSort,
     layer,
     time,
     regionId,

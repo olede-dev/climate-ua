@@ -591,7 +591,8 @@ watch(
 watch(
   () => props.insets,
   () => {
-    if (!viewTouched) frameSelection(false)
+    // Insets move when a panel opens or the bar grows; ease there rather than cut.
+    if (!viewTouched) frameSelection(true)
   },
 )
 defineExpose({

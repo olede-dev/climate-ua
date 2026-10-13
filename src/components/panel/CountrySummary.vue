@@ -5,7 +5,9 @@ import { useLocale } from '../../composables/useLocale'
 import type { LayerConfig } from '../../config/layers'
 import type { LayerCopy } from '../../i18n'
 import { formatPeriod, type ValueFormat } from '../../lib/format'
+import { rankTone } from '../../lib/regionRanking'
 import { colorAt } from '../../lib/scale'
+import { TONE_CLASSES } from '../../lib/tones'
 import { winterLabel } from '../../lib/narrative'
 import type { SummaryRow } from '../../lib/summary'
 import type { LayerFile } from '../../types'
@@ -41,7 +43,9 @@ const delta = computed(() => {
   const text = props.format(Math.abs(difference))
   if (text === props.format(0)) return null
   const up = difference > 0
+  const rule = props.config.rank
   return {
+    tone: rule ? rankTone(difference, norm.value.value, rule) : ('neutral' as const),
     arrow: up ? '↑' : '↓',
     signed: `${up ? '+' : '−'}${text}`,
     sentence: (up ? t.value.panel.moreThanUsual : t.value.panel.lessThanUsual).replace(
@@ -94,14 +98,17 @@ const bigColor = computed(
         </p>
         <span
           v-if="headline && delta"
-          class="rounded-full bg-fill px-2 py-0.5 text-sm font-semibold whitespace-nowrap tabular-nums"
+          class="rounded-full px-2 py-0.5 text-sm font-semibold whitespace-nowrap tabular-nums"
+          :class="TONE_CLASSES[delta.tone].badge"
           >{{ delta.signed }}</span
         >
       </div>
       <p class="mt-1.5 text-[13px] leading-snug text-ink-muted">{{ caption }}</p>
       <p v-if="note" class="mt-1 text-[13px] font-medium text-ink">{{ note }}</p>
-      <p v-if="delta && !compact" class="mt-1 text-[13px] font-medium text-ink">
-        {{ delta.arrow }} {{ delta.sentence }}
+      <p v-if="delta && !compact" class="mt-1 text-[13px] font-medium">
+        <span class="rounded-full px-2 py-0.5" :class="TONE_CLASSES[delta.tone].badge"
+          >{{ delta.arrow }} {{ delta.sentence }}</span
+        >
       </p>
     </div>
 

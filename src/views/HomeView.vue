@@ -24,6 +24,8 @@ import RegionTable, { type RegionRow } from '../components/map/RegionTable.vue'
 import RiverTimeline from '../components/map/RiverTimeline.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
 import LayerPicker from '../components/panel/LayerPicker.vue'
+import PingDot from '../components/ui/PingDot.vue'
+import { useLayerHint } from '../composables/useLayerHint'
 import StationsPanel from '../components/panel/river/StationsPanel.vue'
 import RegionRanking from '../components/panel/RegionRanking.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
@@ -554,6 +556,7 @@ const sidebarCollapsed = ref(readFlag(SIDEBAR_KEY, false))
 watch(sidebarCollapsed, (collapsed) => writeFlag(SIDEBAR_KEY, collapsed))
 
 const layersOpen = ref(false)
+const { seen: layerHintSeen, markSeen: markLayerHintSeen } = useLayerHint()
 watch(isWide, (wide) => {
   if (wide) layersOpen.value = false
 })
@@ -664,13 +667,14 @@ const tooltip = computed(() => {
     <AppHeader v-if="!isWide">
       <button
         type="button"
-        class="inline-flex size-9 pointer-coarse:size-11 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:bg-fill focus-ring"
+        class="relative inline-flex size-9 pointer-coarse:size-11 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:bg-fill focus-ring"
         :aria-expanded="layersOpen"
         aria-controls="layers-drawer"
         :aria-label="t.home.showLayers"
         :title="t.home.showLayers"
-        @click="layersOpen = true"
+        @click="((layersOpen = true), markLayerHintSeen())"
       >
+        <span v-if="!layerHintSeen" class="absolute top-1.5 right-1.5 flex"><PingDot /></span>
         <svg
           viewBox="0 0 16 16"
           class="size-4"

@@ -2,6 +2,8 @@
 import type { LayerId } from '../../types'
 import { computed, ref } from 'vue'
 import { useTheme } from '../../composables/useTheme'
+import { useLayerHint } from '../../composables/useLayerHint'
+import PingDot from '../ui/PingDot.vue'
 
 type LayerChoice = {
   id: LayerId
@@ -16,6 +18,7 @@ const props = defineProps<{ layers: LayerChoice[]; label: string; bare?: boolean
 const model = defineModel<LayerId>({ required: true })
 const open = ref(false)
 const { isDark } = useTheme()
+const { seen: hintSeen, markSeen } = useLayerHint()
 // Screenshots of each layer's map, made by `scripts/layer-previews.mjs`.
 const preview = (id: LayerId) =>
   `${import.meta.env.BASE_URL}layer-previews/${id}${isDark.value ? '-dark' : ''}.webp`
@@ -31,6 +34,7 @@ const groups = computed(() =>
 const current = computed(() => props.layers.find((layer) => layer.id === model.value)!)
 
 function pick(id: LayerId) {
+  markSeen()
   model.value = id
   open.value = false
 }
@@ -49,12 +53,13 @@ function pick(id: LayerId) {
       class="focus-ring group -mx-2 flex w-[calc(100%+16px)] items-center gap-3 rounded-xl px-2 py-1.5 text-left transition-colors duration-150 ease-out hover:bg-fill active:bg-fill-strong motion-reduce:transition-none"
       :aria-expanded="open"
       aria-controls="layer-picker-choices"
-      @click="open = !open"
+      @click="((open = !open), markSeen())"
     >
       <span class="min-w-0 flex-1">
-        <span class="block text-[11px] leading-[14px] font-semibold text-ink-muted">{{
-          label
-        }}</span>
+        <span
+          class="flex items-center gap-1.5 text-[11px] leading-[14px] font-semibold text-ink-muted"
+          >{{ label }}<PingDot v-if="!hintSeen"
+        /></span>
         <span class="mt-1.5 flex items-start gap-3">
           <img
             :src="preview(current.id)"

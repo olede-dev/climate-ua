@@ -53,16 +53,19 @@ const menuButtonClass =
         </button>
       </div>
     </AppHeader>
+    <div v-if="$slots.layers" v-show="!collapsed"><slot name="layers" /></div>
     <div
+      v-else
       v-show="!collapsed"
-      class="flex shrink-0 items-center gap-3 border-b border-line px-4 pt-4 pb-3"
+      class="flex shrink-0 items-start gap-3 border-b border-line px-4 pt-4 pb-3"
     >
       <IconTile :path="layer.icon" :tone="layer.tone" size="lg" />
-      <div class="min-w-0">
+      <div class="min-w-0 mt-[3px]">
+        <!-- 3px centres the 26px title line on the 32px icon. -->
         <h2 class="truncate text-[22px] leading-[26px] font-bold text-ink" :title="layer.name">
           {{ layer.name }}
         </h2>
-        <p class="truncate text-[12px] leading-[15px] text-ink-muted" :title="layer.description">
+        <p class="text-[12px] leading-[15px] text-pretty text-ink-muted">
           {{ layer.description }}
         </p>
       </div>

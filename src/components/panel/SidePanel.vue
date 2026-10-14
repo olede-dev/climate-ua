@@ -226,7 +226,7 @@ function onKeydown(event: KeyboardEvent) {
         </svg>
       </button>
       <button
-        v-else-if="futureOffered"
+        v-else-if="futureOffered && !region"
         type="button"
         class="group mb-3 flex w-full items-center gap-2.5 future-gradient rounded-xl px-2.5 py-2 text-left text-white shadow-card transition-[filter] duration-150 ease-out motion-reduce:transition-none hover:brightness-110 active:brightness-95 focus-ring"
         @click="openFuture(true)"

@@ -230,10 +230,15 @@ export const LAYERS: Partial<Record<LayerId, LayerConfig>> = {
 // Surface-water records use their own categorical contract, not LayerFile region series.
 export const WATER_LAYER_IDS: readonly LayerId[] = ['water', 'rivers', 'waterbodies']
 
-/** Panel order: the water group first, then the climate layers. */
+export const SNOW_LAYER_IDS: readonly LayerId[] = ['snow-days', 'snow-max', 'snow-march']
+
+/** Panel order: water, then snow (it feeds the rivers in spring), then the climate layers. */
 export const LAYER_IDS = [
   ...WATER_LAYER_IDS,
-  ...(Object.keys(LAYERS) as LayerId[]).filter((id) => !WATER_LAYER_IDS.includes(id)),
+  ...SNOW_LAYER_IDS,
+  ...(Object.keys(LAYERS) as LayerId[]).filter(
+    (id) => !WATER_LAYER_IDS.includes(id) && !SNOW_LAYER_IDS.includes(id),
+  ),
 ]
 
 export const DEFAULT_LAYER: LayerId = 'water'

@@ -44,6 +44,7 @@ import {
 import { selectWaterbodyYear, summaryChange } from '../../lib/waterbodyCard'
 import { LABEL_MIN_KM2, localLabelPoints, localWaterbodies } from '../../lib/localWaterbodies'
 import WaterTabs from './WaterTabs.vue'
+import { PHONE_PADDING, UKRAINE_BOUNDS } from './mapFrame'
 import TimeSlider from './TimeSlider.vue'
 import ZoomControl from '../ui/ZoomControl.vue'
 import SelectMenu from '../ui/SelectMenu.vue'
@@ -671,14 +672,11 @@ function frameSelection(animate = true) {
           [body.bounds[0], body.bounds[1]],
           [body.bounds[2], body.bounds[3]],
         ]
-      : [
-          [22, 44],
-          [40.3, 52.5],
-        ],
+      : UKRAINE_BOUNDS,
     {
       padding: props.wide
         ? { top: 100, left: 390, right: props.insets.right || 80, bottom: 160 }
-        : { top: 45, left: 35, right: 35, bottom: 150 },
+        : PHONE_PADDING,
       maxZoom: body ? 12 : 6,
       duration: animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 900 : 0,
     },
@@ -705,7 +703,7 @@ async function startMap() {
       touchPitch: false,
       validateStyle: import.meta.env.DEV,
       maxZoom: 16,
-      minZoom: 4,
+      minZoom: 3,
       pitchWithRotate: false,
       dragRotate: false,
     })
@@ -746,7 +744,19 @@ async function startMap() {
       })
       map.on('mouseleave', layer, () => hoverLocal(null))
     }
-    resize = new ResizeObserver(() => map?.resize())
+    // A container measured mid-layout gives a wrong initial view; reframe on resize until the user moves the map.
+    let viewTouched = false
+    for (const type of ['pointerdown', 'wheel', 'keydown'] as const) {
+      container.value.addEventListener(type, () => (viewTouched = true), {
+        once: true,
+        passive: true,
+      })
+    }
+    resize = new ResizeObserver(() => {
+      if (!map) return
+      map.resize()
+      if (!viewTouched) frameSelection(false)
+    })
     resize.observe(container.value)
     frameSelection(false)
     await applyStyle()
@@ -820,14 +830,34 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="relative h-full w-full" :class="wide ? '' : 'flex flex-col'">
+  <!-- On a phone the map, timeline and panel stack here, so the gap matches HomeView's page gap. -->
+  <div class="relative h-full w-full" :class="wide ? '' : 'flex flex-col gap-2 sm:gap-3'">
+    <!-- Same height and legend placement as ClimateMap on a phone. -->
     <div
-      ref="container"
-      class="min-h-0 w-full flex-1"
-      :class="wide ? 'h-full' : 'relative min-h-[50dvh]'"
-      :aria-label="copy.name"
-      :aria-busy="pending && !query.isError.value && !failed"
-    />
+      :class="
+        wide ? 'contents' : 'relative h-[62dvh] shrink-0 overflow-hidden rounded-2xl shadow-card'
+      "
+    >
+      <div
+        ref="container"
+        class="h-full w-full"
+        :aria-label="copy.name"
+        :aria-busy="pending && !query.isError.value && !failed"
+      />
+      <figure
+        v-if="!wide"
+        class="glass pointer-events-none absolute inset-x-3 bottom-3 z-10 rounded-xl px-3 py-2 text-[11px] leading-[14px] text-ink shadow-float"
+      >
+        <figcaption class="sr-only">{{ copy.name }} {{ shownYears }}</figcaption>
+        <ul class="flex flex-wrap gap-x-3 gap-y-1.5">
+          <li v-for="item in legend" :key="item.label" class="flex items-center gap-1.5">
+            <span class="size-2.5 rounded-full" :style="{ background: item.color }" />{{
+              item.label
+            }}
+          </li>
+        </ul>
+      </figure>
+    </div>
     <div
       v-if="pending && !query.isError.value && !failed"
       class="pointer-events-none absolute top-3 z-10 flex justify-center"
@@ -838,7 +868,7 @@ onBeforeUnmount(() => {
     <div
       v-if="fallback"
       class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center"
-      :class="wide ? 'bottom-0 pl-[24rem] pr-20' : 'h-[50dvh]'"
+      :class="wide ? 'bottom-0 pl-[24rem] pr-20' : 'h-[62dvh]'"
     >
       <canvas
         ref="fallbackCanvas"
@@ -944,14 +974,15 @@ onBeforeUnmount(() => {
         </div>
       </section>
     </Teleport>
+    <!-- On a phone the legend sits on the map, so comparison needs no bar there. -->
     <div
-      v-if="axis"
+      v-if="axis && (wide || !comparing)"
       class="pointer-events-none z-10"
       :style="wide ? { right: `${insets.right + 12}px` } : undefined"
       :class="
         wide
           ? 'absolute bottom-3 left-[23.5rem] flex items-end justify-center gap-2'
-          : 'order-1 shrink-0 px-3 py-2'
+          : 'order-1 shrink-0'
       "
     >
       <span v-if="wide" class="w-12 shrink-0 sm:w-11" aria-hidden="true" />
@@ -961,16 +992,18 @@ onBeforeUnmount(() => {
         v-bind="comparing ? comparisonFrame : sliderProps"
         class="max-w-xl min-w-0 flex-1"
       >
-        <figure class="text-[11px] leading-[14px] text-ink">
-          <figcaption class="sr-only">{{ copy.name }} {{ shownYears }}</figcaption>
-          <ul class="flex flex-wrap gap-x-3 gap-y-1.5">
-            <li v-for="item in legend" :key="item.label" class="flex items-center gap-1.5">
-              <span class="size-2.5 rounded-full" :style="{ background: item.color }" />{{
-                item.label
-              }}
-            </li>
-          </ul>
-        </figure>
+        <template v-if="wide" #default>
+          <figure class="text-[11px] leading-[14px] text-ink">
+            <figcaption class="sr-only">{{ copy.name }} {{ shownYears }}</figcaption>
+            <ul class="flex flex-wrap gap-x-3 gap-y-1.5">
+              <li v-for="item in legend" :key="item.label" class="flex items-center gap-1.5">
+                <span class="size-2.5 rounded-full" :style="{ background: item.color }" />{{
+                  item.label
+                }}
+              </li>
+            </ul>
+          </figure>
+        </template>
       </component>
       <ZoomControl v-if="wide" class="self-start" @in="map?.zoomIn()" @out="map?.zoomOut()" />
     </div>

@@ -321,7 +321,7 @@ export const en: Messages = {
     loadError: 'The map data could not be loaded. Reload the page.',
     panel: 'About the map',
     layers: 'Map layer',
-    layerGroups: { water: 'Water', climate: 'Climate' },
+    layerGroups: { water: 'Water', snow: 'Snow', climate: 'Climate' },
     hideLayers: 'Hide layers',
     showLayers: 'Show layers',
     hideSidebar: 'Hide sidebar',

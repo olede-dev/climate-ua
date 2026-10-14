@@ -23,14 +23,20 @@ import MapTooltip from '../components/map/MapTooltip.vue'
 import RegionTable, { type RegionRow } from '../components/map/RegionTable.vue'
 import RiverTimeline from '../components/map/RiverTimeline.vue'
 import TimeSlider from '../components/map/TimeSlider.vue'
-import LayerList from '../components/panel/LayerList.vue'
+import LayerPicker from '../components/panel/LayerPicker.vue'
 import StationsPanel from '../components/panel/river/StationsPanel.vue'
 import RegionRanking from '../components/panel/RegionRanking.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
 import LoadingSkeleton from '../components/ui/LoadingSkeleton.vue'
 import ZoomControl from '../components/ui/ZoomControl.vue'
-import { LAYER_ICONS, LAYER_TONES } from '../config/layerIcons'
-import { LAYER_IDS, WATER_LAYER_IDS, layerConfig, waterUseConfig } from '../config/layers'
+import { LAYER_GROUP_ICONS, LAYER_ICONS, LAYER_TONES } from '../config/layerIcons'
+import {
+  LAYER_IDS,
+  SNOW_LAYER_IDS,
+  WATER_LAYER_IDS,
+  layerConfig,
+  waterUseConfig,
+} from '../config/layers'
 import {
   useBasins,
   useGrid,
@@ -346,19 +352,25 @@ const format = (value: number, withSign = signed.value) =>
   valueFormatter.value(value, { signed: withSign })
 
 const layerChoices = computed(() =>
-  LAYER_IDS.map((id) => ({
-    id,
-    group: WATER_LAYER_IDS.includes(id)
-      ? t.value.home.layerGroups.water
-      : t.value.home.layerGroups.climate,
-    name: id === 'waterbodies' ? t.value.surfaceWater.name : t.value.layers[id].name,
-    description:
-      id === 'waterbodies'
-        ? t.value.surfaceWater.description
-        : id === 'water'
-          ? t.value.waterUse.layerDescription
-          : t.value.layers[id].legendTitle,
-  })),
+  LAYER_IDS.map((id) => {
+    const group = WATER_LAYER_IDS.includes(id)
+      ? 'water'
+      : SNOW_LAYER_IDS.includes(id)
+        ? 'snow'
+        : 'climate'
+    return {
+      id,
+      group: t.value.home.layerGroups[group],
+      groupIcon: LAYER_GROUP_ICONS[group],
+      name: id === 'waterbodies' ? t.value.surfaceWater.name : t.value.layers[id].name,
+      description:
+        id === 'waterbodies'
+          ? t.value.surfaceWater.description
+          : id === 'water'
+            ? t.value.waterUse.layerDescription
+            : t.value.layers[id].legendTitle,
+    }
+  }),
 )
 const sidebarLayer = computed(() => {
   const choice = layerChoices.value.find((layer) => layer.id === ui.layer)!
@@ -478,7 +490,6 @@ const tableCaption = computed(
 const isWide = useMediaQuery('(min-width: 64rem)')
 
 const panelCard = useTemplateRef<InstanceType<typeof MapSidebar>>('panelCard')
-const controlsColumn = useTemplateRef<HTMLElement>('controlsColumn')
 const climateMap = useTemplateRef<InstanceType<typeof ClimateMap>>('climateMap')
 const bottomBar = useTemplateRef<HTMLElement>('bottomBar')
 const insets = ref<Required<PaddingOptions>>({ top: 0, bottom: 0, left: 0, right: 0 })
@@ -489,18 +500,14 @@ let barReserve = 0
 
 function measureInsets() {
   const rect = (el: unknown) => (el instanceof HTMLElement ? el.getBoundingClientRect() : null)
-  const width = window.innerWidth
   const height = window.innerHeight
-  const column = rect(controlsColumn.value)
   const bar = rect(bottomBar.value)
   if (bar) barReserve = Math.max(barReserve, bar.height)
-  const right = Math.round(width - (column?.left ?? width))
   const next = {
     top: 0,
-    // A hidden sidebar is a small header the map may run under; mirroring the right column then
-    // centres the map and the bottom bar on the page.
-    left: sidebarCollapsed.value ? right : Math.round(rect(panelCard.value?.$el)?.right ?? 0),
-    right,
+    // A hidden sidebar is a small header the map may run under.
+    left: sidebarCollapsed.value ? 0 : Math.round(rect(panelCard.value?.$el)?.right ?? 0),
+    right: 0,
     bottom: bar ? Math.round(height - bar.bottom + barReserve) : 0,
   }
   // A loading layer drops its timeline for a moment; the bar keeps its height so the map holds still.
@@ -517,7 +524,7 @@ function onWindowResize() {
 }
 const insetObserver = new ResizeObserver(measureInsets)
 watchEffect((onCleanup) => {
-  const els = [panelCard.value?.$el, controlsColumn.value, bottomBar.value]
+  const els = [panelCard.value?.$el, bottomBar.value]
   for (const el of els) if (el instanceof HTMLElement) insetObserver.observe(el)
   window.addEventListener('resize', onWindowResize)
   onCleanup(() => {
@@ -527,7 +534,6 @@ watchEffect((onCleanup) => {
 })
 onBeforeUnmount(() => insetObserver.disconnect())
 
-const LAYERS_KEY = 'climate-ua:layers-collapsed'
 function readFlag(key: string, fallback: boolean): boolean {
   try {
     const value = localStorage.getItem(key)
@@ -543,12 +549,9 @@ function writeFlag(key: string, on: boolean) {
     // Storage is a convenience; the toggle still works without it.
   }
 }
-const layersCollapsed = ref(readFlag(LAYERS_KEY, true))
-watch(layersCollapsed, (collapsed) => writeFlag(LAYERS_KEY, collapsed))
 const SIDEBAR_KEY = 'climate-ua:sidebar-collapsed'
 const sidebarCollapsed = ref(readFlag(SIDEBAR_KEY, false))
 watch(sidebarCollapsed, (collapsed) => writeFlag(SIDEBAR_KEY, collapsed))
-const layersHidden = computed(() => isWide.value && layersCollapsed.value)
 
 const layersOpen = ref(false)
 watch(isWide, (wide) => {
@@ -690,10 +693,11 @@ const tooltip = computed(() => {
           class="absolute top-2 right-2 bottom-2 w-[min(20rem,calc(100vw-3rem))] overflow-y-auto rounded-2xl bg-surface p-3 shadow-float"
           :aria-label="t.home.layers"
         >
-          <LayerList
+          <LayerPicker
             :model-value="ui.layer"
             :layers="layerChoices"
             :label="t.home.layers"
+            bare
             @update:model-value="pickLayer"
           >
             <template #action>
@@ -717,7 +721,7 @@ const tooltip = computed(() => {
                 </svg>
               </button>
             </template>
-          </LayerList>
+          </LayerPicker>
         </aside>
       </div>
     </Teleport>
@@ -731,7 +735,7 @@ const tooltip = computed(() => {
           isWide
             ? 'pointer-events-auto fixed inset-0 z-0'
             : isSurfaceWater
-              ? 'relative shrink-0 rounded-2xl shadow-card'
+              ? 'relative shrink-0'
               : 'relative h-[62dvh] shrink-0 overflow-hidden rounded-2xl shadow-card'
         "
         :aria-label="t.home.map"
@@ -796,33 +800,44 @@ const tooltip = computed(() => {
             v-if="!isWide"
             class="pointer-events-none absolute inset-3 z-10 flex flex-col justify-end gap-3"
           >
-            <RiverTimeline
-              v-if="isRivers && isDailyView(ui.riverView)"
-              v-model="mapDate"
-              :today="stations.today"
-              :window="riverTimeline"
-            />
-            <TimeSlider
-              v-else-if="sliderAxis && layer && (!isRivers || ui.riverView === 'lowFlow')"
-              v-model="timeModel"
-              v-model:playing="ui.playing"
-              :axis="sliderAxis"
-            />
+            <MapLegend
+              v-if="layer"
+              v-bind="legendProps"
+              class="glass pointer-events-auto rounded-xl px-3 py-2 shadow-float"
+            >
+            </MapLegend>
           </div>
         </ClimateMap>
       </section>
-      <MapLegend
-        v-if="!isWide && layer"
-        v-bind="legendProps"
-        class="rounded-2xl bg-surface px-3 py-2 shadow-card"
-      >
-      </MapLegend>
+      <!-- On a phone the legend sits on the map and the timeline under it, closer to the thumb. -->
+      <template v-if="!isWide">
+        <RiverTimeline
+          v-if="isRivers && isDailyView(ui.riverView)"
+          v-model="mapDate"
+          :today="stations.today"
+          :window="riverTimeline"
+        />
+        <TimeSlider
+          v-else-if="sliderAxis && layer && (!isRivers || ui.riverView === 'lowFlow')"
+          v-model="timeModel"
+          v-model:playing="ui.playing"
+          :axis="sliderAxis"
+        />
+      </template>
       <MapSidebar
         v-if="isWide"
         ref="panelCard"
         v-model:collapsed="sidebarCollapsed"
         :layer="sidebarLayer"
       >
+        <template #layers>
+          <LayerPicker
+            :model-value="ui.layer"
+            :layers="layerChoices"
+            :label="t.home.layers"
+            @update:model-value="pickLayer"
+          />
+        </template>
         <!-- SurfaceWaterView teleports its panel here, so every layer shares one sidebar. -->
         <div v-if="isSurfaceWater" id="surface-water-panel" class="flex min-h-0 flex-1 flex-col" />
         <SidePanel
@@ -886,11 +901,7 @@ const tooltip = computed(() => {
           </template>
         </SidePanel>
       </MapSidebar>
-      <div
-        v-if="isWide"
-        class="flex min-w-0 flex-1 flex-col justify-end"
-        :style="sidebarCollapsed ? { paddingLeft: `${insets.right}px` } : undefined"
-      >
+      <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
         <div
           ref="bottomBar"
           class="relative z-10 flex flex-col items-center gap-2"
@@ -930,51 +941,6 @@ const tooltip = computed(() => {
             />
           </div>
         </div>
-      </div>
-      <div
-        v-if="isWide"
-        ref="controlsColumn"
-        class="pointer-events-auto relative z-10 flex max-h-full shrink-0 flex-col items-end gap-3 self-start"
-      >
-        <aside
-          class="glass max-h-full rounded-2xl shadow-float"
-          :class="layersHidden ? 'p-2' : 'overflow-y-auto p-3 lg:w-64 xl:w-72'"
-          :aria-label="t.home.layers"
-        >
-          <LayerList
-            :model-value="ui.layer"
-            :layers="layerChoices"
-            :label="t.home.layers"
-            :compact="layersHidden"
-            @update:model-value="pickLayer"
-          >
-            <template #footer>
-              <button
-                type="button"
-                class="focus-ring-inset flex h-8 w-full items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink active:bg-fill-strong"
-                :aria-expanded="!layersHidden"
-                :aria-label="layersHidden ? t.home.showLayers : t.home.hideLayers"
-                :title="layersHidden ? t.home.showLayers : t.home.hideLayers"
-                @click="layersCollapsed = !layersCollapsed"
-              >
-                <svg
-                  viewBox="0 0 16 16"
-                  class="size-5"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  aria-hidden="true"
-                >
-                  <path
-                    :d="layersHidden ? 'M8 4L4 8l4 4M12 4L8 8l4 4' : 'M4 4l4 4-4 4M8 4l4 4-4 4'"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  />
-                </svg>
-              </button>
-            </template>
-          </LayerList>
-        </aside>
       </div>
       <SidePanel
         v-if="!isWide && panel && !isSurfaceWater"

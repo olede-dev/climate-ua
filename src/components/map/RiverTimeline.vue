@@ -234,7 +234,10 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
       </div>
 
       <div class="flex min-w-0 items-baseline gap-2">
-        <span class="text-[22px] leading-[26px] font-bold tabular-nums">{{ label }}</span>
+        <span
+          class="text-[22px] leading-[26px] font-bold whitespace-nowrap tabular-nums max-sm:text-[17px] max-sm:leading-[22px]"
+          >{{ label }}</span
+        >
         <span
           v-if="isForecast"
           class="rounded-full bg-future/12 px-2 py-0.5 text-[11px] leading-[14px] font-semibold text-future"

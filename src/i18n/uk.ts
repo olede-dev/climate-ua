@@ -318,7 +318,7 @@ export const uk = {
     loadError: 'Не вдалося завантажити дані карти. Оновіть сторінку.',
     panel: 'Пояснення до карти',
     layers: 'Шар карти',
-    layerGroups: { water: 'Вода', climate: 'Клімат' },
+    layerGroups: { water: 'Вода', snow: 'Сніг', climate: 'Клімат' },
     hideLayers: 'Сховати шари',
     showLayers: 'Показати шари',
     hideSidebar: 'Сховати бічну панель',

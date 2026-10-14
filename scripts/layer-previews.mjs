@@ -45,8 +45,10 @@ try {
   const pending = new Map()
   ws.addEventListener('message', (event) => {
     const message = JSON.parse(event.data)
-    pending.get(message.id)?.(message.result)
+    const resolve = pending.get(message.id)
+    if (typeof resolve !== 'function') return
     pending.delete(message.id)
+    resolve(message.result)
   })
   const send = (method, params = {}) =>
     new Promise((resolve) => {

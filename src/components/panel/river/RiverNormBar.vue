@@ -69,9 +69,9 @@ const discharge = (value: number) => formatDischarge(value, locale.value)
       class="flex justify-between pt-1 text-[11px] leading-[14px] text-ink-muted tabular-nums"
       aria-hidden="true"
     >
-      <span>p10 · {{ discharge(norm.p10) }} {{ unit }}<br />{{ copy.low }}</span>
+      <span>{{ discharge(norm.p10) }} {{ unit }}<br />{{ copy.low }}</span>
       <span class="text-right"
-        >p90 · {{ discharge(norm.p90) }} {{ unit }}<br />{{ copy.high }}</span
+        >{{ discharge(norm.p90) }} {{ unit }}<br />{{ copy.high }}</span
       >
     </div>
     <InfoHint v-if="normPeriod" :label="t.panel.normBar.noteToggle" class="pt-1">

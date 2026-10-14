@@ -81,8 +81,8 @@ const tiles = computed(() => {
 </script>
 
 <template>
-  <section class="space-y-3" aria-labelledby="climate-heading">
-    <h3 id="climate-heading" class="text-[13px] leading-4 font-bold text-ink">
+  <section class="space-y-3" :aria-labelledby="`climate-${view}-heading`">
+    <h3 :id="`climate-${view}-heading`" class="text-[13px] leading-4 font-bold text-ink">
       {{ view === 'trend' ? copy.heading : copy.lowFlowHeading }}
     </h3>
     <LoadingSkeleton v-if="!periods || !summary" :label="copy.loading" class="h-48" />

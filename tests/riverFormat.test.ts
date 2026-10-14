@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  compareToUsual,
   formatCoordinates,
   formatDischarge,
   formatPct,
@@ -52,5 +53,25 @@ describe('English formatting', () => {
 
   it('writes the month in English', () => {
     expect(formatPlainDate('2026-10-05', 'en')).toBe('5 October 2026')
+  })
+})
+
+describe('compareToUsual', () => {
+  it('calls a value within ±10% of usual the same', () => {
+    expect(compareToUsual(95, 100)).toEqual({ kind: 'same' })
+  })
+
+  it('gives a percent below twice the difference', () => {
+    expect(compareToUsual(60, 100)).toEqual({ kind: 'less', pct: 40 })
+    expect(compareToUsual(150, 100)).toEqual({ kind: 'more', pct: 50 })
+  })
+
+  it('gives whole times from twice the difference', () => {
+    expect(compareToUsual(77, 345)).toEqual({ kind: 'less', times: 4 })
+    expect(compareToUsual(300, 100)).toEqual({ kind: 'more', times: 3 })
+  })
+
+  it('has nothing to say without a usual value', () => {
+    expect(compareToUsual(10, 0)).toBeNull()
   })
 })

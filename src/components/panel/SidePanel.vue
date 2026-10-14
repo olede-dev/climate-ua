@@ -189,8 +189,8 @@ function onKeydown(event: KeyboardEvent) {
 <template>
   <aside class="flex flex-col" :aria-label="t.home.panel" @keydown="onKeydown">
     <div class="min-h-0 flex-1 overflow-y-auto p-4">
-      <!-- The period switch sits above the content: nothing critical at the panel's bottom
-         edge. "Future" is the view's one prominent button; "back" is a plain secondary one. -->
+      <!-- "Back" sits above the content; "Future" is pinned to the panel's bottom edge
+         (below) so the top keeps a single row of controls. -->
       <button
         v-if="futureOn"
         type="button"
@@ -223,47 +223,6 @@ function onKeydown(event: KeyboardEvent) {
           aria-hidden="true"
         >
           <path d="M10 3.5 5.5 8l4.5 4.5" />
-        </svg>
-      </button>
-      <button
-        v-else-if="futureOffered && !region"
-        type="button"
-        class="group mb-3 flex w-full items-center gap-2.5 future-gradient rounded-xl px-2.5 py-2 text-left text-white shadow-card transition-[filter] duration-150 ease-out motion-reduce:transition-none hover:brightness-110 active:brightness-95 focus-ring"
-        @click="openFuture(true)"
-      >
-        <span
-          class="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/20"
-          aria-hidden="true"
-        >
-          <svg
-            class="size-[18px]"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.75"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M3 13l12-6 2 4-12 6z M15 7l3-1.5 2 4-3 1.5 M9 16l-2 5 M11 15l2 6" />
-          </svg>
-        </span>
-        <span class="min-w-0 flex-1">
-          <span class="block text-[13px] leading-4 font-bold">{{ t.waterUse.future }}</span>
-          <span
-            class="block truncate text-[12px] leading-[15px] text-white/90"
-            :title="futureHint"
-            >{{ futureHint }}</span
-          >
-        </span>
-        <svg
-          viewBox="0 0 16 16"
-          class="size-4 shrink-0 transition-transform duration-150 ease-out group-hover:translate-x-0.5 motion-reduce:transition-none"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="1.8"
-          aria-hidden="true"
-        >
-          <path d="m6 3.5 4.5 4.5L6 12.5" />
         </svg>
       </button>
       <slot v-if="region && $slots.card" name="card" />
@@ -345,6 +304,51 @@ function onKeydown(event: KeyboardEvent) {
           />
         </section>
       </div>
+    </div>
+    <div
+      v-if="!futureOn && futureOffered && !region"
+      class="shrink-0 border-t border-line p-3"
+    >
+        <button
+                  type="button"
+          class="group flex w-full items-center gap-2.5 future-gradient rounded-xl px-2.5 py-2 text-left text-white shadow-card transition-[filter] duration-150 ease-out motion-reduce:transition-none hover:brightness-110 active:brightness-95 focus-ring"
+          @click="openFuture(true)"
+        >
+          <span
+            class="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/20"
+            aria-hidden="true"
+          >
+            <svg
+              class="size-[18px]"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M3 13l12-6 2 4-12 6z M15 7l3-1.5 2 4-3 1.5 M9 16l-2 5 M11 15l2 6" />
+            </svg>
+          </span>
+          <span class="min-w-0 flex-1">
+            <span class="block text-[13px] leading-4 font-bold">{{ t.waterUse.future }}</span>
+            <span
+              class="block truncate text-[12px] leading-[15px] text-white/90"
+              :title="futureHint"
+              >{{ futureHint }}</span
+            >
+          </span>
+          <svg
+            viewBox="0 0 16 16"
+            class="size-4 shrink-0 transition-transform duration-150 ease-out group-hover:translate-x-0.5 motion-reduce:transition-none"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true"
+          >
+            <path d="m6 3.5 4.5 4.5L6 12.5" />
+          </svg>
+        </button>
     </div>
   </aside>
 </template>

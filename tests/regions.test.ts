@@ -37,8 +37,8 @@ describe('basinLabel', () => {
       'uk',
       MESSAGES.uk.basin,
     )
-    expect(label.name).toBe('Суббасейн у Чернігівській області')
-    expect(label.where).toBe('у цьому суббасейні')
+    expect(label.name).toBe('Частина басейну у Чернігівській області')
+    expect(label.where).toBe('у цій частині басейну')
   })
 
   it('carries the Kakhovka note', () => {

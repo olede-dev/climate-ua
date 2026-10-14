@@ -81,3 +81,22 @@ export function formatPlainDate(date: string, locale: Locale = 'uk'): string {
 export function formatYearRange({ from, to }: { from: number; to: number }): string {
   return `${from}–${to}`
 }
+
+export type UsualComparison =
+  | { kind: 'same' }
+  | { kind: 'less' | 'more'; pct: number }
+  | { kind: 'less' | 'more'; times: number }
+
+/**
+ * Today's discharge against the usual one in words a non-specialist reads at once: within
+ * ±10% it is "about as usual", from twice the difference it is "N times", otherwise a percent.
+ */
+export function compareToUsual(current: number, usual: number): UsualComparison | null {
+  if (!(usual > 0) || current < 0) return null
+  const ratio = current / usual
+  if (Math.abs(ratio - 1) < 0.1) return { kind: 'same' }
+  const kind = ratio < 1 ? 'less' : 'more'
+  const factor = ratio < 1 ? 1 / ratio : ratio
+  if (factor >= 2) return { kind, times: Math.round(factor) }
+  return { kind, pct: Math.round(Math.abs(ratio - 1) * 100) }
+}

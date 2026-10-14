@@ -78,7 +78,7 @@ describe('riverMarks', () => {
     const states = [state('a', {}, { meanChangePct: -35, lowFlowDays: [0, 50] })]
     expect(riverMarks('trend', states, context).get('a')).toMatchObject({
       fill: TREND_CLASSES[0]!.color,
-      detail: 'тренд стоку −35%',
+      detail: 'води −35%',
     })
     expect(riverMarks('lowFlow', states, context).get('a')).toMatchObject({
       fill: LOW_FLOW_CLASSES[3]!.color,
@@ -118,7 +118,7 @@ describe('riverLegend', () => {
     )
     expect(trend.steps).toHaveLength(TREND_CLASSES.length)
     expect([trend.min, trend.max]).toEqual(['≤ −30%', '> +30%'])
-    expect(trend.note).toBe('Зміна середнього стоку, 2012–2025 проти 1997–2010')
+    expect(trend.note).toBe('Як змінилася кількість води, 2012–2025 проти 1997–2010')
     const lowFlow = riverLegend('lowFlow', uk.river, undefined, 'uk')
     expect([lowFlow.min, lowFlow.max]).toEqual(['0', '≥ 90 днів'])
   })

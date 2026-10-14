@@ -44,6 +44,7 @@ import {
 import { selectWaterbodyYear, summaryChange } from '../../lib/waterbodyCard'
 import { LABEL_MIN_KM2, localLabelPoints, localWaterbodies } from '../../lib/localWaterbodies'
 import WaterTabs from './WaterTabs.vue'
+import { PHONE_PADDING, UKRAINE_BOUNDS } from './mapFrame'
 import TimeSlider from './TimeSlider.vue'
 import ZoomControl from '../ui/ZoomControl.vue'
 import SelectMenu from '../ui/SelectMenu.vue'
@@ -125,16 +126,12 @@ const localsPending = computed(
 )
 const state = computed(() =>
   manifest.value
-    ? normalizeSurfaceWaterState(
-        ui.surfaceWater,
-        manifest.value.years,
-        [
-          ...manifest.value.catalogue.map((body) => body.id),
-          ...(localsPending.value && ui.surfaceWater.waterbody
-            ? [ui.surfaceWater.waterbody]
-            : locals.value.map((body) => body.id)),
-        ],
-      )
+    ? normalizeSurfaceWaterState(ui.surfaceWater, manifest.value.years, [
+        ...manifest.value.catalogue.map((body) => body.id),
+        ...(localsPending.value && ui.surfaceWater.waterbody
+          ? [ui.surfaceWater.waterbody]
+          : locals.value.map((body) => body.id)),
+      ])
     : null,
 )
 const selected = computed<SurfaceWaterBodyEntry | undefined>(() => {
@@ -264,7 +261,7 @@ const timelineYear = computed<TimeStep>({
 const playing = ref(false)
 const comparing = computed(() => ui.surfaceWater.mode === 'comparison')
 const comparisonFrame = {
-  class: 'glass pointer-events-auto rounded-2xl px-2.5 py-2 shadow-float sm:px-3',
+  class: 'glass pointer-events-auto rounded-2xl p-2.5 shadow-float sm:px-3.5 sm:py-3',
 }
 const sliderProps = computed(() => ({
   modelValue: timelineYear.value,
@@ -675,14 +672,11 @@ function frameSelection(animate = true) {
           [body.bounds[0], body.bounds[1]],
           [body.bounds[2], body.bounds[3]],
         ]
-      : [
-          [22, 44],
-          [40.3, 52.5],
-        ],
+      : UKRAINE_BOUNDS,
     {
       padding: props.wide
         ? { top: 100, left: 390, right: props.insets.right || 80, bottom: 160 }
-        : { top: 45, left: 35, right: 35, bottom: 150 },
+        : PHONE_PADDING,
       maxZoom: body ? 12 : 6,
       duration: animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 900 : 0,
     },
@@ -709,7 +703,7 @@ async function startMap() {
       touchPitch: false,
       validateStyle: import.meta.env.DEV,
       maxZoom: 16,
-      minZoom: 4,
+      minZoom: 3,
       pitchWithRotate: false,
       dragRotate: false,
     })
@@ -750,7 +744,19 @@ async function startMap() {
       })
       map.on('mouseleave', layer, () => hoverLocal(null))
     }
-    resize = new ResizeObserver(() => map?.resize())
+    // A container measured mid-layout gives a wrong initial view; reframe on resize until the user moves the map.
+    let viewTouched = false
+    for (const type of ['pointerdown', 'wheel', 'keydown'] as const) {
+      container.value.addEventListener(type, () => (viewTouched = true), {
+        once: true,
+        passive: true,
+      })
+    }
+    resize = new ResizeObserver(() => {
+      if (!map) return
+      map.resize()
+      if (!viewTouched) frameSelection(false)
+    })
     resize.observe(container.value)
     frameSelection(false)
     await applyStyle()
@@ -824,14 +830,34 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="relative h-full w-full" :class="wide ? '' : 'flex flex-col'">
+  <!-- On a phone the map, timeline and panel stack here, so the gap matches HomeView's page gap. -->
+  <div class="relative h-full w-full" :class="wide ? '' : 'flex flex-col gap-2 sm:gap-3'">
+    <!-- Same height and legend placement as ClimateMap on a phone. -->
     <div
-      ref="container"
-      class="min-h-0 w-full flex-1"
-      :class="wide ? 'h-full' : 'relative min-h-[50dvh]'"
-      :aria-label="copy.name"
-      :aria-busy="pending && !query.isError.value && !failed"
-    />
+      :class="
+        wide ? 'contents' : 'relative h-[62dvh] shrink-0 overflow-hidden rounded-2xl shadow-card'
+      "
+    >
+      <div
+        ref="container"
+        class="h-full w-full"
+        :aria-label="copy.name"
+        :aria-busy="pending && !query.isError.value && !failed"
+      />
+      <figure
+        v-if="!wide"
+        class="glass pointer-events-none absolute inset-x-3 bottom-3 z-10 rounded-xl px-3 py-2 text-[11px] leading-[14px] text-ink shadow-float"
+      >
+        <figcaption class="sr-only">{{ copy.name }} {{ shownYears }}</figcaption>
+        <ul class="flex flex-wrap gap-x-3 gap-y-1.5">
+          <li v-for="item in legend" :key="item.label" class="flex items-center gap-1.5">
+            <span class="size-2.5 rounded-full" :style="{ background: item.color }" />{{
+              item.label
+            }}
+          </li>
+        </ul>
+      </figure>
+    </div>
     <div
       v-if="pending && !query.isError.value && !failed"
       class="pointer-events-none absolute top-3 z-10 flex justify-center"
@@ -842,7 +868,7 @@ onBeforeUnmount(() => {
     <div
       v-if="fallback"
       class="pointer-events-none absolute inset-x-0 top-0 flex items-center justify-center"
-      :class="wide ? 'bottom-0 pl-[24rem] pr-20' : 'h-[50dvh]'"
+      :class="wide ? 'bottom-0 pl-[24rem] pr-20' : 'h-[62dvh]'"
     >
       <canvas
         ref="fallbackCanvas"
@@ -857,7 +883,7 @@ onBeforeUnmount(() => {
         :class="
           wide
             ? 'min-h-0 flex-1'
-            : 'glass pointer-events-auto relative z-10 order-2 shrink-0 rounded-2xl text-sm shadow-float'
+            : 'glass pointer-events-auto relative z-10 order-2 shrink-0 rounded-2xl text-[13px] leading-4 shadow-float'
         "
         :aria-label="copy.name"
         @keydown.esc="selected && closeBody()"
@@ -866,11 +892,12 @@ onBeforeUnmount(() => {
           v-if="!selected"
           ref="bodyPicker"
           tabindex="-1"
-          class="text-[22px] font-bold tracking-tight focus-visible:outline-none"
+          class="text-[22px] leading-[26px] font-bold focus-visible:outline-none"
+          :class="{ 'sr-only': wide }"
         >
           {{ copy.name }}
         </h1>
-        <div v-if="!selected" class="mt-3">
+        <div v-if="!selected" :class="{ 'mt-3': !wide }">
           <WaterTabs v-model="mode" :views="modes" :label="copy.name" />
           <div
             v-if="ui.surfaceWater.mode === 'comparison'"
@@ -892,17 +919,17 @@ onBeforeUnmount(() => {
               type="button"
               role="switch"
               :aria-checked="transitions"
-              class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[13px] text-ink transition-colors hover:bg-fill focus-ring-inset"
+              class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[13px] leading-4 text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill focus-ring-inset"
               @click="transitions = !transitions"
             >
               <span>{{ copy.transitions }}</span>
               <span
-                class="relative h-[22px] w-9 shrink-0 rounded-full transition-colors"
+                class="relative h-[22px] w-9 shrink-0 rounded-full transition-colors duration-150 ease-out motion-reduce:transition-none"
                 :class="transitions ? 'bg-accent' : 'bg-fill-strong'"
                 aria-hidden="true"
               >
                 <span
-                  class="absolute top-0.5 left-0.5 size-[18px] rounded-full bg-white shadow-card transition-transform"
+                  class="absolute top-0.5 left-0.5 size-[18px] rounded-full bg-white shadow-card transition-transform duration-150 ease-out motion-reduce:transition-none"
                   :class="transitions && 'translate-x-3.5'"
                 />
               </span>
@@ -916,12 +943,14 @@ onBeforeUnmount(() => {
           :comparison="listComparison"
           @select="bodyModel = $event"
         />
-        <p v-if="query.isError.value || failed" role="alert" class="mt-3 text-sm">
+        <p v-if="query.isError.value || failed" role="alert" class="mt-3 text-[13px] leading-4">
           {{ copy.error }}
           <button class="rounded-lg bg-fill p-2 focus-ring" @click="retry">{{ copy.retry }}</button>
         </p>
         <p v-else-if="manifest && !state" role="status">{{ copy.empty }}</p>
-        <p v-if="unknownBody" role="status" class="mt-2 text-sm">{{ copy.unknownBody }}</p>
+        <p v-if="unknownBody" role="status" class="mt-2 text-[13px] leading-4">
+          {{ copy.unknownBody }}
+        </p>
         <Suspense v-if="selected && query.data.value && state">
           <WaterbodyCard
             :key="`${manifest?.version}:${selected.id}`"
@@ -935,42 +964,48 @@ onBeforeUnmount(() => {
           /></template>
         </Suspense>
         <div v-if="fallback" class="mt-2">
-          <p class="text-xs">{{ copy.fallback }}</p>
-          <button class="mt-1 rounded-lg bg-fill p-2 text-sm focus-ring" @click="startMap">
+          <p class="text-[12px] leading-[15px]">{{ copy.fallback }}</p>
+          <button
+            class="mt-1 rounded-lg bg-fill p-2 text-[13px] leading-4 focus-ring"
+            @click="startMap"
+          >
             {{ copy.interactive }}
           </button>
         </div>
       </section>
     </Teleport>
+    <!-- On a phone the legend sits on the map, so comparison needs no bar there. -->
     <div
-      v-if="axis"
+      v-if="axis && (wide || !comparing)"
       class="pointer-events-none z-10"
       :style="wide ? { right: `${insets.right + 12}px` } : undefined"
       :class="
         wide
           ? 'absolute bottom-3 left-[23.5rem] flex items-end justify-center gap-2'
-          : 'order-1 shrink-0 px-3 py-2'
+          : 'order-1 shrink-0'
       "
     >
-      <span v-if="wide" class="w-9 shrink-0" aria-hidden="true" />
+      <span v-if="wide" class="w-12 shrink-0 sm:w-11" aria-hidden="true" />
       <!-- Comparison picks both years in its own selects, so the timeline would be a second, conflicting control. -->
       <component
         :is="comparing ? 'div' : TimeSlider"
         v-bind="comparing ? comparisonFrame : sliderProps"
         class="max-w-xl min-w-0 flex-1"
       >
-        <figure class="text-[11px] leading-tight text-ink">
-          <figcaption class="sr-only">{{ copy.name }} {{ shownYears }}</figcaption>
-          <ul class="flex flex-wrap gap-x-3 gap-y-1.5">
-            <li v-for="item in legend" :key="item.label" class="flex items-center gap-1.5">
-              <span class="size-2.5 rounded-full" :style="{ background: item.color }" />{{
-                item.label
-              }}
-            </li>
-          </ul>
-        </figure>
+        <template v-if="wide" #default>
+          <figure class="text-[11px] leading-[14px] text-ink">
+            <figcaption class="sr-only">{{ copy.name }} {{ shownYears }}</figcaption>
+            <ul class="flex flex-wrap gap-x-3 gap-y-1.5">
+              <li v-for="item in legend" :key="item.label" class="flex items-center gap-1.5">
+                <span class="size-2.5 rounded-full" :style="{ background: item.color }" />{{
+                  item.label
+                }}
+              </li>
+            </ul>
+          </figure>
+        </template>
       </component>
-      <ZoomControl v-if="wide" @in="map?.zoomIn()" @out="map?.zoomOut()" />
+      <ZoomControl v-if="wide" class="self-start" @in="map?.zoomIn()" @out="map?.zoomOut()" />
     </div>
   </div>
 </template>

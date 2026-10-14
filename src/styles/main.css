@@ -17,6 +17,8 @@
   --ui-line: rgb(0 0 0 / 0.08);
   --ui-fill: rgb(118 118 128 / 0.12);
   --ui-fill-strong: rgb(118 118 128 / 0.2);
+  /* The selected segment of a segmented control, raised above `fill`. */
+  --ui-segment: #ffffff;
   --ui-accent: #0071e3;
   --ui-accent-hover: #0062c4;
   --ui-accent-ink: #0066cc;
@@ -44,6 +46,7 @@
   --ui-line: rgb(255 255 255 / 0.1);
   --ui-fill: rgb(118 118 128 / 0.24);
   --ui-fill-strong: rgb(118 118 128 / 0.34);
+  --ui-segment: #636366;
   --ui-accent: #0a84ff;
   --ui-accent-hover: #2b95ff;
   --ui-accent-ink: #4da3ff;
@@ -70,6 +73,7 @@
   --color-line: var(--ui-line);
   --color-fill: var(--ui-fill);
   --color-fill-strong: var(--ui-fill-strong);
+  --color-segment: var(--ui-segment);
   --color-accent: var(--ui-accent);
   --color-accent-hover: var(--ui-accent-hover);
   --color-accent-ink: var(--ui-accent-ink);
@@ -261,5 +265,13 @@
   .station-pulse,
   .station-pop {
     display: none;
+  }
+}
+
+/* Touch screens get 44pt map controls (HIG minimum hit target). */
+@media (pointer: coarse) {
+  .maplibregl-ctrl-group button {
+    width: 44px;
+    height: 44px;
   }
 }

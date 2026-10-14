@@ -39,15 +39,19 @@ const style = computed(() => {
     :style="style"
     role="status"
   >
-    <p class="text-[13px] leading-tight font-semibold text-ink">{{ name }}</p>
-    <p class="mt-0.5 text-[11px] text-ink-muted">{{ when }}</p>
+    <p class="text-[13px] leading-4 font-semibold text-ink">{{ name }}</p>
+    <p class="mt-0.5 text-[11px] leading-[14px] text-ink-muted">{{ when }}</p>
     <p
       class="mt-1.5 leading-none font-semibold tabular-nums text-ink"
-      :class="value === null ? 'text-sm' : 'text-[28px]'"
+      :class="value === null ? 'text-[13px]' : 'text-[26px]'"
     >
       {{ value ?? noData }}
     </p>
-    <p v-for="line in details" :key="line" class="mt-1 text-[11px] text-ink-muted tabular-nums">
+    <p
+      v-for="line in details"
+      :key="line"
+      class="mt-1 text-[11px] leading-[14px] text-ink-muted tabular-nums"
+    >
       {{ line }}
     </p>
     <div

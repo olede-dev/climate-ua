@@ -100,7 +100,7 @@ describe('summaryStory', () => {
     })
     expect(plain(story)).toBe(
       'In 2025, the mean temperature in Ukraine was 10.4 °C, 1.7 °C above the norm. ' +
-        'For 2041–2060, the model median is 10.5 °C (80% of models: 10.1 to 11.4), 1.8 °C above the norm.',
+        'In 2041–2060 it will most likely be 10.5 °C (possibly 10.1 to 11.4), 1.8 °C above the norm.',
     )
   })
 
@@ -110,7 +110,7 @@ describe('summaryStory', () => {
     const story = plain(
       summaryStory({ ...input(2025, uk.story.country), series: high, bound: 'max' }),
     )
-    expect(story).toMatch(/У 2041–2060 верхня межа прогнозу — 11,4 °C, на 2,7 °C вище за норму\.$/)
+    expect(story).toMatch(/Якщо зміни будуть сильнішими, у 2041–2060 — 11,4 °C, на 2,7 °C вище за норму\.$/)
   })
 })
 

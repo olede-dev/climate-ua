@@ -12,7 +12,7 @@ withDefaults(
 <template>
   <div
     role="status"
-    class="loading flex items-center gap-2 text-xs text-ink"
+    class="loading flex items-center gap-2 text-[12px] leading-[15px] text-ink"
     :class="floating ? 'glass rounded-full px-3 py-2 shadow-float' : 'py-1'"
   >
     <span

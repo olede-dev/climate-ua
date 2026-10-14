@@ -15,6 +15,12 @@ export const LAYER_ICONS: Record<LayerId, string> = {
   rivers:
     'M2 6c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2M2 12c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2M2 18c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2 2.5-2 5-2',
 }
+/** Line glyphs (24-unit grid) beside the group titles in the layer picker. */
+export const LAYER_GROUP_ICONS = {
+  water: LAYER_ICONS.water,
+  snow: 'M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.5 4.5 12 7l2.5-2.5M9.5 19.5 12 17l2.5 2.5',
+  climate: LAYER_ICONS.temp,
+} as const
 export const LAYER_TONES: Record<LayerId, string> = {
   waterbodies: 'bg-sky-600',
   water: 'bg-blue-500',

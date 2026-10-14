@@ -12,7 +12,8 @@ import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from
 import { useLocale } from '../../composables/useLocale'
 import LoadingIndicator from '../ui/LoadingIndicator.vue'
 import { firstPaint } from '../../lib/firstPaint'
-import { geometryBounds, type Bounds } from '../../lib/geometry'
+import { geometryBounds } from '../../lib/geometry'
+import { PHONE_PADDING, UKRAINE_BOUNDS } from './mapFrame'
 import { gridCorners, paintGrid } from '../../lib/grid'
 import { posterPaths } from '../../lib/poster'
 import { colorAt, type ColorScale } from '../../lib/scale'
@@ -92,11 +93,6 @@ const emit = defineEmits<{
   select: [id: string | null]
 }>()
 
-const UKRAINE_BOUNDS: Bounds = [
-  [22.0, 44.0],
-  [40.3, 52.5],
-]
-const PADDING = { top: 48, bottom: 96, left: 16, right: 56 }
 const INSET_GAP = { top: 16, bottom: 16, left: 16, right: 56 }
 const EMPTY_STYLE: StyleSpecification = { version: 8, sources: {}, layers: [] }
 const TWEEN_MS = 300
@@ -328,7 +324,7 @@ function applyFocus() {
 
 function padding(): PaddingOptions {
   const insets = props.insets
-  if (!insets) return PADDING
+  if (!insets) return PHONE_PADDING
   return {
     top: insets.top + INSET_GAP.top,
     bottom: insets.bottom + INSET_GAP.bottom,
@@ -640,7 +636,7 @@ watch(
       </svg>
       <button
         type="button"
-        class="glass relative rounded-xl px-4 py-2.5 text-sm font-medium text-ink shadow-float"
+        class="glass relative rounded-xl px-4 py-2.5 text-[13px] leading-4 font-medium text-ink shadow-float"
         @click="showMap"
       >
         {{ t.home.showMap }}

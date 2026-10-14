@@ -95,7 +95,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <button
         type="button"
         :aria-label="t.panel.close"
-        class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-fill-strong focus-ring"
+        class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] leading-4 font-medium text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill-strong active:bg-fill-strong focus-ring pointer-coarse:min-h-11"
         @click="$emit('close')"
       >
         <svg
@@ -115,11 +115,14 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <h2
         ref="heading"
         tabindex="-1"
-        class="text-[22px] leading-tight font-bold tracking-tight text-ink focus-visible:outline-none"
+        class="text-[17px] leading-[22px] font-bold text-ink focus-visible:outline-none"
       >
         {{ name }}
       </h2>
-      <p v-if="subtitle" class="mt-1 flex items-start gap-1 text-xs leading-snug text-ink-muted">
+      <p
+        v-if="subtitle"
+        class="mt-1 flex items-start gap-1 text-[12px] leading-[15px] text-ink-muted"
+      >
         <svg
           viewBox="0 0 24 24"
           class="mt-px size-3.5 shrink-0"
@@ -160,13 +163,18 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
         :format="format"
         :focus="focus"
       />
-      <SectorBar v-else-if="sectors && typeof step === 'number'" :sectors="sectors" :year="step" />
+      <SectorBar
+        v-else-if="sectors && typeof step === 'number'"
+        :sectors="sectors"
+        :year="step"
+        class="rounded-xl bg-group px-3 py-2.5"
+      />
     </template>
 
     <p
       v-if="note"
       role="note"
-      class="flex gap-2.5 rounded-xl border-l-4 border-warn bg-warn-fill px-3 py-2.5 text-[13px] leading-relaxed text-warn-ink"
+      class="flex gap-2.5 rounded-xl bg-warn-fill px-3 py-2.5 text-[12px] leading-[15px] text-warn-ink"
     >
       <svg
         viewBox="0 0 24 24"
@@ -183,16 +191,22 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <span>{{ note }}</span>
     </p>
 
-    <p v-if="!hasData" class="rounded-xl bg-fill px-4 py-6 text-center text-sm text-ink-muted">
+    <p
+      v-if="!hasData"
+      class="rounded-xl bg-group px-4 py-6 text-center text-[13px] leading-4 text-ink-muted"
+    >
       {{ t.tooltip.noData }}
     </p>
 
-    <p v-else-if="allZero" class="rounded-xl bg-fill px-4 py-6 text-center text-sm text-ink-muted">
+    <p
+      v-else-if="allZero"
+      class="rounded-xl bg-group px-4 py-6 text-center text-[13px] leading-4 text-ink-muted"
+    >
       {{ zeroNote }}
     </p>
 
-    <figure v-else class="space-y-2">
-      <figcaption class="px-1 text-[13px] leading-snug font-semibold text-ink">
+    <figure v-else class="space-y-2 rounded-xl bg-surface p-3 shadow-card">
+      <figcaption class="text-[13px] leading-4 font-bold text-ink">
         {{ chartTitle }}
       </figcaption>
       <RegionChart

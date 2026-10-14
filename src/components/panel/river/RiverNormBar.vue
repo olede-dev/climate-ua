@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import InfoHint from '../../ui/InfoHint.vue'
 
 import { useLocale } from '../../../composables/useLocale'
 import { ANOMALY_CLASSES } from '../../../lib/river/marks'
@@ -34,7 +35,7 @@ const discharge = (value: number) => formatDischarge(value, locale.value)
 
 <template>
   <figure class="space-y-1">
-    <div class="relative mx-1.5 h-4 text-[11px] text-ink-muted" aria-hidden="true">
+    <div class="relative mx-1.5 h-4 text-[11px] leading-[14px] text-ink-muted" aria-hidden="true">
       <span
         v-if="current !== null"
         class="absolute bottom-0 -translate-x-1/2 whitespace-nowrap"
@@ -57,7 +58,7 @@ const discharge = (value: number) => formatDischarge(value, locale.value)
         :style="{ left: pct(current), backgroundColor: valueColor }"
       ></span>
     </div>
-    <div class="relative mx-1.5 h-4 text-[11px] tabular-nums" aria-hidden="true">
+    <div class="relative mx-1.5 h-4 text-[11px] leading-[14px] tabular-nums" aria-hidden="true">
       <span
         class="absolute top-0.5 -translate-x-1/2 font-medium whitespace-nowrap text-ink"
         :style="labelAt(norm.median)"
@@ -65,19 +66,16 @@ const discharge = (value: number) => formatDischarge(value, locale.value)
       >
     </div>
     <div
-      class="flex justify-between pt-1 text-[11px] leading-tight text-ink-muted tabular-nums"
+      class="flex justify-between pt-1 text-[11px] leading-[14px] text-ink-muted tabular-nums"
       aria-hidden="true"
     >
-      <span>p10 · {{ discharge(norm.p10) }} {{ unit }}<br />{{ copy.low }}</span>
+      <span>{{ discharge(norm.p10) }} {{ unit }}<br />{{ copy.low }}</span>
       <span class="text-right"
-        >p90 · {{ discharge(norm.p90) }} {{ unit }}<br />{{ copy.high }}</span
+        >{{ discharge(norm.p90) }} {{ unit }}<br />{{ copy.high }}</span
       >
     </div>
-    <details v-if="normPeriod" class="pt-1 text-[11px] leading-snug text-ink-muted">
-      <summary class="cursor-pointer select-none hover:text-ink focus-ring">
-        ⓘ {{ t.panel.normBar.noteToggle }}
-      </summary>
-      <p class="mt-1">{{ copy.note.replace('{norm}', formatYearRange(normPeriod)) }}</p>
-    </details>
+    <InfoHint v-if="normPeriod" :label="t.panel.normBar.noteToggle" class="pt-1">
+      <p>{{ copy.note.replace('{norm}', formatYearRange(normPeriod)) }}</p>
+    </InfoHint>
   </figure>
 </template>

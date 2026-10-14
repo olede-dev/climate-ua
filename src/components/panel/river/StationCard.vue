@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, useTemplateRef, type FunctionalComponent } from 'vue'
+import { computed, onMounted, useTemplateRef } from 'vue'
 
 import { isRateLimited } from '../../../api/http'
 import { useLocale } from '../../../composables/useLocale'
@@ -9,12 +9,17 @@ import type { RegionLabel } from '../../../lib/regions'
 import { formatDayMonth } from '../../../lib/format'
 import { forecastOutlook } from '../../../lib/river/anomaly'
 import { buildChartSeries } from '../../../lib/river/chartSeries'
-import { ANOMALY_CLASSES, isDailyView, type RiverView } from '../../../lib/river/marks'
-import { formatDischarge, formatPct, formatYearRange } from '../../../lib/river/format'
+import { ANOMALY_CLASSES, type RiverView } from '../../../lib/river/marks'
+import {
+  compareToUsual,
+  formatDischarge,
+  formatPct,
+  formatYearRange,
+} from '../../../lib/river/format'
+import { plural } from '../../../lib/format'
 import type { DischargeSeries, RiverNormsFile, RiversFile, StationState } from '../../../types'
 import { RIVER_SPANS, type RiverSpan } from '../../../config/discharge'
 import ErrorState from '../../ui/ErrorState.vue'
-import ExpandList from '../../ui/ExpandList.vue'
 import InfoHint from '../../ui/InfoHint.vue'
 import LoadingSkeleton from '../../ui/LoadingSkeleton.vue'
 import OutlookBadge from '../../ui/OutlookBadge.vue'
@@ -27,10 +32,9 @@ import RiverNormBar from './RiverNormBar.vue'
 /**
  * The rivers layer's station card, laid out like the climate layers' `RegionCard`: discharge
  * on the timeline's day as the headline with its norm bar, the forecast outlook, the
- * discharge chart over the timeline's window with precipitation. The trend and low-flow views
- * swap all of that for their part of the climate section; the views are
- * picked from a list in the card, which the forecast view skips. Loaded as its own
- * chunk with Chart.js, only once a station opens.
+ * discharge chart over the timeline's window with precipitation, then the flow trend and the
+ * low-flow days as their own blocks, always shown together; the forecast view keeps only the
+ * state. Loaded as its own chunk with Chart.js, only once a station opens.
  */
 const props = defineProps<{
   /** The station on `date`. */
@@ -51,7 +55,7 @@ const props = defineProps<{
 const emit = defineEmits<{ close: []; retry: []; select: [date: string] }>()
 /** The chart's window picker; without the model (the forecast view) the window is fixed. */
 const spanId = defineModel<RiverSpan>('spanId')
-/** The map's river view, picked here from the list; the forecast view has no row and shows bare. */
+/** The map's river view; the card shows every block, so it only tells the forecast apart. */
 const view = defineModel<RiverView>('view', { required: true })
 const spanOptions = computed(() =>
   (Object.keys(RIVER_SPANS) as RiverSpan[]).map((value) => ({
@@ -69,28 +73,26 @@ const stationNorms = computed(() => props.norms?.stations[station.value.id] ?? n
 const stateColor = computed(
   () => ANOMALY_CLASSES.find((c) => c.id === props.state.anomalyClass)?.color ?? null,
 )
-const daily = computed(() => isDailyView(view.value))
-
-const VIEW_ICONS: Record<ListedView, { icon: string; tone: string }> = {
-  state: { icon: 'M12 3s-6 6.5-6 11a6 6 0 0 0 12 0c0-4.5-6-11-6-11z', tone: 'bg-sky-500' },
-  trend: { icon: 'M3 17l6-6 4 4 8-8 M15 7h6v6', tone: 'bg-violet-500' },
-  lowFlow: { icon: 'M4 20h16 M6 20v-4 M10 20v-8 M14 20v-6 M18 20v-11', tone: 'bg-orange-500' },
-}
-type ListedView = Exclude<RiverView, 'forecast'>
-const viewItems = computed(() =>
-  (Object.keys(VIEW_ICONS) as ListedView[]).map((id) => ({
-    id,
-    name: t.value.river.views[id],
-    about: t.value.river.viewsAbout[id],
-    ...VIEW_ICONS[id],
-  })),
-)
-const Bare: FunctionalComponent = (_, { slots }) => slots.default?.()
-Bare.inheritAttrs = false
-/** Inside the list the blocks sit on its grouped row, so they drop their own inset. */
-const listed = computed(() => view.value !== 'forecast')
-const viewList = computed(() => (listed.value ? ExpandList : Bare))
-const precipitation = usePrecipitation(station, daily)
+const forecast = computed(() => view.value === 'forecast')
+/** The headline number in plain words: "about 4 times less water than usual on 14 October". */
+const plainComparison = computed(() => {
+  const { current, norm } = props.state
+  const c = current !== null && norm ? compareToUsual(current, norm.median) : null
+  if (!c) return null
+  const words = t.value.river.compare
+  const date = formatDayMonth(props.date, locale.value)
+  if (c.kind === 'same') return words.same.replace('{date}', date)
+  if ('times' in c) {
+    const n = `${c.times}\u00a0${plural(c.times, locale.value, words.times)}`
+    return words[c.kind === 'less' ? 'lessTimes' : 'moreTimes']
+      .replace('{n}', n)
+      .replace('{date}', date)
+  }
+  return words[c.kind === 'less' ? 'lessPct' : 'morePct']
+    .replace('{pct}', `${c.pct}%`)
+    .replace('{date}', date)
+})
+const precipitation = usePrecipitation(station, true)
 const precipitationError = computed(() => {
   if (!precipitation.isError.value) return null
   return isRateLimited(precipitation.error.value)
@@ -130,7 +132,11 @@ const chartSeries = computed(
 const normPeriod = computed(() => (props.rivers ? formatYearRange(props.rivers.norm) : ''))
 
 // The card opens beside the map; move focus so keyboard and screen-reader users follow.
-onMounted(() => heading.value?.focus({ preventScroll: true }))
+onMounted(() => {
+  heading.value?.focus({ preventScroll: true })
+  // The trend and low-flow map marks had no other way back to the daily state than this card.
+  if (view.value === 'trend' || view.value === 'lowFlow') view.value = 'state'
+})
 </script>
 
 <template>
@@ -139,7 +145,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <button
         type="button"
         :aria-label="copy.close"
-        class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-fill-strong focus-ring"
+        class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] leading-4 font-medium text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill-strong active:bg-fill-strong focus-ring pointer-coarse:min-h-11"
         @click="emit('close')"
       >
         <svg
@@ -159,11 +165,11 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <h2
         ref="heading"
         tabindex="-1"
-        class="text-[22px] leading-tight font-bold tracking-tight text-ink focus-visible:outline-none"
+        class="text-[17px] leading-[22px] font-bold text-ink focus-visible:outline-none"
       >
         {{ label.name }}
       </h2>
-      <p class="mt-1 flex items-start gap-1 text-xs leading-snug text-ink-muted">
+      <p class="mt-1 flex items-start gap-1 text-[12px] leading-[15px] text-ink-muted">
         <svg
           viewBox="0 0 24 24"
           class="mt-px size-3.5 shrink-0"
@@ -181,7 +187,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
           <span>{{ copy.basin.replace('{name}', t.river.basins[station.basin]) }}</span>
           <span
             v-if="station.focus"
-            class="rounded-full bg-accent/12 px-2 text-[11px] font-medium text-accent-ink"
+            class="rounded-full bg-accent/12 px-2 text-[11px] leading-[14px] font-medium text-accent-ink"
           >
             {{ t.river.list.focusBasin }}
           </span>
@@ -192,7 +198,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
     <p
       v-if="label.note"
       role="note"
-      class="flex gap-2.5 rounded-xl border-l-4 border-warn bg-warn-fill px-3 py-2.5 text-[13px] leading-relaxed text-warn-ink"
+      class="flex gap-2.5 rounded-xl bg-warn-fill px-3 py-2.5 text-[12px] leading-[15px] text-warn-ink"
     >
       <svg
         viewBox="0 0 24 24"
@@ -206,11 +212,16 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       >
         <path d="M12 3 2 20h20L12 3zM12 10v4M12 17h.01" />
       </svg>
-      <span>{{ label.note }}</span>
+      <span v-if="station.regulated" class="min-w-0 flex-1 space-y-1">
+        <span class="block">{{ t.station.regulatedShort }}</span>
+        <InfoHint :label="t.station.regulatedMore" class="text-warn-ink">
+          <p>{{ label.note }}</p>
+        </InfoHint>
+      </span>
+      <span v-else>{{ label.note }}</span>
     </p>
 
-    <component :is="viewList" v-model="view" flush :items="viewItems" :label="t.river.viewsLabel">
-      <div v-if="daily" class="space-y-4">
+    <div class="space-y-4">
         <div>
           <div
             class="flex items-baseline gap-2.5"
@@ -219,21 +230,23 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
             "
           >
             <p
-              class="text-4xl leading-none font-semibold tabular-nums"
+              class="text-[26px] leading-8 font-bold tabular-nums"
               :class="!stateColor && 'text-ink'"
             >
               {{ formatDischarge(state.current, locale) }}
-              <span v-if="state.current !== null" class="text-xl">{{ t.river.dischargeUnit }}</span>
+              <span v-if="state.current !== null" class="text-[17px] leading-[22px] font-normal">{{
+                t.river.dischargeUnit
+              }}</span>
             </p>
             <span
               v-if="state.anomalyPct !== null"
-              class="rounded-full bg-fill px-2 py-0.5 text-sm font-semibold whitespace-nowrap text-ink tabular-nums"
+              class="rounded-full bg-fill px-2 py-0.5 text-[13px] leading-4 font-semibold whitespace-nowrap text-ink tabular-nums"
               >{{ formatPct(state.anomalyPct, locale) }}</span
             >
           </div>
           <p
             v-if="state.anomalyClass"
-            class="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-ink"
+            class="mt-1 flex items-center gap-1.5 text-[13px] leading-4 font-medium text-ink"
           >
             <span
               class="size-2.5 shrink-0 rounded-full"
@@ -244,11 +257,14 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
             ></span>
             {{ t.river.anomalyClasses[state.anomalyClass] }}
           </p>
+          <p v-if="plainComparison" class="mt-1.5 text-[13px] leading-4 text-ink">
+            {{ plainComparison }}
+          </p>
         </div>
 
         <RiverNormBar
           v-if="state.norm"
-          :class="!listed && 'rounded-xl bg-group px-3 py-2.5'"
+          class="rounded-xl bg-group px-3 py-2.5"
           :norm="state.norm"
           :current="state.current"
           :anomaly-class="state.anomalyClass"
@@ -256,11 +272,11 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
           :norm-period="rivers?.norm"
         />
 
-        <OutlookBadge v-if="outlook" :outlook="outlook" :flat="listed" />
+        <OutlookBadge v-if="outlook" :outlook="outlook" />
 
         <section class="space-y-3" aria-labelledby="chart-heading">
-          <div class="flex flex-col items-start gap-2" :class="!listed && 'px-1'">
-            <h3 id="chart-heading" class="text-[13px] leading-snug font-semibold text-ink">
+          <div class="flex flex-col items-start gap-2 px-1">
+            <h3 id="chart-heading" class="text-[13px] leading-4 font-bold text-ink">
               {{ copy.chartHeading }}
             </h3>
             <SegmentedControl
@@ -293,11 +309,15 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
           </DischargeChart>
           <div
             v-else
-            class="flex h-56 items-center justify-center rounded-xl bg-group text-sm text-ink-muted"
+            class="flex h-56 items-center justify-center rounded-xl bg-group text-[13px] leading-4 text-ink-muted"
           >
             {{ copy.noChartData }}
           </div>
-          <p v-if="precipitationError" role="status" class="text-xs text-warn-ink">
+          <p
+            v-if="precipitationError"
+            role="status"
+            class="text-[12px] leading-[15px] text-warn-ink"
+          >
             {{ precipitationError }}
           </p>
           <InfoHint :label="copy.chartNoteToggle">
@@ -305,15 +325,19 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
             <p>{{ copy.precipitationNote }}</p>
           </InfoHint>
         </section>
-      </div>
+    </div>
+
+    <template v-if="!forecast">
       <ClimateSection
-        v-else
-        :view="view === 'trend' ? 'trend' : 'lowFlow'"
+        v-for="part in ['trend', 'lowFlow'] as const"
+        :key="part"
+        class="rounded-xl bg-group px-3 py-3"
+        :view="part"
         :periods="rivers"
         :summary="climate.summary.value"
         :this-year-failed="climate.thisYear.isError.value"
         :today="today"
       />
-    </component>
+    </template>
   </article>
 </template>

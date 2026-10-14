@@ -33,7 +33,6 @@ const track = useTemplateRef<HTMLDivElement>('track')
 
 const steps = computed(() => axisSteps(props.axis))
 const slots = computed(() => periodSlots(props.axis))
-const historyEnd = computed(() => stepPosition(props.axis, props.axis.to))
 const thumb = computed(() => stepPosition(props.axis, step.value))
 const future = computed(() => isFuture(step.value))
 const label = computed(() => (isFuture(step.value) ? formatPeriod(step.value) : String(step.value)))
@@ -132,6 +131,13 @@ const labelled = computed(() => {
   const every = props.axis.to - props.axis.from > 50 ? 20 : 10
   return decades.value.filter((tick) => tick.year % every === 0)
 })
+const years = computed(() => {
+  const out: { year: number; at: number; decade: boolean }[] = []
+  for (let year = props.axis.from; year <= props.axis.to; year++) {
+    out.push({ year, at: stepPosition(props.axis, year), decade: year % 10 === 0 })
+  }
+  return out
+})
 const periodsOnly = computed(() => props.axis.to < props.axis.from)
 const prev = computed(() => prevStep(props.axis, step.value))
 const next = computed(() => nextStep(props.axis, step.value))
@@ -146,197 +152,177 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
 </script>
 
 <template>
-  <div class="glass pointer-events-auto rounded-2xl px-2.5 py-2 shadow-float sm:px-3">
-    <div class="flex items-center gap-2 sm:gap-3">
-      <button
-        v-if="allowPlayback"
-        type="button"
-        class="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent text-white transition-colors hover:bg-accent-hover focus-ring"
-        :aria-label="playing ? t.timeline.pause : t.timeline.play"
-        :aria-pressed="playing"
-        @click="playing = !playing"
-      >
-        <svg
-          v-if="playing"
-          viewBox="0 0 16 16"
-          class="size-4"
-          fill="currentColor"
-          aria-hidden="true"
-        >
-          <rect x="3" y="2" width="3.5" height="12" rx="1" />
-          <rect x="9.5" y="2" width="3.5" height="12" rx="1" />
-        </svg>
-        <svg v-else viewBox="0 0 16 16" class="size-4" fill="currentColor" aria-hidden="true">
-          <path d="M4 2.5v11a1 1 0 0 0 1.5.86l9-5.5a1 1 0 0 0 0-1.72l-9-5.5A1 1 0 0 0 4 2.5Z" />
-        </svg>
-      </button>
-
+  <div class="glass pointer-events-auto rounded-2xl p-2.5 shadow-float sm:px-3.5 sm:py-3">
+    <div class="flex items-center gap-3">
       <div
-        v-if="periodsOnly"
-        class="flex min-w-0 flex-1 rounded-[9px] bg-fill p-0.5"
-        role="radiogroup"
+        v-if="allowPlayback || !periodsOnly"
+        class="flex shrink-0 items-center rounded-full bg-fill p-0.5"
+        role="group"
         :aria-label="t.timeline.label"
       >
         <button
-          v-for="period in axis.periods"
-          :key="period"
+          v-if="!periodsOnly"
           type="button"
-          role="radio"
-          class="min-w-0 flex-1 truncate rounded-[7px] px-1 py-1 text-[11px] font-semibold tabular-nums transition-colors focus-ring sm:text-xs"
-          :class="
-            period === step
-              ? 'bg-surface text-accent-ink shadow-[0_0_0_0.5px_rgb(0_0_0/0.04),0_1px_3px_rgb(0_0_0/0.12)] dark:bg-[#636366] dark:text-white'
-              : 'text-ink-muted hover:text-ink'
-          "
-          :aria-checked="period === step"
-          @click="moveTo(period)"
-        >
-          {{ formatPeriod(period) }}
-        </button>
-      </div>
-
-      <div v-if="!periodsOnly" class="flex shrink-0 items-center text-ink" aria-hidden="true">
-        <button
-          type="button"
-          tabindex="-1"
-          class="flex size-6 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink disabled:opacity-0"
+          class="flex size-9 pointer-coarse:size-11 items-center justify-center rounded-full text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill-strong focus-ring-inset disabled:text-ink-muted disabled:opacity-40 sm:size-8"
+          :aria-label="t.timeline.prev"
           :disabled="prev === null"
           @click="moveTo(prev)"
         >
-          <svg
-            viewBox="0 0 16 16"
-            class="size-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.25"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M10 3.5 5.5 8l4.5 4.5" />
+          <svg viewBox="0 0 16 16" class="size-4" fill="currentColor" aria-hidden="true">
+            <path
+              d="M2 8.87a1 1 0 0 1 0-1.74l5.5-3.3A1 1 0 0 1 9 4.7v6.6a1 1 0 0 1-1.5.86L2 8.87Z"
+            />
+            <path
+              d="M8 8.87a1 1 0 0 1 0-1.74l5.5-3.3A1 1 0 0 1 15 4.7v6.6a1 1 0 0 1-1.5.86L8 8.87Z"
+            />
           </svg>
         </button>
-        <span
-          class="text-center text-base font-semibold tabular-nums"
-          :class="future ? 'min-w-[5.5rem]' : 'min-w-[3rem]'"
-          >{{ label }}</span
-        >
         <button
+          v-if="allowPlayback"
           type="button"
-          tabindex="-1"
-          class="flex size-6 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink disabled:opacity-0"
+          class="flex size-9 pointer-coarse:size-11 items-center justify-center rounded-full bg-segment text-ink shadow-card transition-colors duration-150 ease-out motion-reduce:transition-none hover:text-accent-ink focus-ring-inset sm:size-8"
+          :aria-label="playing ? t.timeline.pause : t.timeline.play"
+          :aria-pressed="playing"
+          @click="playing = !playing"
+        >
+          <svg
+            v-if="playing"
+            viewBox="0 0 16 16"
+            class="size-3.5"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <rect x="3" y="2" width="3.5" height="12" rx="1" />
+            <rect x="9.5" y="2" width="3.5" height="12" rx="1" />
+          </svg>
+          <svg v-else viewBox="0 0 16 16" class="size-3.5" fill="currentColor" aria-hidden="true">
+            <path d="M3 2.5v11a1 1 0 0 0 1.5.86l9-5.5a1 1 0 0 0 0-1.72l-9-5.5A1 1 0 0 0 3 2.5Z" />
+          </svg>
+        </button>
+        <button
+          v-if="!periodsOnly"
+          type="button"
+          class="flex size-9 pointer-coarse:size-11 items-center justify-center rounded-full text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill-strong focus-ring-inset disabled:text-ink-muted disabled:opacity-40 sm:size-8"
+          :aria-label="t.timeline.next"
           :disabled="next === null"
           @click="moveTo(next)"
         >
-          <svg
-            viewBox="0 0 16 16"
-            class="size-4"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.25"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M6 3.5 10.5 8 6 12.5" />
+          <svg viewBox="0 0 16 16" class="size-4" fill="currentColor" aria-hidden="true">
+            <path
+              d="M14 8.87a1 1 0 0 0 0-1.74l-5.5-3.3A1 1 0 0 0 7 4.7v6.6a1 1 0 0 0 1.5.86L14 8.87Z"
+            />
+            <path
+              d="M8 8.87a1 1 0 0 0 0-1.74l-5.5-3.3A1 1 0 0 0 1 4.7v6.6a1 1 0 0 0 1.5.86L8 8.87Z"
+            />
           </svg>
         </button>
       </div>
 
-      <div v-if="!periodsOnly" class="flex min-w-0 flex-1 flex-col sm:pt-3.5">
-        <div
-          ref="track"
-          class="relative h-6 touch-none rounded-full select-none focus-ring"
-          role="slider"
-          tabindex="0"
-          :aria-label="t.timeline.label"
-          :aria-valuemin="0"
-          :aria-valuemax="steps.length - 1"
-          :aria-valuenow="steps.indexOf(step)"
-          :aria-valuetext="valueText"
-          @keydown="onKeydown"
-          @pointerdown="onPointerDown"
-          @pointermove="onPointerMove"
-          @pointerup="dragging = false"
-          @pointercancel="dragging = false"
-          @pointerleave="hoverAt = null"
+      <div class="flex min-w-0 items-baseline gap-2" aria-live="off">
+        <span class="text-[22px] leading-[26px] font-bold tabular-nums">{{ label }}</span>
+        <span
+          v-if="future"
+          class="rounded-full bg-future/12 px-2 py-0.5 text-[11px] leading-[14px] font-semibold text-future"
+          >{{ t.timeline.forecast }}</span
         >
-          <span
-            class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-fill-strong"
-            :style="{ left: 0, width: percent(historyEnd) }"
-          ></span>
-          <span
-            class="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-accent"
-            :style="{ left: 0, width: percent(Math.min(thumb, historyEnd)) }"
-          ></span>
-          <span
-            v-for="slot in slots"
-            :key="slot.period"
-            class="hatch absolute top-1/2 h-3 -translate-y-1/2 rounded-full"
-            :class="slot.period === step ? 'bg-accent text-white/40' : 'bg-fill-strong text-ink/25'"
-            :style="{
-              left: `calc(${percent(slot.start)} + 2px)`,
-              width: `calc(${percent(slot.end - slot.start)} - 4px)`,
-            }"
-          ></span>
-          <span
-            v-for="tick in decades"
-            :key="tick.year"
-            class="pointer-events-none absolute top-1/2 h-2.5 w-px -translate-1/2 bg-ink/30"
-            :style="{ left: percent(tick.at) }"
-          ></span>
-          <template v-if="preview">
-            <span
-              class="pointer-events-none absolute top-1/2 size-2.5 -translate-1/2 rounded-full bg-ink/50"
-              :style="{ left: percent(preview.at) }"
-            ></span>
-            <span
-              class="pointer-events-none absolute bottom-full mb-1 -translate-x-1/2 rounded-md bg-ink px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-canvas tabular-nums"
-              :style="{ left: percent(preview.at) }"
-              >{{ preview.label }}</span
-            >
-          </template>
-          <span
-            class="pointer-events-none absolute top-1/2 size-5 -translate-1/2 rounded-full bg-white shadow-[0_0_0_0.5px_rgb(0_0_0/0.12),0_1px_4px_rgb(0_0_0/0.3)] transition-[left,transform] duration-150 ease-out motion-reduce:transition-none"
-            :class="{ 'scale-125': dragging }"
-            :style="{ left: percent(thumb) }"
-          ></span>
-          <span
-            v-if="dragging"
-            class="pointer-events-none absolute bottom-full mb-1.5 -translate-x-1/2 rounded-md bg-accent px-1.5 py-0.5 text-xs font-semibold whitespace-nowrap text-white tabular-nums"
-            :style="{ left: percent(thumb) }"
-            >{{ label }}</span
-          >
-        </div>
-
-        <div
-          class="relative hidden h-3.5 text-[10px] leading-none text-ink-muted tabular-nums sm:block"
-        >
-          <span
-            v-for="tick in labelled"
-            :key="tick.year"
-            class="absolute -translate-x-1/2"
-            :style="{ left: percent(tick.at) }"
-            >{{ tick.year }}</span
-          >
-          <span
-            v-for="slot in slots"
-            :key="slot.period"
-            class="absolute -translate-x-1/2 whitespace-nowrap"
-            :style="{ left: percent((slot.start + slot.end) / 2) }"
-            >{{ formatPeriod(slot.period) }}</span
-          >
-        </div>
       </div>
     </div>
-    <div v-if="$slots.default" class="mt-1.5 border-t border-ink/10 pt-2">
+
+    <div
+      v-if="periodsOnly"
+      class="mt-2.5 flex rounded-[10px] bg-fill p-0.5"
+      role="radiogroup"
+      :aria-label="t.timeline.label"
+    >
+      <button
+        v-for="period in axis.periods"
+        :key="period"
+        type="button"
+        role="radio"
+        class="min-w-0 flex-1 truncate rounded-lg px-1 py-1 text-[12px] leading-[15px] font-semibold tabular-nums transition-colors duration-150 ease-out motion-reduce:transition-none focus-ring-inset"
+        :class="
+          period === step ? 'bg-segment text-ink shadow-card' : 'text-ink-muted hover:text-ink'
+        "
+        :aria-checked="period === step"
+        @click="moveTo(period)"
+      >
+        {{ formatPeriod(period) }}
+      </button>
+    </div>
+
+    <div v-else class="mt-2">
+      <div
+        ref="track"
+        class="relative h-7 pointer-coarse:h-11 touch-none rounded-md select-none focus-ring"
+        role="slider"
+        tabindex="0"
+        :aria-label="t.timeline.label"
+        :aria-valuemin="0"
+        :aria-valuemax="steps.length - 1"
+        :aria-valuenow="steps.indexOf(step)"
+        :aria-valuetext="valueText"
+        @keydown="onKeydown"
+        @pointerdown="onPointerDown"
+        @pointermove="onPointerMove"
+        @pointerup="dragging = false"
+        @pointercancel="dragging = false"
+        @pointerleave="hoverAt = null"
+      >
+        <span
+          v-for="tick in years"
+          :key="tick.year"
+          class="pointer-events-none absolute bottom-0 w-px -translate-x-1/2"
+          :class="[
+            tick.decade ? 'h-3.5' : 'h-2',
+            tick.at <= thumb ? 'bg-accent' : tick.decade ? 'bg-ink/35' : 'bg-ink/15',
+          ]"
+          :style="{ left: percent(tick.at) }"
+        ></span>
+        <span
+          v-for="slot in slots"
+          :key="slot.period"
+          class="pointer-events-none absolute inset-y-0.5 flex items-center justify-center overflow-hidden rounded-md text-[10px] leading-[13px] font-semibold whitespace-nowrap tabular-nums transition-colors duration-150 ease-out motion-reduce:transition-none"
+          :class="slot.period === step ? 'bg-accent text-white' : 'bg-fill text-ink-muted'"
+          :style="{
+            left: `calc(${percent(slot.start)} + 3px)`,
+            width: `calc(${percent(slot.end - slot.start)} - 6px)`,
+          }"
+          ><span class="hidden truncate px-1 sm:inline">{{ formatPeriod(slot.period) }}</span></span
+        >
+        <template v-if="preview">
+          <span
+            class="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 rounded-full bg-ink/40"
+            :style="{ left: percent(preview.at) }"
+          ></span>
+          <span
+            class="pointer-events-none absolute bottom-full mb-1.5 -translate-x-1/2 rounded-md bg-ink px-1.5 py-0.5 text-[11px] leading-[14px] font-medium whitespace-nowrap text-canvas tabular-nums"
+            :style="{ left: percent(preview.at) }"
+            >{{ preview.label }}</span
+          >
+        </template>
+        <span
+          v-if="!future"
+          class="pointer-events-none absolute -inset-y-0.5 w-[3px] -translate-x-1/2 rounded-full bg-accent shadow-[0_0_0_2px_var(--ui-glass)] transition-[left] duration-150 ease-out motion-reduce:transition-none"
+          :class="{ 'w-1': dragging }"
+          :style="{ left: percent(thumb) }"
+        ></span>
+      </div>
+
+      <div
+        class="relative mt-1 hidden h-3 text-[10px] leading-none text-ink-muted tabular-nums sm:block"
+      >
+        <span
+          v-for="tick in labelled"
+          :key="tick.year"
+          class="absolute -translate-x-1/2"
+          :style="{ left: percent(tick.at) }"
+          >{{ tick.year }}</span
+        >
+      </div>
+    </div>
+
+    <div v-if="$slots.default" class="mt-2.5 border-t border-line pt-2.5">
       <slot />
     </div>
   </div>
 </template>
-
-<style scoped>
-.hatch {
-  background-image: repeating-linear-gradient(-45deg, currentColor 0 1.5px, transparent 1.5px 5px);
-}
-</style>

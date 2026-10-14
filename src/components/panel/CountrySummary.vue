@@ -84,35 +84,36 @@ const bigColor = computed(
 </script>
 
 <template>
-  <div class="space-y-2" aria-hidden="true">
+  <div
+    class="space-y-2"
+    :class="!compact && 'rounded-xl bg-surface p-3 shadow-card'"
+    aria-hidden="true"
+  >
     <div>
       <div
         class="flex items-baseline gap-2.5"
         :style="bigColor ? { color: `color-mix(in oklab, ${bigColor} 75%, var(--ui-ink))` } : {}"
       >
-        <p
-          class="text-4xl leading-none font-semibold tabular-nums"
-          :class="!bigColor && 'text-ink'"
-        >
+        <p class="text-[26px] leading-8 font-bold tabular-nums" :class="!bigColor && 'text-ink'">
           {{ focused?.value == null ? '—' : format(focused.value) }}
         </p>
         <span
           v-if="headline && delta"
-          class="rounded-full px-2 py-0.5 text-sm font-semibold whitespace-nowrap tabular-nums"
+          class="rounded-full px-2 py-0.5 text-[13px] leading-4 font-semibold whitespace-nowrap tabular-nums"
           :class="TONE_CLASSES[delta.tone].badge"
           >{{ delta.signed }}</span
         >
       </div>
-      <p class="mt-1.5 text-[13px] leading-snug text-ink-muted">{{ caption }}</p>
-      <p v-if="note" class="mt-1 text-[13px] font-medium text-ink">{{ note }}</p>
-      <p v-if="delta && !compact" class="mt-1 text-[13px] font-medium">
+      <p class="mt-1 text-[12px] leading-[15px] text-ink-muted">{{ caption }}</p>
+      <p v-if="note" class="mt-1 text-[13px] leading-4 font-medium text-ink">{{ note }}</p>
+      <p v-if="delta && !compact" class="mt-2 text-[12px] leading-[15px] font-medium">
         <span class="rounded-full px-2 py-0.5" :class="TONE_CLASSES[delta.tone].badge"
           >{{ delta.arrow }} {{ delta.sentence }}</span
         >
       </p>
     </div>
 
-    <p v-if="normNote && !compact" class="text-xs leading-relaxed text-ink-muted">
+    <p v-if="normNote && !compact" class="text-[12px] leading-[15px] text-ink-muted">
       {{ normNote }}
     </p>
   </div>

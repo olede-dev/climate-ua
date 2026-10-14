@@ -10,12 +10,12 @@ const { t } = useLocale()
 <template>
   <div
     role="alert"
-    class="flex flex-wrap items-center gap-3 rounded-xl bg-warn-fill px-4 py-3 text-sm text-warn-ink"
+    class="flex flex-wrap items-center gap-3 rounded-xl bg-warn-fill px-4 py-3 text-[13px] leading-4 text-warn-ink"
   >
     {{ message }}
     <button
       type="button"
-      class="rounded-full bg-surface px-3 py-1 text-[13px] font-medium text-ink shadow-card transition-colors hover:bg-group focus-ring"
+      class="rounded-full bg-surface px-3 py-1 text-[13px] leading-4 font-medium text-ink shadow-card transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-group active:bg-fill-strong focus-ring pointer-coarse:min-h-11"
       @click="$emit('retry')"
     >
       {{ t.river.errors.retry }}

@@ -81,8 +81,8 @@ const tiles = computed(() => {
 </script>
 
 <template>
-  <section class="space-y-3" aria-labelledby="climate-heading">
-    <h3 id="climate-heading" class="text-[13px] leading-snug font-semibold text-ink">
+  <section class="space-y-3" :aria-labelledby="`climate-${view}-heading`">
+    <h3 :id="`climate-${view}-heading`" class="text-[13px] leading-4 font-bold text-ink">
       {{ view === 'trend' ? copy.heading : copy.lowFlowHeading }}
     </h3>
     <LoadingSkeleton v-if="!periods || !summary" :label="copy.loading" class="h-48" />
@@ -94,13 +94,13 @@ const tiles = computed(() => {
           class="flex items-center justify-between gap-3 py-2.5"
         >
           <div class="min-w-0">
-            <p class="text-sm leading-snug text-ink">{{ tile.label }}</p>
-            <p v-if="tile.detail" class="text-xs leading-snug text-ink-muted tabular-nums">
+            <p class="text-[13px] leading-4 text-ink">{{ tile.label }}</p>
+            <p v-if="tile.detail" class="text-[12px] leading-[15px] text-ink-muted tabular-nums">
               {{ tile.detail }}
             </p>
           </div>
           <p
-            class="flex shrink-0 items-center gap-1 text-lg leading-none font-semibold tracking-tight whitespace-nowrap tabular-nums"
+            class="flex shrink-0 items-center gap-1 text-[17px] leading-[22px] font-semibold whitespace-nowrap tabular-nums"
             :class="TONE_CLASS[tile.tone]"
           >
             <svg
@@ -122,7 +122,7 @@ const tiles = computed(() => {
         </li>
       </ul>
       <template v-if="view === 'lowFlow'">
-        <h4 class="pt-1 text-[13px] leading-snug font-semibold text-ink">
+        <h4 class="pt-1 text-[13px] leading-4 font-bold text-ink">
           {{ copy.chartHeading.replace('{date}', formatDayMonth(today, locale)) }}
         </h4>
         <LowFlowChart
@@ -131,7 +131,7 @@ const tiles = computed(() => {
           :current-year="currentYear"
           :baseline-mean="summary.baselineMean"
         />
-        <ul class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-muted">
+        <ul class="flex flex-wrap gap-x-3 gap-y-1 text-[12px] leading-[15px] text-ink-muted">
           <li class="flex items-center gap-1.5">
             <span class="inline-block size-2.5 rounded-[3px] bg-[#d6c3a5] dark:bg-[#6b5b45]"></span>
             {{ formatYearRange(periods.baseline) }}
@@ -149,7 +149,7 @@ const tiles = computed(() => {
             {{ meanOver(periods.baseline) }}
           </li>
         </ul>
-        <p v-if="thisYearFailed" role="status" class="text-xs text-warn-ink">
+        <p v-if="thisYearFailed" role="status" class="text-[12px] leading-[15px] text-warn-ink">
           {{ copy.thisYearFailed }}
         </p>
       </template>

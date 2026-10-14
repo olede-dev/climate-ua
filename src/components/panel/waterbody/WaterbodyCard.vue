@@ -63,20 +63,20 @@ const signed = (value: number) =>
     .format(value)
     .replace('-', '−')
 const percent = (value: number) => `${number(value * 100)}%`
-const caption = 'px-3 pb-1 text-[11px] font-semibold tracking-wide text-ink-muted uppercase'
+const caption = 'px-3 pb-1 text-[11px] leading-[14px] font-semibold text-ink-muted'
 // An unnamed body is titled by its coordinates: "near <settlement>" reads like a name it does not have.
 const name = computed(() => ownWaterbodyName(props.body, locale.value))
 const coordinates = computed(() => waterbodyCoordinates(props.body))
 </script>
 <template>
   <article
-    class="text-[13px] text-ink"
+    class="text-[13px] leading-4 text-ink"
     :aria-label="name ?? coordinates"
     :aria-busy="query.isPending.value"
   >
     <button
       type="button"
-      class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-fill-strong focus-ring"
+      class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] leading-4 font-medium text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill-strong active:bg-fill-strong focus-ring pointer-coarse:min-h-11"
       @click="emit('close')"
     >
       <svg
@@ -94,7 +94,7 @@ const coordinates = computed(() => waterbodyCoordinates(props.body))
     <h2
       ref="heading"
       tabindex="-1"
-      class="text-[22px] leading-tight font-bold tracking-tight focus-visible:outline-none"
+      class="text-[17px] leading-[22px] font-bold focus-visible:outline-none"
     >
       <template v-if="name">{{ name }}</template>
       <span v-else class="flex items-center gap-2 tabular-nums">
@@ -112,18 +112,22 @@ const coordinates = computed(() => waterbodyCoordinates(props.body))
         <span class="sr-only">{{ copy.unnamed }}, </span>{{ coordinates }}
       </span>
     </h2>
-    <p class="mt-1 text-[13px] text-ink-muted">{{ copy[body.type] }}</p>
-    <p v-if="body.type === 'local'" role="note" class="mt-2 text-xs leading-relaxed text-ink-muted">
+    <p class="mt-1 text-[13px] leading-4 text-ink-muted">{{ copy[body.type] }}</p>
+    <p
+      v-if="body.type === 'local'"
+      role="note"
+      class="mt-2 text-[12px] leading-[15px] text-ink-muted"
+    >
       {{ copy.localNote }}
     </p>
     <p
       v-if="body.id.includes('kakhovka')"
       role="note"
-      class="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-xs leading-relaxed text-red-800 dark:text-red-200"
+      class="mt-3 rounded-xl bg-warn-fill p-3 text-[12px] leading-[15px] text-warn-ink"
     >
       {{ copy.kakhovka }}
       <a
-        class="rounded font-medium text-red-800 underline dark:text-red-200 underline-offset-2 focus-ring"
+        class="rounded font-medium text-warn-ink underline underline-offset-2 focus-ring"
         target="_blank"
         rel="noopener"
         href="https://www.unep.org/resources/report/rapid-environmental-assessment-kakhovka-dam-breach-ukraine-2023"
@@ -135,7 +139,7 @@ const coordinates = computed(() => waterbodyCoordinates(props.body))
       {{ copy.error }}
       <button
         type="button"
-        class="rounded-full bg-fill px-3 py-1 font-medium transition-colors hover:bg-fill-strong focus-ring"
+        class="rounded-full bg-fill px-3 py-1 font-medium transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill-strong active:bg-fill-strong focus-ring"
         @click="query.refetch()"
       >
         {{ copy.retry }}
@@ -151,7 +155,7 @@ const coordinates = computed(() => waterbodyCoordinates(props.body))
           {{ copy.error }}
           <button
             type="button"
-            class="rounded-full bg-fill px-3 py-1 font-medium transition-colors hover:bg-fill-strong focus-ring"
+            class="rounded-full bg-fill px-3 py-1 font-medium transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill-strong active:bg-fill-strong focus-ring"
             @click="pairs.refetch()"
           >
             {{ copy.retry }}
@@ -159,24 +163,28 @@ const coordinates = computed(() => waterbodyCoordinates(props.body))
         </p>
         <template v-else-if="comparison && delta">
           <div class="flex items-baseline gap-2.5">
-            <p class="text-4xl leading-none font-semibold tabular-nums">
+            <p class="text-[26px] leading-8 font-bold tabular-nums">
               {{ signed(delta.deltaM2 / 1e6) }}
-              <span class="text-xl font-medium text-ink-muted">{{ copy.km2 }}</span>
+              <span class="text-[17px] leading-[22px] font-normal text-ink-muted">{{
+                copy.km2
+              }}</span>
             </p>
             <span
               v-if="delta.percent !== null"
-              class="rounded-full px-2 py-0.5 text-sm font-semibold whitespace-nowrap tabular-nums"
+              class="rounded-full px-2 py-0.5 text-[13px] leading-4 font-semibold whitespace-nowrap tabular-nums"
               :class="TONE_CLASSES[CHANGE_TONES[changeTone(delta.percent)]].badge"
               >{{ signed(delta.percent) }}%</span
             >
           </div>
-          <p class="mt-1.5 leading-snug text-ink-muted">
+          <p class="mt-1.5 text-ink-muted">
             {{ copy.delta }} · {{ state.before }} → {{ state.after }}
           </p>
-          <p v-if="delta.percent === null" class="mt-1 text-xs text-ink-muted">
+          <p v-if="delta.percent === null" class="mt-1 text-[12px] leading-[15px] text-ink-muted">
             {{ copy.zeroBaseline }}
           </p>
-          <dl class="mt-3 divide-y divide-line overflow-hidden rounded-xl bg-group tabular-nums">
+          <dl
+            class="mt-3 divide-y divide-line overflow-hidden rounded-xl bg-group tabular-nums shadow-card"
+          >
             <div class="flex justify-between gap-3 px-3 py-2">
               <dt>{{ state.before }}</dt>
               <dd class="text-ink-muted">{{ area(comparison.before.unionM2) }}</dd>
@@ -190,7 +198,7 @@ const coordinates = computed(() => waterbodyCoordinates(props.body))
         <p v-else class="rounded-xl bg-group px-3 py-2 text-ink-muted">{{ copy.noComparison }}</p>
         <p
           v-if="pair && pair.spatialStatus !== 'complete'"
-          class="mt-1.5 px-3 text-xs text-warn-ink"
+          class="mt-1.5 px-3 text-[12px] leading-[15px] text-warn-ink"
         >
           {{ copy.commonMask }} · {{ copy[pair.spatialStatus] }} ·
           {{ percent(pair.coverage) }}
@@ -198,19 +206,21 @@ const coordinates = computed(() => waterbodyCoordinates(props.body))
       </section>
       <section :class="state.mode === 'comparison' ? 'mt-5' : 'mt-4'">
         <template v-if="state.mode === 'annual'">
-          <p class="text-4xl leading-none font-semibold tabular-nums">
+          <p class="text-[26px] leading-8 font-bold tabular-nums">
             <template v-if="areas"
               >{{ number(areas.unionM2 / 1e6) }}
-              <span class="text-xl font-medium text-ink-muted">{{ copy.km2 }}</span></template
+              <span class="text-[17px] leading-[22px] font-normal text-ink-muted">{{
+                copy.km2
+              }}</span></template
             >
             <template v-else>—</template>
           </p>
-          <p class="mt-1.5 leading-snug text-ink-muted">{{ copy.total }} · {{ year }}</p>
+          <p class="mt-1.5 text-ink-muted">{{ copy.total }} · {{ year }}</p>
         </template>
         <h3 v-else :class="caption">{{ copy.composition }} · {{ year }}</h3>
         <dl
           v-if="areas"
-          class="divide-y divide-line overflow-hidden rounded-xl bg-group tabular-nums"
+          class="divide-y divide-line overflow-hidden rounded-xl bg-group tabular-nums shadow-card"
           :class="state.mode === 'annual' && 'mt-3'"
         >
           <div
@@ -232,21 +242,23 @@ const coordinates = computed(() => waterbodyCoordinates(props.body))
         <p v-else class="rounded-xl bg-group px-3 py-2 text-ink-muted">{{ copy.noArea }}</p>
         <p
           v-if="annual && annual.spatialStatus !== 'complete'"
-          class="mt-1.5 px-3 text-xs text-warn-ink"
+          class="mt-1.5 px-3 text-[12px] leading-[15px] text-warn-ink"
         >
           {{ copy[annual.spatialStatus] }} · {{ copy.coverage }}: {{ percent(annual.coverage) }}
         </p>
       </section>
       <section class="mt-5">
         <h3 :class="caption">{{ copy.history }}</h3>
-        <div class="rounded-xl bg-group p-2">
+        <div class="rounded-xl bg-surface p-2 shadow-card">
           <WaterbodyChart
             :annual="query.data.value.annual"
             :years="release.manifest.years"
             :selected="year"
           />
         </div>
-        <ul class="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 px-3 text-xs text-ink-muted">
+        <ul
+          class="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 px-3 text-[12px] leading-[15px] text-ink-muted"
+        >
           <li class="flex items-center gap-1.5">
             <svg viewBox="0 0 16 10" class="h-2.5 w-4 shrink-0" aria-hidden="true">
               <path d="M0 5h16" stroke="#2ab0cd" stroke-width="2" />
@@ -266,14 +278,14 @@ const coordinates = computed(() => waterbodyCoordinates(props.body))
             {{ copy.chartGap }}
           </li>
         </ul>
-        <details open class="group mt-3 overflow-hidden rounded-xl bg-group">
+        <details open class="group mt-3 overflow-hidden rounded-xl bg-group shadow-card">
           <summary
-            class="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 transition-colors hover:bg-fill focus-ring-inset [&::-webkit-details-marker]:hidden"
+            class="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill active:bg-fill-strong focus-ring-inset [&::-webkit-details-marker]:hidden"
           >
             {{ copy.yearly }}
             <svg
               viewBox="0 0 16 16"
-              class="size-4 shrink-0 text-ink-muted transition-transform group-open:rotate-90"
+              class="size-4 shrink-0 text-ink-muted transition-transform duration-150 ease-out motion-reduce:transition-none group-open:rotate-90"
               fill="none"
               stroke="currentColor"
               stroke-width="1.8"

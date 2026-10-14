@@ -15,7 +15,7 @@ const model = defineModel<T>({ required: true })
     v-if="stacked"
     role="radiogroup"
     :aria-label="label"
-    class="flex w-full flex-col overflow-hidden rounded-xl bg-group text-[13px]"
+    class="flex w-full flex-col overflow-hidden rounded-xl bg-group text-[13px] leading-4 shadow-card leading-4"
   >
     <button
       v-for="view in views"
@@ -23,7 +23,7 @@ const model = defineModel<T>({ required: true })
       type="button"
       role="radio"
       :aria-checked="model === view.id"
-      class="group/row flex items-start gap-2.5 pl-2.5 text-left text-ink transition-colors hover:bg-fill focus-ring-inset"
+      class="group/row flex items-start gap-2.5 pl-2.5 text-left text-ink active:bg-fill-strong pointer-coarse:min-h-11 transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill focus-ring-inset"
       @click="model = view.id"
     >
       <IconTile
@@ -40,7 +40,7 @@ const model = defineModel<T>({ required: true })
           {{ view.label }}
           <span
             v-if="view.about && model === view.id"
-            class="mt-0.5 block text-xs leading-relaxed font-normal text-ink-muted"
+            class="mt-0.5 block text-[12px] leading-[15px] font-normal text-ink-muted"
             >{{ view.about }}</span
           >
         </span>
@@ -52,7 +52,7 @@ const model = defineModel<T>({ required: true })
     v-else
     role="radiogroup"
     :aria-label="label"
-    class="flex w-full rounded-[9px] bg-fill p-0.5 text-[13px] font-medium"
+    class="flex w-full rounded-lg bg-fill p-0.5 text-[13px] leading-4 font-medium"
   >
     <button
       v-for="view in views"
@@ -60,11 +60,11 @@ const model = defineModel<T>({ required: true })
       type="button"
       role="radio"
       :aria-checked="model === view.id"
-      class="inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate rounded-[7px] px-3 py-1 whitespace-nowrap transition-colors focus-ring"
+      class="inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 truncate rounded-md px-3 py-1 pointer-coarse:min-h-11 whitespace-nowrap transition-colors duration-150 ease-out motion-reduce:transition-none focus-ring-inset"
       :class="
         model === view.id
-          ? 'bg-surface text-ink shadow-[0_0_0_0.5px_rgb(0_0_0/0.04),0_1px_3px_rgb(0_0_0/0.12)] dark:bg-[#636366]'
-          : 'text-ink-muted hover:text-ink'
+          ? 'bg-segment text-ink shadow-card'
+          : 'text-ink-muted hover:bg-fill hover:text-ink active:bg-fill-strong'
       "
       @click="model = view.id"
     >

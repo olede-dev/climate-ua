@@ -36,14 +36,14 @@ function onFocusOut(event: FocusEvent) {
     @focusin="open = true"
     @focusout="onFocusOut"
   >
-    <table class="w-full border-collapse text-left text-sm text-ink">
-      <caption class="pb-2 text-left text-xs font-medium text-ink-muted">
+    <table class="w-full border-collapse text-left text-[13px] leading-4 text-ink">
+      <caption class="pb-2 text-left text-[12px] leading-[15px] font-medium text-ink-muted">
         {{
           caption
         }}
       </caption>
       <thead>
-        <tr class="border-b border-line text-xs text-ink-muted">
+        <tr class="border-b border-line text-[12px] leading-[15px] text-ink-muted">
           <th scope="col" class="py-1 pr-3 font-medium">{{ regionColumn }}</th>
           <th scope="col" class="py-1 text-right font-medium">{{ valueColumn }}</th>
         </tr>
@@ -53,7 +53,7 @@ function onFocusOut(event: FocusEvent) {
           <th scope="row" class="py-0.5 pr-3 font-normal">
             <button
               type="button"
-              class="w-full rounded px-1 py-1 text-left hover:bg-fill focus-ring-inset"
+              class="w-full rounded px-1 py-1 text-left transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill active:bg-fill-strong pointer-coarse:min-h-11 focus-ring-inset"
               :aria-current="row.id === selectedId ? 'true' : undefined"
               @click="emit('select', row.id)"
             >

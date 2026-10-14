@@ -22,9 +22,11 @@ const options = computed((): { id: BasinFilter; label: string }[] => [
       :key="option.id"
       type="button"
       :aria-pressed="model === option.id"
-      class="rounded-full px-3 py-1 text-[13px] font-medium transition-colors focus-ring"
+      class="rounded-full px-3 py-1 text-[13px] leading-4 font-medium transition-colors duration-150 ease-out motion-reduce:transition-none focus-ring pointer-coarse:min-h-11"
       :class="
-        model === option.id ? 'bg-accent text-white' : 'bg-fill text-ink hover:bg-fill-strong'
+        model === option.id
+          ? 'bg-accent text-white'
+          : 'bg-fill text-ink hover:bg-fill-strong active:bg-fill-strong'
       "
       @click="model = option.id"
     >

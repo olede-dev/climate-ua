@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import InfoHint from '../ui/InfoHint.vue'
 
 import { useLocale } from '../../composables/useLocale'
 import type { LayerConfig } from '../../config/layers'
@@ -79,7 +80,7 @@ const labelAt = (value: number) => {
 
 <template>
   <figure v-if="shown?.value != null" class="space-y-1">
-    <div class="relative mx-1.5 h-4 text-[11px] text-ink-muted" aria-hidden="true">
+    <div class="relative mx-1.5 h-4 text-[11px] leading-[14px] text-ink-muted" aria-hidden="true">
       <span class="absolute bottom-0 -translate-x-1/2" :style="labelAt(shown.value)">{{
         when
       }}</span>
@@ -98,7 +99,7 @@ const labelAt = (value: number) => {
         :style="{ left: at(shown.value), backgroundColor: valueColor ?? 'var(--ui-ink)' }"
       ></span>
     </div>
-    <div class="relative mx-1.5 h-4 text-[11px] tabular-nums" aria-hidden="true">
+    <div class="relative mx-1.5 h-4 text-[11px] leading-[14px] tabular-nums" aria-hidden="true">
       <span
         class="absolute top-0.5 -translate-x-1/2 font-medium whitespace-nowrap text-ink"
         :style="labelAt(norm)"
@@ -106,23 +107,20 @@ const labelAt = (value: number) => {
       >
     </div>
     <div
-      class="flex justify-between pt-1 text-[11px] leading-tight text-ink-muted tabular-nums"
+      class="flex justify-between pt-1 text-[11px] leading-[14px] text-ink-muted tabular-nums"
       aria-hidden="true"
     >
       <span>{{ format(span.low) }}<br />{{ ends.low }}</span>
       <span class="text-right">{{ format(span.high) }}<br />{{ ends.high }}</span>
     </div>
-    <details class="pt-1 text-[11px] leading-snug text-ink-muted">
-      <summary class="cursor-pointer select-none hover:text-ink focus-ring">
-        ⓘ {{ t.panel.normBar.noteToggle }}
-      </summary>
-      <p class="mt-1">
+    <InfoHint :label="t.panel.normBar.noteToggle" class="pt-1">
+      <p>
         {{
           t.panel.normBar.note
             .replace('{norm}', formatPeriod(`${file.norm.from}-${file.norm.to}`))
             .replace('{record}', `${file.history.from}–${file.history.to}`)
         }}
       </p>
-    </details>
+    </InfoHint>
   </figure>
 </template>

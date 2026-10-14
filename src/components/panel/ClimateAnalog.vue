@@ -28,29 +28,25 @@ const analog = computed(() => {
       { when: t.value.koppen.now, code: now, ...nowText },
       ...(now === end ? [] : [{ when: formatPeriod(endPeriod), code: end, ...endText }]),
     ],
-    note: t.value.koppen.note.replace('{scenario}', file.scenario),
+    note: t.value.koppen.note,
   }
 })
 </script>
 
 <template>
   <section v-if="analog" class="space-y-2" :title="analog.note">
-    <h3 class="px-1 text-[13px] font-semibold text-ink">{{ t.koppen.title }}</h3>
-    <ol class="overflow-hidden rounded-xl bg-group">
+    <h3 class="px-1 text-[13px] leading-4 font-bold text-ink">{{ t.koppen.title }}</h3>
+    <ol class="overflow-hidden rounded-xl bg-group shadow-card">
       <li
         v-for="chip in analog.chips"
         :key="chip.when"
-        class="group/row flex items-center gap-2.5 pl-2.5"
+        class="group/row flex items-center pl-3"
         :title="chip.meaning"
       >
         <span
-          class="w-10 shrink-0 rounded-md bg-ink px-1 py-0.5 text-center text-xs font-semibold text-surface"
-          >{{ chip.code }}</span
+          class="min-w-0 flex-1 py-2 pr-3 text-[13px] leading-4 text-ink group-not-first/row:border-t group-not-first/row:border-line"
         >
-        <span
-          class="min-w-0 flex-1 py-2 pr-3 text-[13px] leading-snug text-ink group-not-first/row:border-t group-not-first/row:border-line"
-        >
-          <span class="block text-[11px] text-ink-muted">{{ chip.when }}</span>
+          <span class="block text-[11px] leading-[14px] text-ink-muted">{{ chip.when }}</span>
           {{ chip.name }}
         </span>
       </li>

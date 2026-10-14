@@ -27,7 +27,10 @@ const detail = computed(() =>
 </script>
 
 <template>
-  <p class="flex items-start gap-3 text-sm" :class="!flat && 'rounded-xl bg-group px-3.5 py-3'">
+  <p
+    class="flex items-start gap-3 text-[13px] leading-4"
+    :class="!flat && 'rounded-xl bg-group px-3.5 py-3'"
+  >
     <span
       class="flex size-7 shrink-0 items-center justify-center rounded-full text-white"
       :style="{ background: color }"
@@ -44,7 +47,7 @@ const detail = computed(() =>
     </span>
     <span>
       <span class="font-semibold text-ink">{{ isHigh ? copy.high : copy.low }}</span>
-      <span class="mt-0.5 block text-xs text-ink-muted">{{ detail }}</span>
+      <span class="mt-0.5 block text-[12px] leading-[15px] text-ink-muted">{{ detail }}</span>
     </span>
   </p>
 </template>

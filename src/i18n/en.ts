@@ -324,6 +324,8 @@ export const en: Messages = {
     layerGroups: { water: 'Water', climate: 'Climate' },
     hideLayers: 'Hide layers',
     showLayers: 'Show layers',
+    hideSidebar: 'Hide sidebar',
+    showSidebar: 'Show sidebar',
   },
   ranking: {
     heading: 'Oblasts',

@@ -70,7 +70,7 @@ const hint = computed(() =>
 <template>
   <section class="space-y-2" aria-labelledby="ranking-heading">
     <div class="flex items-center justify-between gap-2 px-1">
-      <h2 id="ranking-heading" class="text-[13px] font-semibold text-ink">
+      <h2 id="ranking-heading" class="text-[13px] leading-4 font-bold text-ink">
         {{ copy.heading }}
         <span class="font-normal text-ink-muted">{{ items.length }}</span>
       </h2>
@@ -83,6 +83,6 @@ const hint = computed(() =>
       chevron
       @select="emit('select', $event)"
     />
-    <p v-if="hint" class="px-1 text-xs leading-relaxed text-ink-muted">{{ hint }}</p>
+    <p v-if="hint" class="px-1 text-[12px] leading-[15px] text-ink-muted">{{ hint }}</p>
   </section>
 </template>

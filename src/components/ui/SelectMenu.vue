@@ -79,19 +79,22 @@ function keydown(event: KeyboardEvent) {
       aria-haspopup="listbox"
       :aria-expanded="open"
       :aria-controls="id"
-      class="flex w-full items-center justify-between gap-2 text-left text-[13px] text-ink transition-colors disabled:opacity-50"
+      class="flex w-full items-center justify-between gap-2 text-left text-[13px] leading-4 text-ink transition-colors duration-150 ease-out motion-reduce:transition-none disabled:cursor-default disabled:opacity-50"
       :class="
         row
-          ? 'px-3 py-2.5 hover:bg-fill focus-ring-inset'
-          : 'rounded-xl bg-group px-3 py-2 hover:bg-fill-strong focus-ring'
+          ? 'px-3 py-2 hover:bg-fill active:bg-fill-strong focus-ring-inset pointer-coarse:min-h-11'
+          : 'rounded-lg bg-group px-3 py-1.5 shadow-card hover:bg-fill active:bg-fill-strong focus-ring pointer-coarse:min-h-11'
       "
       @click="toggle"
       @keydown.down.prevent="!open && toggle()"
     >
       <span v-if="row" class="shrink-0">{{ label }}</span>
-      <span class="truncate" :class="row && 'ml-auto text-ink-muted'">{{
-        options.find((option) => option.value === model)?.label ?? label
-      }}</span>
+      <span
+        class="truncate"
+        :title="options.find((option) => option.value === model)?.label"
+        :class="row && 'ml-auto text-ink-muted'"
+        >{{ options.find((option) => option.value === model)?.label ?? label }}</span
+      >
       <svg
         class="size-4 shrink-0 text-ink-muted"
         viewBox="0 0 16 16"
@@ -111,7 +114,7 @@ function keydown(event: KeyboardEvent) {
       tabindex="-1"
       :aria-label="label"
       :aria-activedescendant="`${id}-${active}`"
-      class="max-h-56 overflow-y-auto overscroll-contain rounded-xl bg-surface p-1 text-[13px] text-ink shadow-card focus-ring"
+      class="max-h-56 overflow-y-auto overscroll-contain rounded-xl bg-surface p-1 text-[13px] leading-4 text-ink shadow-float focus-ring"
       :class="row ? 'mx-1.5 mb-1.5' : 'absolute top-full right-0 z-20 mt-1 w-max min-w-full'"
       @keydown="keydown"
     >
@@ -121,7 +124,7 @@ function keydown(event: KeyboardEvent) {
         :key="option.value"
         role="option"
         :aria-selected="model === option.value"
-        class="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2"
+        class="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 pointer-coarse:min-h-11"
         :class="active === index ? 'bg-fill' : ''"
         @pointermove="active = index"
         @click="choose(index)"

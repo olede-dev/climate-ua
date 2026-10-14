@@ -3,18 +3,22 @@ import { useLocale } from '../../composables/useLocale'
 import LanguageMenu from './LanguageMenu.vue'
 import ThemeMenu from './ThemeMenu.vue'
 
-defineProps<{ inline?: boolean }>()
+// `compact` keeps the logo and buttons; the title stays for screen readers.
+defineProps<{ inline?: boolean; compact?: boolean }>()
 const { t } = useLocale()
 const logoUrl = `${import.meta.env.BASE_URL}favicon.svg`
 
 const buttonClass =
-  'inline-flex size-9 shrink-0 items-center justify-center gap-1.5 rounded-full text-[13px] font-medium text-ink transition-colors hover:bg-fill focus-ring sm:w-auto sm:px-3'
+  'inline-flex size-9 pointer-coarse:size-11 shrink-0 items-center justify-center gap-1.5 rounded-full text-[13px] leading-4 font-medium text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill focus-ring sm:w-auto sm:px-3'
 </script>
 
 <template>
   <header v-if="inline" class="flex items-center gap-3">
     <img :src="logoUrl" alt="" class="size-8 shrink-0" width="32" height="32" />
-    <h1 class="min-w-0 flex-1 text-[17px] leading-tight font-bold tracking-tight text-ink">
+    <h1
+      :class="{ 'sr-only': compact }"
+      class="min-w-0 flex-1 text-[17px] leading-[22px] font-bold text-ink"
+    >
       {{ t.header.title }}
     </h1>
     <slot />
@@ -27,11 +31,11 @@ const buttonClass =
       <img :src="logoUrl" alt="" class="size-8 shrink-0" width="32" height="32" />
       <div class="min-w-0">
         <h1
-          class="truncate text-[15px] leading-tight font-semibold tracking-tight text-ink sm:text-base"
+          class="truncate text-[15px] leading-5 font-semibold text-ink sm:text-[17px] sm:leading-[22px]"
         >
           {{ t.header.title }}<span class="hidden md:inline">{{ t.header.titleSuffix }}</span>
         </h1>
-        <p class="truncate text-xs leading-tight text-ink-muted">
+        <p class="truncate text-[12px] leading-[15px] text-ink-muted">
           <span class="md:hidden">{{ t.header.subtitleShort }}</span>
           <span class="hidden md:inline">{{ t.header.subtitleLong }}</span>
         </p>

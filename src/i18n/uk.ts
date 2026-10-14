@@ -321,6 +321,8 @@ export const uk = {
     layerGroups: { water: 'Вода', climate: 'Клімат' },
     hideLayers: 'Сховати шари',
     showLayers: 'Показати шари',
+    hideSidebar: 'Сховати бічну панель',
+    showSidebar: 'Показати бічну панель',
   },
   ranking: {
     heading: 'Області',

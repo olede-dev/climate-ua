@@ -23,7 +23,7 @@ const actions = computed(() => [
         v-for="action in actions"
         :key="action.event"
         type="button"
-        class="flex size-9 items-center justify-center rounded-full text-ink transition-colors hover:bg-fill-strong active:bg-segment active:shadow-card focus-ring-inset sm:size-8"
+        class="flex size-9 pointer-coarse:size-11 items-center justify-center rounded-full text-ink transition-colors hover:bg-fill-strong active:bg-segment active:shadow-card focus-ring-inset sm:size-8"
         :aria-label="action.label"
         :title="action.label"
         @click="action.event === 'in' ? $emit('in') : $emit('out')"

@@ -44,7 +44,7 @@ const about = useTemplateRef<InstanceType<typeof AboutDialog>>('about')
         >.
       </template>
     </p>
-    <button type="button" :class="link" @click="about?.open()">
+    <button type="button" :class="[link, 'pointer-coarse:min-h-11']" @click="about?.open()">
       {{ t.footer.about }}
     </button>
     <AboutDialog ref="about" />

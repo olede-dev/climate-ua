@@ -189,6 +189,83 @@ function onKeydown(event: KeyboardEvent) {
 <template>
   <aside class="flex flex-col" :aria-label="t.home.panel" @keydown="onKeydown">
     <div class="min-h-0 flex-1 overflow-y-auto p-4">
+      <!-- The period switch sits above the content: nothing critical at the panel's bottom
+         edge. "Future" is the view's one prominent button; "back" is a plain secondary one. -->
+      <button
+        v-if="futureOn"
+        type="button"
+        class="group mb-3 flex w-full items-center gap-2.5 rounded-xl bg-accent px-2.5 py-2 text-left text-white shadow-card transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-accent-hover active:brightness-95 focus-ring"
+        @click="openFuture(false)"
+      >
+        <span
+          class="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/20"
+          aria-hidden="true"
+        >
+          <svg
+            class="size-[18px]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2" />
+          </svg>
+        </span>
+        <span class="min-w-0 flex-1 text-[13px] leading-4 font-bold">{{ t.waterUse.back }}</span>
+        <svg
+          viewBox="0 0 16 16"
+          class="size-4 shrink-0 transition-transform duration-150 ease-out group-hover:-translate-x-0.5 motion-reduce:transition-none"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="M10 3.5 5.5 8l4.5 4.5" />
+        </svg>
+      </button>
+      <button
+        v-else-if="futureOffered"
+        type="button"
+        class="group mb-3 flex w-full items-center gap-2.5 future-gradient rounded-xl px-2.5 py-2 text-left text-white shadow-card transition-[filter] duration-150 ease-out motion-reduce:transition-none hover:brightness-110 active:brightness-95 focus-ring"
+        @click="openFuture(true)"
+      >
+        <span
+          class="flex size-8 shrink-0 items-center justify-center rounded-full bg-white/20"
+          aria-hidden="true"
+        >
+          <svg
+            class="size-[18px]"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.75"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 13l12-6 2 4-12 6z M15 7l3-1.5 2 4-3 1.5 M9 16l-2 5 M11 15l2 6" />
+          </svg>
+        </span>
+        <span class="min-w-0 flex-1">
+          <span class="block text-[13px] leading-4 font-bold">{{ t.waterUse.future }}</span>
+          <span
+            class="block truncate text-[12px] leading-[15px] text-white/90"
+            :title="futureHint"
+            >{{ futureHint }}</span
+          >
+        </span>
+        <svg
+          viewBox="0 0 16 16"
+          class="size-4 shrink-0 transition-transform duration-150 ease-out group-hover:translate-x-0.5 motion-reduce:transition-none"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          aria-hidden="true"
+        >
+          <path d="m6 3.5 4.5 4.5L6 12.5" />
+        </svg>
+      </button>
       <slot v-if="region && $slots.card" name="card" />
       <RegionCard
         v-else-if="region && regionSeries"
@@ -226,7 +303,9 @@ function onKeydown(event: KeyboardEvent) {
             :label="t.waterUse.viewsLabel"
             @update:model-value="emit('view', $event)"
           />
-          <p class="text-[13px] leading-relaxed text-ink">{{ t.waterUse.intro[water.view] }}</p>
+          <p class="px-1 text-[12px] leading-[15px] text-ink-muted">
+            {{ t.waterUse.intro[water.view] }}
+          </p>
           <WaterSectors
             :model-value="water.sector"
             :sectors="sectorItems"
@@ -256,7 +335,7 @@ function onKeydown(event: KeyboardEvent) {
         />
         <slot name="overview" />
         <section v-if="projectionRange" class="space-y-1.5">
-          <h3 class="px-1 text-[13px] font-semibold text-ink">{{ t.panel.boundsTitle }}</h3>
+          <h3 class="px-1 text-[13px] leading-4 font-bold text-ink">{{ t.panel.boundsTitle }}</h3>
           <WaterTabs
             :model-value="projectionRange.bound"
             stacked
@@ -266,53 +345,6 @@ function onKeydown(event: KeyboardEvent) {
           />
         </section>
       </div>
-    </div>
-    <div v-if="futureOn" class="shrink-0 px-4 pb-4">
-      <button
-        type="button"
-        class="group flex w-full items-center gap-3 rounded-xl bg-accent px-3 py-3 text-left text-white shadow-card transition-colors hover:bg-accent-hover focus-ring"
-        @click="openFuture(false)"
-      >
-        <span
-          aria-hidden="true"
-          class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-lg text-white transition-transform group-hover:-translate-x-0.5"
-          >←</span
-        >
-        <span class="text-[15px] font-semibold text-white">{{ t.waterUse.back }}</span>
-      </button>
-    </div>
-    <div v-else-if="futureOffered" class="shrink-0 px-4 pb-4">
-      <button
-        type="button"
-        class="group flex w-full items-center gap-3 future-gradient rounded-xl px-3 py-3 text-left text-white shadow-card transition-[filter] hover:brightness-110 focus-ring"
-        @click="openFuture(true)"
-      >
-        <span
-          class="flex size-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-white"
-          aria-hidden="true"
-        >
-          <svg
-            class="size-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.75"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M3 13l12-6 2 4-12 6z M15 7l3-1.5 2 4-3 1.5 M9 16l-2 5 M11 15l2 6" />
-          </svg>
-        </span>
-        <span class="min-w-0 flex-1">
-          <span class="block text-[15px] font-semibold text-white">{{ t.waterUse.future }}</span>
-          <span class="block text-xs text-white/90">{{ futureHint }}</span>
-        </span>
-        <span
-          aria-hidden="true"
-          class="text-lg text-white transition-transform group-hover:translate-x-0.5"
-          >→</span
-        >
-      </button>
     </div>
   </aside>
 </template>

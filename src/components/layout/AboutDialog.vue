@@ -63,13 +63,13 @@ defineExpose({ open })
     <div
       class="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-line bg-surface px-6 py-4"
     >
-      <h2 id="about-heading" class="text-xl font-semibold tracking-tight">
+      <h2 id="about-heading" class="text-[22px] leading-[26px] font-semibold">
         {{ t.about.heading }}
       </h2>
       <button
         type="button"
         :aria-label="t.about.close"
-        class="-m-1 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-fill text-ink-muted transition-colors hover:bg-fill-strong hover:text-ink focus-ring"
+        class="-m-1 inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-fill text-ink-muted transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill-strong hover:text-ink focus-ring"
         @click="close"
       >
         <svg
@@ -84,22 +84,22 @@ defineExpose({ open })
       </button>
     </div>
 
-    <div class="space-y-6 p-6 text-sm leading-relaxed">
+    <div class="space-y-6 p-6 text-[13px] leading-4">
       <p>{{ t.about.intro }}</p>
 
       <nav :aria-label="t.about.contents" class="rounded-xl bg-group p-4">
-        <h3 class="mb-2 text-xs font-semibold tracking-wide text-ink-muted uppercase">
+        <h3 class="mb-2 text-[12px] leading-[15px] font-semibold text-ink-muted">
           {{ t.about.contents }}
         </h3>
         <ul class="space-y-3">
           <li v-for="group in t.about.groups" :key="group.id">
-            <p class="px-1 pb-1 text-[11px] font-semibold tracking-wide text-ink-muted uppercase">
+            <p class="px-1 pb-1 text-[11px] leading-[14px] font-semibold text-ink-muted">
               {{ group.name }}
             </p>
             <ul class="space-y-1">
               <li v-for="layer in group.layers" :key="layer.id">
                 <a
-                  class="flex items-center gap-2.5 rounded-lg px-1 py-1 font-medium text-ink transition-colors hover:bg-fill focus-ring"
+                  class="flex items-center gap-2.5 rounded-lg px-1 py-1 font-medium text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill focus-ring"
                   :href="`#${anchor(layer.id)}`"
                   @click.prevent="scrollTo(layer.id)"
                 >
@@ -127,7 +127,9 @@ defineExpose({ open })
               </li>
             </ul>
             <template v-if="group.topics.length">
-              <p class="mt-2 px-1 text-[13px] text-ink-muted">{{ group.topicsHeading }}</p>
+              <p class="mt-2 px-1 text-[13px] leading-4 text-ink-muted">
+                {{ group.topicsHeading }}
+              </p>
               <ul class="mt-0.5 ml-4 space-y-0.5 border-l border-line pl-[1.4rem]">
                 <li v-for="topic in group.topics" :key="topic.id">
                   <a
@@ -142,7 +144,7 @@ defineExpose({ open })
             </template>
           </li>
           <li>
-            <p class="px-1 pb-1 text-[11px] font-semibold tracking-wide text-ink-muted uppercase">
+            <p class="px-1 pb-1 text-[11px] leading-[14px] font-semibold text-ink-muted">
               {{ t.about.generalHeading }}
             </p>
             <ul class="ml-4 space-y-0.5 border-l border-line pl-[1.4rem]">
@@ -157,7 +159,7 @@ defineExpose({ open })
       </nav>
 
       <template v-for="group in t.about.groups" :key="group.id">
-        <h3 class="text-lg font-semibold tracking-tight">{{ group.name }}</h3>
+        <h3 class="text-[17px] leading-[22px] font-semibold">{{ group.name }}</h3>
 
         <section
           v-for="layer in group.layers"
@@ -165,7 +167,7 @@ defineExpose({ open })
           :key="layer.id"
           class="space-y-2"
         >
-          <h4 class="flex items-center gap-2.5 text-base font-semibold">
+          <h4 class="flex items-center gap-2.5 text-[15px] leading-5 font-semibold">
             <IconTile
               v-if="isLayer(layer.id)"
               :path="LAYER_ICONS[layer.id]"
@@ -183,7 +185,7 @@ defineExpose({ open })
             <h5 class="font-semibold">{{ topic.heading }}</h5>
             <p v-for="paragraph in topic.paragraphs" :key="paragraph">{{ paragraph }}</p>
           </div>
-          <div class="rounded-xl bg-group px-3 py-2 text-[13px]">
+          <div class="rounded-xl bg-group px-3 py-2 text-[13px] leading-4">
             <p class="font-medium text-ink-muted">{{ t.about.sourcesLabel }}</p>
             <ul class="space-y-1">
               <li v-for="source in layer.sources" :key="source.url">
@@ -202,11 +204,11 @@ defineExpose({ open })
           :key="topic.id"
           class="space-y-2"
         >
-          <h4 class="text-base font-semibold">{{ topic.heading }}</h4>
+          <h4 class="text-[15px] leading-5 font-semibold">{{ topic.heading }}</h4>
           <p v-for="paragraph in topic.paragraphs" :key="paragraph">{{ paragraph }}</p>
           <ul
             v-if="topic.sources.length"
-            class="space-y-1 rounded-xl bg-group px-3 py-2 text-[13px]"
+            class="space-y-1 rounded-xl bg-group px-3 py-2 text-[13px] leading-4"
           >
             <li v-for="source in topic.sources" :key="source.url">
               <a :class="link" :href="source.url" target="_blank" rel="noopener">{{
@@ -218,17 +220,17 @@ defineExpose({ open })
         </section>
       </template>
 
-      <h3 class="text-lg font-semibold tracking-tight">{{ t.about.generalHeading }}</h3>
+      <h3 class="text-[17px] leading-[22px] font-semibold">{{ t.about.generalHeading }}</h3>
 
       <section :id="anchor('limits')" class="space-y-2">
-        <h4 class="text-base font-semibold">{{ t.about.limitsHeading }}</h4>
+        <h4 class="text-[15px] leading-5 font-semibold">{{ t.about.limitsHeading }}</h4>
         <ul class="list-disc space-y-1 pl-5">
           <li v-for="limit in t.about.limits" :key="limit">{{ limit }}</li>
         </ul>
       </section>
 
       <section :id="anchor('map')" class="space-y-2">
-        <h4 class="text-base font-semibold">{{ t.about.mapHeading }}</h4>
+        <h4 class="text-[15px] leading-5 font-semibold">{{ t.about.mapHeading }}</h4>
         <ul class="space-y-1">
           <li v-for="source in t.about.mapSources" :key="source.url">
             <a :class="link" :href="source.url" target="_blank" rel="noopener">{{ source.name }}</a>

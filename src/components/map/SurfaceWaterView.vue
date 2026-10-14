@@ -853,7 +853,7 @@ onBeforeUnmount(() => {
         :class="
           wide
             ? 'min-h-0 flex-1'
-            : 'glass pointer-events-auto relative z-10 order-2 shrink-0 rounded-2xl text-sm shadow-float'
+            : 'glass pointer-events-auto relative z-10 order-2 shrink-0 rounded-2xl text-[13px] leading-4 shadow-float'
         "
         :aria-label="copy.name"
         @keydown.esc="selected && closeBody()"
@@ -862,11 +862,12 @@ onBeforeUnmount(() => {
           v-if="!selected"
           ref="bodyPicker"
           tabindex="-1"
-          class="text-[22px] font-bold tracking-tight focus-visible:outline-none"
+          class="text-[22px] leading-[26px] font-bold focus-visible:outline-none"
+          :class="{ 'sr-only': wide }"
         >
           {{ copy.name }}
         </h1>
-        <div v-if="!selected" class="mt-3">
+        <div v-if="!selected" :class="{ 'mt-3': !wide }">
           <WaterTabs v-model="mode" :views="modes" :label="copy.name" />
           <div
             v-if="ui.surfaceWater.mode === 'comparison'"
@@ -888,17 +889,17 @@ onBeforeUnmount(() => {
               type="button"
               role="switch"
               :aria-checked="transitions"
-              class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[13px] text-ink transition-colors hover:bg-fill focus-ring-inset"
+              class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-[13px] leading-4 text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill focus-ring-inset"
               @click="transitions = !transitions"
             >
               <span>{{ copy.transitions }}</span>
               <span
-                class="relative h-[22px] w-9 shrink-0 rounded-full transition-colors"
+                class="relative h-[22px] w-9 shrink-0 rounded-full transition-colors duration-150 ease-out motion-reduce:transition-none"
                 :class="transitions ? 'bg-accent' : 'bg-fill-strong'"
                 aria-hidden="true"
               >
                 <span
-                  class="absolute top-0.5 left-0.5 size-[18px] rounded-full bg-white shadow-card transition-transform"
+                  class="absolute top-0.5 left-0.5 size-[18px] rounded-full bg-white shadow-card transition-transform duration-150 ease-out motion-reduce:transition-none"
                   :class="transitions && 'translate-x-3.5'"
                 />
               </span>
@@ -912,12 +913,14 @@ onBeforeUnmount(() => {
           :comparison="listComparison"
           @select="bodyModel = $event"
         />
-        <p v-if="query.isError.value || failed" role="alert" class="mt-3 text-sm">
+        <p v-if="query.isError.value || failed" role="alert" class="mt-3 text-[13px] leading-4">
           {{ copy.error }}
           <button class="rounded-lg bg-fill p-2 focus-ring" @click="retry">{{ copy.retry }}</button>
         </p>
         <p v-else-if="manifest && !state" role="status">{{ copy.empty }}</p>
-        <p v-if="unknownBody" role="status" class="mt-2 text-sm">{{ copy.unknownBody }}</p>
+        <p v-if="unknownBody" role="status" class="mt-2 text-[13px] leading-4">
+          {{ copy.unknownBody }}
+        </p>
         <Suspense v-if="selected && query.data.value && state">
           <WaterbodyCard
             :key="`${manifest?.version}:${selected.id}`"
@@ -931,8 +934,11 @@ onBeforeUnmount(() => {
           /></template>
         </Suspense>
         <div v-if="fallback" class="mt-2">
-          <p class="text-xs">{{ copy.fallback }}</p>
-          <button class="mt-1 rounded-lg bg-fill p-2 text-sm focus-ring" @click="startMap">
+          <p class="text-[12px] leading-[15px]">{{ copy.fallback }}</p>
+          <button
+            class="mt-1 rounded-lg bg-fill p-2 text-[13px] leading-4 focus-ring"
+            @click="startMap"
+          >
             {{ copy.interactive }}
           </button>
         </div>
@@ -955,7 +961,7 @@ onBeforeUnmount(() => {
         v-bind="comparing ? comparisonFrame : sliderProps"
         class="max-w-xl min-w-0 flex-1"
       >
-        <figure class="text-[11px] leading-tight text-ink">
+        <figure class="text-[11px] leading-[14px] text-ink">
           <figcaption class="sr-only">{{ copy.name }} {{ shownYears }}</figcaption>
           <ul class="flex flex-wrap gap-x-3 gap-y-1.5">
             <li v-for="item in legend" :key="item.label" class="flex items-center gap-1.5">

@@ -35,16 +35,20 @@ const basinModel = computed({
 
 <template>
   <section class="space-y-3" aria-labelledby="stations-heading">
-    <h2 id="stations-heading" class="px-1 text-[13px] font-semibold text-ink">
+    <h2 id="stations-heading" class="px-1 text-[13px] leading-4 font-bold text-ink">
       {{ copy.heading }}
       <span class="font-normal text-ink-muted">{{ states.length }}</span>
     </h2>
     <BasinFilter v-model="basinModel" :basins="basins" />
-    <p v-if="notice" role="status" class="rounded-xl bg-warn-fill px-3 py-2 text-xs text-warn-ink">
+    <p
+      v-if="notice"
+      role="status"
+      class="rounded-xl bg-warn-fill px-3 py-2 text-[12px] leading-[15px] text-warn-ink"
+    >
       {{ notice }}
     </p>
     <ErrorState v-if="errorMessage" :message="errorMessage" @retry="emit('retry')" />
-    <p v-if="normsError" class="text-sm text-ink-muted">{{ copy.normsFailed }}</p>
+    <p v-if="normsError" class="text-[13px] leading-4 text-ink-muted">{{ copy.normsFailed }}</p>
     <LoadingSkeleton v-if="pending" :label="copy.loading" class="space-y-2">
       <div
         v-for="n in 6"

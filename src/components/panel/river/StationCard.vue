@@ -139,7 +139,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <button
         type="button"
         :aria-label="copy.close"
-        class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] font-medium text-ink transition-colors hover:bg-fill-strong focus-ring"
+        class="mb-3 inline-flex items-center gap-0.5 rounded-full bg-fill py-1 pr-3 pl-1.5 text-[13px] leading-4 font-medium text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill-strong active:bg-fill-strong focus-ring pointer-coarse:min-h-11"
         @click="emit('close')"
       >
         <svg
@@ -159,11 +159,11 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
       <h2
         ref="heading"
         tabindex="-1"
-        class="text-[22px] leading-tight font-bold tracking-tight text-ink focus-visible:outline-none"
+        class="text-[17px] leading-[22px] font-bold text-ink focus-visible:outline-none"
       >
         {{ label.name }}
       </h2>
-      <p class="mt-1 flex items-start gap-1 text-xs leading-snug text-ink-muted">
+      <p class="mt-1 flex items-start gap-1 text-[12px] leading-[15px] text-ink-muted">
         <svg
           viewBox="0 0 24 24"
           class="mt-px size-3.5 shrink-0"
@@ -181,7 +181,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
           <span>{{ copy.basin.replace('{name}', t.river.basins[station.basin]) }}</span>
           <span
             v-if="station.focus"
-            class="rounded-full bg-accent/12 px-2 text-[11px] font-medium text-accent-ink"
+            class="rounded-full bg-accent/12 px-2 text-[11px] leading-[14px] font-medium text-accent-ink"
           >
             {{ t.river.list.focusBasin }}
           </span>
@@ -192,7 +192,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
     <p
       v-if="label.note"
       role="note"
-      class="flex gap-2.5 rounded-xl border-l-4 border-warn bg-warn-fill px-3 py-2.5 text-[13px] leading-relaxed text-warn-ink"
+      class="flex gap-2.5 rounded-xl bg-warn-fill px-3 py-2.5 text-[12px] leading-[15px] text-warn-ink"
     >
       <svg
         viewBox="0 0 24 24"
@@ -219,21 +219,23 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
             "
           >
             <p
-              class="text-4xl leading-none font-semibold tabular-nums"
+              class="text-[26px] leading-8 font-bold tabular-nums"
               :class="!stateColor && 'text-ink'"
             >
               {{ formatDischarge(state.current, locale) }}
-              <span v-if="state.current !== null" class="text-xl">{{ t.river.dischargeUnit }}</span>
+              <span v-if="state.current !== null" class="text-[17px] leading-[22px] font-normal">{{
+                t.river.dischargeUnit
+              }}</span>
             </p>
             <span
               v-if="state.anomalyPct !== null"
-              class="rounded-full bg-fill px-2 py-0.5 text-sm font-semibold whitespace-nowrap text-ink tabular-nums"
+              class="rounded-full bg-fill px-2 py-0.5 text-[13px] leading-4 font-semibold whitespace-nowrap text-ink tabular-nums"
               >{{ formatPct(state.anomalyPct, locale) }}</span
             >
           </div>
           <p
             v-if="state.anomalyClass"
-            class="mt-1 flex items-center gap-1.5 text-[13px] font-medium text-ink"
+            class="mt-1 flex items-center gap-1.5 text-[13px] leading-4 font-medium text-ink"
           >
             <span
               class="size-2.5 shrink-0 rounded-full"
@@ -260,7 +262,7 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
 
         <section class="space-y-3" aria-labelledby="chart-heading">
           <div class="flex flex-col items-start gap-2" :class="!listed && 'px-1'">
-            <h3 id="chart-heading" class="text-[13px] leading-snug font-semibold text-ink">
+            <h3 id="chart-heading" class="text-[13px] leading-4 font-bold text-ink">
               {{ copy.chartHeading }}
             </h3>
             <SegmentedControl
@@ -293,11 +295,15 @@ onMounted(() => heading.value?.focus({ preventScroll: true }))
           </DischargeChart>
           <div
             v-else
-            class="flex h-56 items-center justify-center rounded-xl bg-group text-sm text-ink-muted"
+            class="flex h-56 items-center justify-center rounded-xl bg-group text-[13px] leading-4 text-ink-muted"
           >
             {{ copy.noChartData }}
           </div>
-          <p v-if="precipitationError" role="status" class="text-xs text-warn-ink">
+          <p
+            v-if="precipitationError"
+            role="status"
+            class="text-[12px] leading-[15px] text-warn-ink"
+          >
             {{ precipitationError }}
           </p>
           <InfoHint :label="copy.chartNoteToggle">

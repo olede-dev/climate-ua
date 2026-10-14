@@ -29,6 +29,7 @@ import RegionRanking from '../components/panel/RegionRanking.vue'
 import SidePanel from '../components/panel/SidePanel.vue'
 import LoadingSkeleton from '../components/ui/LoadingSkeleton.vue'
 import ZoomControl from '../components/ui/ZoomControl.vue'
+import { LAYER_ICONS, LAYER_TONES } from '../config/layerIcons'
 import { LAYER_IDS, WATER_LAYER_IDS, layerConfig, waterUseConfig } from '../config/layers'
 import {
   useBasins,
@@ -359,6 +360,10 @@ const layerChoices = computed(() =>
           : t.value.layers[id].legendTitle,
   })),
 )
+const sidebarLayer = computed(() => {
+  const choice = layerChoices.value.find((layer) => layer.id === ui.layer)!
+  return { ...choice, icon: LAYER_ICONS[ui.layer], tone: LAYER_TONES[ui.layer] }
+})
 const gradient = computed(() => cssGradient(config.value.scale))
 
 const legend = computed(() => {
@@ -489,10 +494,13 @@ function measureInsets() {
   const column = rect(controlsColumn.value)
   const bar = rect(bottomBar.value)
   if (bar) barReserve = Math.max(barReserve, bar.height)
+  const right = Math.round(width - (column?.left ?? width))
   const next = {
     top: 0,
-    left: Math.round(rect(panelCard.value?.$el)?.right ?? 0),
-    right: Math.round(width - (column?.left ?? width)),
+    // A hidden sidebar is a small header the map may run under; mirroring the right column then
+    // centres the map and the bottom bar on the page.
+    left: sidebarCollapsed.value ? right : Math.round(rect(panelCard.value?.$el)?.right ?? 0),
+    right,
     bottom: bar ? Math.round(height - bar.bottom + barReserve) : 0,
   }
   // A loading layer drops its timeline for a moment; the bar keeps its height so the map holds still.
@@ -520,21 +528,26 @@ watchEffect((onCleanup) => {
 onBeforeUnmount(() => insetObserver.disconnect())
 
 const LAYERS_KEY = 'climate-ua:layers-collapsed'
-function readCollapsed(): boolean {
+function readFlag(key: string, fallback: boolean): boolean {
   try {
-    return localStorage.getItem(LAYERS_KEY) !== '0'
+    const value = localStorage.getItem(key)
+    return value == null ? fallback : value !== '0'
   } catch {
-    return true
+    return fallback
   }
 }
-const layersCollapsed = ref(readCollapsed())
-watch(layersCollapsed, (collapsed) => {
+function writeFlag(key: string, on: boolean) {
   try {
-    localStorage.setItem(LAYERS_KEY, collapsed ? '1' : '0')
+    localStorage.setItem(key, on ? '1' : '0')
   } catch {
     // Storage is a convenience; the toggle still works without it.
   }
-})
+}
+const layersCollapsed = ref(readFlag(LAYERS_KEY, true))
+watch(layersCollapsed, (collapsed) => writeFlag(LAYERS_KEY, collapsed))
+const SIDEBAR_KEY = 'climate-ua:sidebar-collapsed'
+const sidebarCollapsed = ref(readFlag(SIDEBAR_KEY, false))
+watch(sidebarCollapsed, (collapsed) => writeFlag(SIDEBAR_KEY, collapsed))
 const layersHidden = computed(() => isWide.value && layersCollapsed.value)
 
 const layersOpen = ref(false)
@@ -648,7 +661,7 @@ const tooltip = computed(() => {
     <AppHeader v-if="!isWide">
       <button
         type="button"
-        class="inline-flex size-9 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:bg-fill focus-ring"
+        class="inline-flex size-9 pointer-coarse:size-11 shrink-0 items-center justify-center rounded-full text-ink transition-colors hover:bg-fill focus-ring"
         :aria-expanded="layersOpen"
         aria-controls="layers-drawer"
         :aria-label="t.home.showLayers"
@@ -687,7 +700,7 @@ const tooltip = computed(() => {
               <button
                 v-focus
                 type="button"
-                class="-my-1.5 flex size-7 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                class="focus-ring -my-1.5 flex size-7 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-fill hover:text-ink active:bg-fill-strong max-sm:size-11"
                 :aria-label="t.home.hideLayers"
                 :title="t.home.hideLayers"
                 @click="layersOpen = false"
@@ -804,7 +817,12 @@ const tooltip = computed(() => {
         class="rounded-2xl bg-surface px-3 py-2 shadow-card"
       >
       </MapLegend>
-      <MapSidebar v-if="isWide" ref="panelCard">
+      <MapSidebar
+        v-if="isWide"
+        ref="panelCard"
+        v-model:collapsed="sidebarCollapsed"
+        :layer="sidebarLayer"
+      >
         <!-- SurfaceWaterView teleports its panel here, so every layer shares one sidebar. -->
         <div v-if="isSurfaceWater" id="surface-water-panel" class="flex min-h-0 flex-1 flex-col" />
         <SidePanel
@@ -868,7 +886,11 @@ const tooltip = computed(() => {
           </template>
         </SidePanel>
       </MapSidebar>
-      <div v-if="isWide" class="flex min-w-0 flex-1 flex-col justify-end">
+      <div
+        v-if="isWide"
+        class="flex min-w-0 flex-1 flex-col justify-end"
+        :style="sidebarCollapsed ? { paddingLeft: `${insets.right}px` } : undefined"
+      >
         <div
           ref="bottomBar"
           class="relative z-10 flex flex-col items-center gap-2"
@@ -929,7 +951,7 @@ const tooltip = computed(() => {
             <template #footer>
               <button
                 type="button"
-                class="flex h-10 w-full items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink focus-visible:outline-2 focus-visible:outline-accent"
+                class="focus-ring-inset flex h-8 w-full items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-fill hover:text-ink active:bg-fill-strong"
                 :aria-expanded="!layersHidden"
                 :aria-label="layersHidden ? t.home.showLayers : t.home.hideLayers"
                 :title="layersHidden ? t.home.showLayers : t.home.hideLayers"

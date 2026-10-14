@@ -47,7 +47,7 @@ const items = computed<RankItem[]>(() =>
 
 <template>
   <section>
-    <h2 class="px-3 pb-1 text-[11px] font-semibold tracking-wide text-ink-muted uppercase">
+    <h2 class="px-1 pb-2 text-[13px] leading-4 font-bold text-ink">
       {{
         comparison
           ? copy.listHeading.replace('{year}', String(comparison.after))

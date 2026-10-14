@@ -251,6 +251,13 @@ const aria = computed(() =>
 
 <template>
   <div class="h-48">
-    <Bar :data="data" :options="options" :aria-label="aria" role="img" />
+    <Bar
+      :data="data"
+      :options="options"
+      :aria-label="aria"
+      role="img"
+      tabindex="0"
+      class="rounded-lg focus-ring"
+    />
   </div>
 </template>

@@ -180,7 +180,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
       >
         <button
           type="button"
-          class="flex size-9 items-center justify-center rounded-full text-ink transition-colors hover:bg-fill-strong focus-ring-inset disabled:text-ink-muted disabled:opacity-40 sm:size-8"
+          class="flex size-9 pointer-coarse:size-11 items-center justify-center rounded-full text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill-strong focus-ring-inset disabled:text-ink-muted disabled:opacity-40 sm:size-8"
           :aria-label="t.timeline.prev"
           :disabled="index <= 0"
           @click="moveTo(index - 1)"
@@ -196,7 +196,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
         </button>
         <button
           type="button"
-          class="flex size-9 items-center justify-center rounded-full bg-segment text-ink shadow-card transition-colors hover:text-accent-ink focus-ring-inset sm:size-8"
+          class="flex size-9 pointer-coarse:size-11 items-center justify-center rounded-full bg-segment text-ink shadow-card transition-colors duration-150 ease-out motion-reduce:transition-none hover:text-accent-ink focus-ring-inset sm:size-8"
           :aria-label="playing ? copy.pause : copy.play"
           :aria-pressed="playing"
           @click="toggle"
@@ -217,7 +217,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
         </button>
         <button
           type="button"
-          class="flex size-9 items-center justify-center rounded-full text-ink transition-colors hover:bg-fill-strong focus-ring-inset disabled:text-ink-muted disabled:opacity-40 sm:size-8"
+          class="flex size-9 pointer-coarse:size-11 items-center justify-center rounded-full text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill-strong focus-ring-inset disabled:text-ink-muted disabled:opacity-40 sm:size-8"
           :aria-label="t.timeline.next"
           :disabled="index >= total"
           @click="moveTo(index + 1)"
@@ -234,9 +234,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
       </div>
 
       <div class="flex min-w-0 items-baseline gap-2">
-        <span class="text-[22px] leading-[26px] font-bold tracking-tight tabular-nums">{{
-          label
-        }}</span>
+        <span class="text-[22px] leading-[26px] font-bold tabular-nums">{{ label }}</span>
         <span
           v-if="isForecast"
           class="rounded-full bg-future/12 px-2 py-0.5 text-[11px] leading-[14px] font-semibold text-future"
@@ -246,7 +244,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
       <button
         v-if="index !== pastDays"
         type="button"
-        class="ml-auto shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold text-accent-ink transition-colors hover:bg-fill focus-ring"
+        class="ml-auto shrink-0 rounded-full px-2.5 py-1 text-[12px] leading-[15px] font-semibold text-accent-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill focus-ring"
         :aria-label="copy.todayLabel"
         @click="moveTo(pastDays)"
       >
@@ -257,7 +255,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
     <div class="mt-2">
       <div
         ref="track"
-        class="relative h-7 cursor-pointer touch-none rounded-md select-none focus-ring"
+        class="relative h-7 pointer-coarse:h-11 cursor-pointer touch-none rounded-md select-none focus-ring"
         role="slider"
         tabindex="0"
         :aria-label="copy.label"
@@ -297,7 +295,7 @@ const percent = (fraction: number) => `${(fraction * 100).toFixed(3)}%`
             :style="{ left: percent(preview.at) }"
           ></span>
           <span
-            class="pointer-events-none absolute bottom-full mb-1.5 -translate-x-1/2 rounded-md bg-ink px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap text-canvas tabular-nums"
+            class="pointer-events-none absolute bottom-full mb-1.5 -translate-x-1/2 rounded-md bg-ink px-1.5 py-0.5 text-[11px] leading-[14px] font-medium whitespace-nowrap text-canvas tabular-nums"
             :style="{ left: percent(preview.at) }"
             >{{ preview.label }}</span
           >

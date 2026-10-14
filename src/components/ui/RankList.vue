@@ -48,12 +48,15 @@ function markerStyle(marker: RankItem['marker']): Record<string, string> {
 </script>
 
 <template>
-  <ul class="divide-y divide-line overflow-hidden rounded-xl bg-group" :aria-label="label">
+  <ul
+    class="divide-y divide-line overflow-hidden rounded-xl bg-group shadow-card"
+    :aria-label="label"
+  >
     <li v-for="item in items" :key="item.id">
       <button
         type="button"
         :aria-current="selectedId === item.id ? 'true' : undefined"
-        class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors hover:bg-fill focus-ring-inset"
+        class="flex w-full items-center gap-3 px-3 py-2 text-left transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill active:bg-fill-strong focus-ring-inset pointer-coarse:min-h-11"
         :class="{ 'bg-accent/12 hover:bg-accent/12': selectedId === item.id }"
         @click="emit('select', item.id)"
       >
@@ -65,13 +68,16 @@ function markerStyle(marker: RankItem['marker']): Record<string, string> {
           aria-hidden="true"
         />
         <span class="min-w-0 flex-1">
-          <span class="block text-[13px] leading-snug">
-            <span class="font-medium text-ink">{{ item.title }}</span>
+          <span
+            class="block truncate text-[13px] leading-4"
+            :title="item.titleNote ? `${item.title} — ${item.titleNote}` : item.title"
+          >
+            <span class="font-semibold text-ink">{{ item.title }}</span>
             <span v-if="item.titleNote" class="text-ink-muted"> — {{ item.titleNote }}</span>
           </span>
           <span
             v-if="item.subtitle || item.tag"
-            class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-ink-muted"
+            class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] leading-[15px] text-ink-muted"
           >
             <span v-if="item.subtitle">{{ item.subtitle }}</span>
             <span
@@ -94,7 +100,7 @@ function markerStyle(marker: RankItem['marker']): Record<string, string> {
           <template v-else>
             <span
               v-if="item.value !== undefined"
-              class="block text-[13px] leading-snug font-semibold"
+              class="block text-[13px] leading-4 font-semibold"
               :class="!item.valueColor && 'text-ink'"
               :style="
                 item.valueColor
@@ -111,7 +117,7 @@ function markerStyle(marker: RankItem['marker']): Record<string, string> {
             >
             <span
               v-if="item.detail"
-              class="mt-0.5 block text-xs whitespace-nowrap text-ink-muted"
+              class="mt-0.5 block text-[12px] leading-[15px] whitespace-nowrap text-ink-muted"
               >{{ item.detail }}</span
             >
           </template>

@@ -36,7 +36,7 @@ const parts = computed(() =>
 
 <template>
   <figure class="space-y-2">
-    <figcaption class="text-xs leading-snug text-ink-muted">
+    <figcaption class="text-[12px] leading-[15px] text-ink-muted">
       {{ t.basin.sectors.replace('{year}', String(year)) }}
     </figcaption>
     <div class="flex h-2 gap-0.5 overflow-hidden rounded-full" aria-hidden="true">
@@ -47,7 +47,7 @@ const parts = computed(() =>
         :style="{ flexGrow: part.share, backgroundColor: part.color }"
       ></div>
     </div>
-    <ul class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+    <ul class="flex flex-wrap gap-x-4 gap-y-1 text-[12px] leading-[15px] text-ink-muted">
       <li v-for="part in parts" :key="part.key" class="inline-flex items-center gap-1.5">
         <span class="size-2 rounded-full" :style="{ backgroundColor: part.color }"></span>
         {{ part.name }}

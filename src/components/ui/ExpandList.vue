@@ -13,11 +13,11 @@ const model = defineModel<T>({ required: true })
 </script>
 
 <template>
-  <ul class="flex flex-col overflow-hidden rounded-xl bg-group" :aria-label="label">
+  <ul class="flex flex-col overflow-hidden rounded-xl bg-group shadow-card" :aria-label="label">
     <li v-for="item in items" :key="item.id" class="group/row">
       <button
         type="button"
-        class="flex w-full items-center gap-2.5 pl-2.5 text-left text-[13px] text-ink transition-colors hover:bg-fill focus-ring-inset"
+        class="flex w-full items-center gap-2.5 pl-2.5 text-left text-[13px] leading-4 text-ink transition-colors duration-150 ease-out motion-reduce:transition-none hover:bg-fill active:bg-fill-strong focus-ring-inset pointer-coarse:min-h-11"
         :aria-expanded="model === item.id"
         @click="model = item.id"
       >
@@ -32,7 +32,7 @@ const model = defineModel<T>({ required: true })
         </span>
       </button>
       <div v-if="model === item.id" class="space-y-3 pr-3 pb-3" :class="flush ? 'pl-3' : 'pl-11'">
-        <p class="text-xs leading-relaxed text-ink-muted">{{ item.about }}</p>
+        <p class="text-[12px] leading-[15px] text-ink-muted">{{ item.about }}</p>
         <slot />
       </div>
     </li>

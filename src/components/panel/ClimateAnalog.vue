@@ -28,7 +28,7 @@ const analog = computed(() => {
       { when: t.value.koppen.now, code: now, ...nowText },
       ...(now === end ? [] : [{ when: formatPeriod(endPeriod), code: end, ...endText }]),
     ],
-    note: t.value.koppen.note.replace('{scenario}', file.scenario),
+    note: t.value.koppen.note,
   }
 })
 </script>
@@ -40,13 +40,9 @@ const analog = computed(() => {
       <li
         v-for="chip in analog.chips"
         :key="chip.when"
-        class="group/row flex items-center gap-2.5 pl-2.5"
+        class="group/row flex items-center pl-3"
         :title="chip.meaning"
       >
-        <span
-          class="w-10 shrink-0 rounded-md bg-fill-strong px-1 py-0.5 text-center text-[12px] leading-[15px] font-semibold text-ink tabular-nums"
-          >{{ chip.code }}</span
-        >
         <span
           class="min-w-0 flex-1 py-2 pr-3 text-[13px] leading-4 text-ink group-not-first/row:border-t group-not-first/row:border-line"
         >

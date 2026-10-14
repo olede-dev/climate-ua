@@ -331,11 +331,11 @@ export const en: Messages = {
     heading: 'Oblasts',
     sortLabel: 'Sort',
     sorts: { desc: 'Highest first', asc: 'Lowest first', name: 'By name' },
-    deltaHint: 'The badge is the difference from the oblast’s {period} norm.',
+    deltaHint: 'The number on the right is how much more or less than usual for the oblast ({period}).',
   },
   table: {
     oblasts: 'Oblast',
-    basins: 'Subbasin',
+    basins: 'Basin',
     stations: 'Station',
     value: 'Value',
     hint: 'Pick a region to open its card.',
@@ -344,11 +344,11 @@ export const en: Messages = {
     futureHint: 'Projection to {year}',
     back: 'Ukraine',
     rank: 'Place {place} of {of} by size',
-    bounds: { min: 'Min', median: 'Median', max: 'Max' },
+    bounds: { min: 'Less', median: 'Most likely', max: 'More' },
     boundsAbout: {
-      min: 'The low end: only 10% of the models give less.',
-      median: 'The middle: half the models give less, half give more.',
-      max: 'The high end: only 10% of the models give more.',
+      min: 'If the changes are milder: only 1 forecast in 10 gives less.',
+      median: 'The most likely case: half the forecasts give less, half give more.',
+      max: 'If the changes are stronger: only 1 forecast in 10 gives more.',
     },
     boundsTitle: 'What the map shows',
     normBar: {
@@ -358,7 +358,7 @@ export const en: Messages = {
       lowTemp: 'coldest year',
       highTemp: 'warmest year',
       noteToggle: 'What is the norm?',
-      note: 'The norm is the {norm} average, the WMO standard. The ends of the bar are the lowest and highest values over {record}, or the projection where it reaches past them.',
+      note: 'The norm is the {norm} average: the years climate scientists worldwide treat as “usual”. The ends of the bar are the lowest and highest values over {record}, or the projection where it reaches past them.',
     },
     headline: '{title} in {when}: {delta}.',
     headlineWinter: '{title} in winter {when}: {delta}.',
@@ -370,9 +370,9 @@ export const en: Messages = {
   },
   story: {
     country: 'in Ukraine',
-    range: ' (80% of models: {low} to {high})',
-    futureEdge: 'For {period}, {edge} is {value}, {delta}.',
-    edges: { min: 'the low end of the projection', max: 'the high end of the projection' },
+    range: ' (possibly {low} to {high})',
+    futureEdge: 'If the changes are {edge}, for {period}: {value}, {delta}.',
+    edges: { min: 'milder', max: 'stronger' },
     missingYear: 'There is no data for {year}.',
     missingPeriod: 'There is no projection for {period}.',
     noForecast: 'There are no projections for rivers.',
@@ -386,8 +386,8 @@ export const en: Messages = {
   basin: {
     named: '{river} basin',
     namedWhere: 'in the {river} basin',
-    unnamed: 'Subbasin {where}',
-    unnamedWhere: 'in this subbasin',
+    unnamed: 'Part of the basin {where}',
+    unnamedWhere: 'in this part of the basin',
     sectors: 'What the water was withdrawn for in {year}',
     irrigation: 'Irrigation',
     domestic: 'Households',
@@ -544,9 +544,9 @@ export const en: Messages = {
     },
   },
   koppen: {
-    title: 'Köppen climate type',
+    title: 'Climate type',
     now: 'Now',
-    note: 'Climate type after Beck et al. (2023), projected under scenario {scenario}; the class covering most of the region.',
+    note: 'The climate type depends on how warm and wet the year is. Shown is the type that covers most of the region.',
   },
   waterUse: {
     scenariosLabel: 'Scenario',
@@ -658,7 +658,7 @@ export const en: Messages = {
       chartTitle: 'How the temperature has changed and what comes next',
       story: {
         observed: 'In {year}, the mean temperature {where} was {value}, {delta}.',
-        future: 'For {period}, the model median is {value}{range}, {delta}.',
+        future: 'In {period} it will most likely be {value}{range}, {delta}.',
         above: '{delta} above the norm',
         below: '{delta} below the norm',
         same: 'in line with the norm',
@@ -677,7 +677,7 @@ export const en: Messages = {
       chartTitle: 'Days of extreme heat (above 35 °C) by year, with projections to 2100',
       story: {
         observed: 'In {year}, there were {value} of extreme heat {where}, {delta}.',
-        future: 'For {period}, the model median is {value}{range}, {delta}.',
+        future: 'In {period} it will most likely be {value}{range}, {delta}.',
         above: '{delta} more than the norm',
         below: '{delta} fewer than the norm',
         same: 'in line with the norm',
@@ -696,7 +696,7 @@ export const en: Messages = {
       chartTitle: 'Frost days by year, with projections to 2100',
       story: {
         observed: 'In {year}, there were {value} {where}, {delta}.',
-        future: 'For {period}, the model median is {value}{range}, {delta}.',
+        future: 'In {period} it will most likely be {value}{range}, {delta}.',
         above: '{delta} more than the norm',
         below: '{delta} fewer than the norm',
         same: 'in line with the norm',
@@ -704,7 +704,7 @@ export const en: Messages = {
     },
     drought: {
       name: 'Drought',
-      legendTitle: 'Dry months a year (SPEI-6 below −1)',
+      legendTitle: 'Dry months a year (when the land clearly lacks moisture)',
       low: 'Few',
       high: 'Many',
       norm: 'norm',
@@ -715,7 +715,7 @@ export const en: Messages = {
       chartTitle: 'Dry months by year, with projections to 2100',
       story: {
         observed: 'In {year}, there were {value} {where}, {delta}.',
-        future: 'For {period}, the model median is {value}{range}, {delta}.',
+        future: 'In {period} it will most likely be {value}{range}, {delta}.',
         above: '{delta} more than the norm',
         below: '{delta} fewer than the norm',
         same: 'in line with the norm',
@@ -723,7 +723,7 @@ export const en: Messages = {
     },
     'snow-days': {
       name: 'Snow cover',
-      legendTitle: 'Days with snow in a winter (water equivalent from 1 mm)',
+      legendTitle: 'Days with snow on the ground in a winter',
       low: 'Few',
       high: 'Many',
       norm: 'norm',
@@ -734,7 +734,7 @@ export const en: Messages = {
       chartTitle: 'Days with snow by winter, from 1950/51',
       story: {
         observed: 'In winter {winter}, there were {value} {where}, {delta}.',
-        future: 'There are no snow projections: the C3S climate atlas has no snow indices.',
+        future: 'There is no snow forecast: the climate projections we rely on do not cover snow.',
         above: '{delta} more than the norm',
         below: '{delta} fewer than the norm',
         same: 'in line with the norm',
@@ -742,7 +742,7 @@ export const en: Messages = {
     },
     'snow-max': {
       name: 'Snow water: peak',
-      legendTitle: 'Highest snow water storage in a winter, mm water equivalent',
+      legendTitle: 'Most snow in a winter: mm of water if the snow melted',
       low: 'Little',
       high: 'Much',
       norm: 'norm',
@@ -753,7 +753,7 @@ export const en: Messages = {
       chartTitle: 'Highest snow water storage by winter, from 1950/51',
       story: {
         observed: 'In winter {winter}, snow water {where} peaked at {value}, {delta}.',
-        future: 'There are no snow projections: the C3S climate atlas has no snow indices.',
+        future: 'There is no snow forecast: the climate projections we rely on do not cover snow.',
         above: '{delta} more than the norm',
         below: '{delta} less than the norm',
         same: 'in line with the norm',
@@ -761,7 +761,7 @@ export const en: Messages = {
     },
     'snow-march': {
       name: 'Snow water on 1 March',
-      legendTitle: 'Water stored in snow on 1 March, mm water equivalent',
+      legendTitle: 'Snow on 1 March: mm of water if the snow melted',
       low: 'Little',
       high: 'Much',
       norm: 'norm',
@@ -772,7 +772,7 @@ export const en: Messages = {
       chartTitle: 'Water stored in snow on 1 March by year, from 1951',
       story: {
         observed: 'On 1 March {year}, snow {where} held {value}, {delta}.',
-        future: 'There are no snow projections: the C3S climate atlas has no snow indices.',
+        future: 'There is no snow forecast: the climate projections we rely on do not cover snow.',
         above: '{delta} more than the norm',
         below: '{delta} less than the norm',
         same: 'in line with the norm',
@@ -796,7 +796,7 @@ export const en: Messages = {
       chartTitle: 'Low-flow days by year, 1997–2025',
       story: {
         observed: 'In {year}, there were {value} {where}, {delta}.',
-        future: 'For {period}, the model median is {value}{range}, {delta}.',
+        future: 'In {period} it will most likely be {value}{range}, {delta}.',
         above: '{delta} more than on average',
         below: '{delta} fewer than on average',
         same: 'in line with the average',
@@ -804,7 +804,7 @@ export const en: Messages = {
     },
   },
   surfaceWater: {
-    total: 'Observed annual water',
+    total: 'Water area in the year',
     km2: 'km²',
     history: 'Annual area history',
     listHeading: 'Area in {year}',

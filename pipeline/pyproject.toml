@@ -8,7 +8,7 @@ dependencies = [
   "geopandas",
   "netcdf4",
   "numpy",
-  "osmium==4.3.1",
+  "osmium==4.3.2",
   "pyogrio",
   "pyproj",
   "rasterio>=1.5.2",
